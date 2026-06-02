@@ -3,6 +3,7 @@ import 'package:task_tracker/features/account/presentation/pages/account.dart';
 import 'package:task_tracker/features/auth/presentation/pages/sign_in.dart';
 import 'package:task_tracker/features/auth/presentation/pages/verify_email.dart';
 import 'package:task_tracker/features/home/presentation/pages/home.dart';
+import 'package:task_tracker/features/trackers/presentation/pages/trackers.dart';
 import 'package:task_tracker/core/database/db_service.dart';
 import 'package:task_tracker/core/widgets/app_shell.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -105,7 +106,10 @@ final GoRouter _router = GoRouter(
         if (state.fullPath == '/' || state.fullPath!.startsWith('/auth')) {
           return child;
         }
-        return NavigatorScafold(child: child);
+        return NavigatorScafold(
+          location: state.fullPath,
+          child: child,
+        );
       },
       routes: [
         GoRoute(
@@ -130,6 +134,12 @@ final GoRouter _router = GoRouter(
           path: '/home',
           builder: (BuildContext context, GoRouterState state) {
             return const HomePage();
+          },
+        ),
+        GoRoute(
+          path: '/trackers',
+          builder: (BuildContext context, GoRouterState state) {
+            return const TrackersPage();
           },
         ),
         GoRoute(

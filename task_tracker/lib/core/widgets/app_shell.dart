@@ -3,8 +3,9 @@ import 'package:go_router/go_router.dart';
 
 class NavigatorScafold extends StatefulWidget {
   final Widget child;
+  final String? location;
 
-  const NavigatorScafold({super.key, required this.child});
+  const NavigatorScafold({super.key, required this.child, this.location});
 
   @override
   State<NavigatorScafold> createState() => _NavigatorScafoldState();
@@ -15,10 +16,35 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
   int _selectedIndex = 1;
   bool extendRail = false;
 
-  late final AnimationController _overlayController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 250),
-  );
+  int _getSelectedIndexForLocation(String? location) {
+    if (location == null) return 1;
+    if (location.startsWith('/home')) return 1;
+    if (location.startsWith('/trackers')) return 2;
+    if (location.startsWith('/account')) return 3;
+    return 1;
+  }
+
+  late final AnimationController _overlayController;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = _getSelectedIndexForLocation(widget.location);
+    _overlayController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+  }
+
+  @override
+  void didUpdateWidget(NavigatorScafold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.location != oldWidget.location) {
+      setState(() {
+        _selectedIndex = _getSelectedIndexForLocation(widget.location);
+      });
+    }
+  }
   late final Animation<Offset> _slideAnimation =
       Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero).animate(
         CurvedAnimation(parent: _overlayController, curve: Curves.easeOutCubic),
@@ -67,6 +93,9 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
         context.go('/home');
         break;
       case 2:
+        context.go('/trackers');
+        break;
+      case 3:
         context.go('/account');
         break;
     }
@@ -81,6 +110,11 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
       icon: Icon(Icons.home_outlined),
       selectedIcon: Icon(Icons.home),
       label: Text('Home'),
+    ),
+    NavigationRailDestination(
+      icon: Icon(Icons.track_changes_outlined),
+      selectedIcon: Icon(Icons.track_changes),
+      label: Text('Trackers'),
     ),
     NavigationRailDestination(
       icon: Icon(Icons.account_circle_outlined),
