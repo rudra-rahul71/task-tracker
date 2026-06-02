@@ -1,0 +1,82 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+class SplashPage extends StatefulWidget {
+  const SplashPage({super.key});
+
+  @override
+  State<SplashPage> createState() => _SplashPageState();
+}
+
+class _SplashPageState extends State<SplashPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    );
+
+    _animationController.forward().then((onValue) {
+      if (mounted) {
+        context.go('/auth/sign-in');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black, // Sleek black backdrop for the premium splash
+      body: Center(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/logo.png',
+                width: 200,
+                height: 200,
+                errorBuilder: (context, error, stackTrace) {
+                  // Fallback if logo is missing or loading fails
+                  return const Icon(
+                    Icons.check_circle_outline,
+                    size: 120,
+                    color: Colors.amber,
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'TASK TRACKER',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 4,
+                  color: Colors.amber[800],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
