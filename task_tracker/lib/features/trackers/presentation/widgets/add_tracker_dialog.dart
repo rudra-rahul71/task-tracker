@@ -22,6 +22,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
   String _measurementUnit = 'days'; // 'days', 'weeks', 'months'
   int? _durationValue;
   bool _isLoading = false;
+  DateTime _startDate = DateTime.now();
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -42,19 +43,26 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
     });
 
     final now = DateTime.now();
+    final start = _startDate;
     DateTime? endDate;
 
     if (_durationType == 'set_time' && _durationValue != null) {
       switch (_measurementUnit) {
+        case 'minutes':
+          endDate = start.add(Duration(minutes: _durationValue!));
+          break;
+        case 'hours':
+          endDate = start.add(Duration(hours: _durationValue!));
+          break;
         case 'weeks':
-          endDate = now.add(Duration(days: _durationValue! * 7));
+          endDate = start.add(Duration(days: _durationValue! * 7));
           break;
         case 'months':
-          endDate = DateTime(now.year, now.month + _durationValue!, now.day);
+          endDate = DateTime(start.year, start.month + _durationValue!, start.day);
           break;
         case 'days':
         default:
-          endDate = now.add(Duration(days: _durationValue!));
+          endDate = start.add(Duration(days: _durationValue!));
           break;
       }
     }
@@ -67,7 +75,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
       durationType: _durationType,
       measurementUnit: _measurementUnit,
       durationValue: _durationValue,
-      startDate: now,
+      startDate: start,
       endDate: endDate,
       createdAt: now,
     );
@@ -312,7 +320,58 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                     onSaved: (value) => _durationValue = int.tryParse(value!),
                   ),
                 ],
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+
+                // Start Date Picker Row
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Start Date & Time', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')} ${_startDate.hour.toString().padLeft(2, '0')}:${_startDate.minute.toString().padLeft(2, '0')}',
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                  ),
+                  trailing: IconButton(
+                    icon: Icon(Icons.calendar_month, color: Theme.of(context).colorScheme.primary),
+                    onPressed: () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: _startDate,
+                        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+
+                      if (pickedDate != null) {
+                        if (!context.mounted) return;
+                        final pickedTime = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.fromDateTime(_startDate),
+                        );
+                        if (pickedTime != null) {
+                          setState(() {
+                            _startDate = DateTime(
+                              pickedDate.year,
+                              pickedDate.month,
+                              pickedDate.day,
+                              pickedTime.hour,
+                              pickedTime.minute,
+                            );
+                          });
+                        } else {
+                          setState(() {
+                            _startDate = DateTime(
+                              pickedDate.year,
+                              pickedDate.month,
+                              pickedDate.day,
+                              _startDate.hour,
+                              _startDate.minute,
+                            );
+                          });
+                        }
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
 
                 Wrap(
                   alignment: WrapAlignment.end,
