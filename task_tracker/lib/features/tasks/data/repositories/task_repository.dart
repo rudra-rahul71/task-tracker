@@ -3,6 +3,7 @@ import 'package:task_tracker/core/database/db_service.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
+import 'package:task_tracker/features/tasks/data/models/task_history.dart';
 
 class TaskRepository {
   final FirebaseFirestore _firestore = DatabaseService.instance.firestore;
@@ -89,21 +90,102 @@ class TaskRepository {
   }
 
   Future<void> updateTask(TaskModel task) async {
-    await _firestore
+    final docRef = _firestore
         .collection('users')
         .doc(task.userId)
         .collection('tasks')
-        .doc(task.id)
-        .update(task.toMap());
+        .doc(task.id);
+
+    // Get the current snapshot to compare status changes
+    final docSnap = await docRef.get();
+    final Map<String, dynamic>? oldMap = docSnap.data();
+    final String? oldStatus = oldMap?['status'];
+
+    final batch = _firestore.batch();
+    batch.update(docRef, task.toMap());
+
+    final today = DateTime.now();
+    final todayZero = DateTime(today.year, today.month, today.day);
+
+    if (task.status == 'completed' && oldStatus != 'completed') {
+      // 1. Task completed! Log history
+      final historyRef = _firestore
+          .collection('users')
+          .doc(task.userId)
+          .collection('task_history')
+          .doc();
+
+      final historyRecord = TaskHistoryModel(
+        id: '',
+        taskId: task.id,
+        taskName: task.name,
+        groupId: task.groupId,
+        date: todayZero,
+        completedSteps: task.steps.where((s) => s.isCompleted).map((s) => s.name).toList(),
+      );
+      batch.set(historyRef, historyRecord.toMap());
+    } else if (task.status == 'pending' && oldStatus == 'completed') {
+      // 2. Task went from completed to pending (reset/uncompleted). Delete history for today
+      final historySnapshot = await _firestore
+          .collection('users')
+          .doc(task.userId)
+          .collection('task_history')
+          .where('taskId', isEqualTo: task.id)
+          .where('date', isEqualTo: Timestamp.fromDate(todayZero))
+          .get();
+
+      for (var doc in historySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    await batch.commit();
   }
 
   Future<void> deleteTask(String userId, String taskId) async {
-    await _firestore
+    final batch = _firestore.batch();
+
+    // 1. Delete task doc
+    final taskRef = _firestore
         .collection('users')
         .doc(userId)
         .collection('tasks')
-        .doc(taskId)
-        .delete();
+        .doc(taskId);
+    batch.delete(taskRef);
+
+    // 2. Delete history docs
+    final historySnapshot = await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('task_history')
+        .where('taskId', isEqualTo: taskId)
+        .get();
+
+    for (var doc in historySnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+  }
+
+  // Get completions stream for a specific month
+  Stream<List<TaskHistoryModel>> getMonthlyTaskHistory(String userId, DateTime month) {
+    final start = DateTime(month.year, month.month, 1);
+    final end = DateTime(month.year, month.month + 1, 1).subtract(const Duration(microseconds: 1));
+
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('task_history')
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
+        .orderBy('date', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => TaskHistoryModel.fromMap(doc.data(), doc.id))
+          .toList();
+    });
   }
 
   // Scan and reset tasks if they have crossed into a new scheduling cycle

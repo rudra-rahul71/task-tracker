@@ -4,6 +4,11 @@ import 'package:task_tracker/core/widgets/page_header.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker_history.dart';
+import 'package:task_tracker/features/tasks/data/models/task_group.dart';
+import 'package:task_tracker/features/tasks/data/models/task_model.dart';
+import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
+import 'package:task_tracker/features/tasks/presentation/widgets/task_card.dart';
+import 'package:task_tracker/features/tasks/data/models/task_history.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,11 +19,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final TrackerRepository _repository = TrackerRepository();
+  final TaskRepository _taskRepository = TaskRepository();
   DateTime _focusedMonth = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   String? _currentUserId;
   Stream<List<TrackerModel>>? _trackersStream;
   Stream<List<TrackerHistoryModel>>? _historyStream;
+  Stream<List<TaskModel>>? _tasksStream;
+  Stream<List<TaskGroupModel>>? _groupsStream;
+  Stream<List<TaskHistoryModel>>? _taskHistoryStream;
   DateTime? _cachedFocusedMonth;
   String? _historyStreamUserId;
 
@@ -40,16 +49,69 @@ class _HomePageState extends State<HomePage> {
   final List<String> _weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   void _initStreamsForUser(String userId) {
-    if (_currentUserId == userId && _trackersStream != null) {
+    if (_currentUserId == userId &&
+        _trackersStream != null &&
+        _tasksStream != null &&
+        _groupsStream != null) {
       return;
     }
     _currentUserId = userId;
     _trackersStream = _repository.getTrackers(userId);
+    _tasksStream = _taskRepository.getTasks(userId);
+    _groupsStream = _taskRepository.getGroups(userId);
+  }
+
+  bool _isTaskDueOnDate(TaskModel task, List<TaskGroupModel> groups, DateTime date) {
+    // A task cannot be due before its creation date
+    final dateZero = DateTime(date.year, date.month, date.day);
+    final createdZero = DateTime(task.createdAt.year, task.createdAt.month, task.createdAt.day);
+    if (dateZero.isBefore(createdZero)) {
+      return false;
+    }
+
+    // 1. Task has its own schedule
+    if (task.schedule != null && task.schedule!.type != 'none') {
+      return task.schedule!.isDueOnDate(date);
+    }
+
+    // 2. Task inherits its group schedule
+    if (task.groupId != null) {
+      final group = groups.firstWhere(
+        (g) => g.id == task.groupId,
+        orElse: () => TaskGroupModel(
+          id: '',
+          userId: '',
+          name: '',
+          colorValue: 0xFF9E9E9E,
+          createdAt: DateTime.now(),
+        ),
+      );
+      if (group.id.isNotEmpty && group.schedule != null && group.schedule!.type != 'none') {
+        return group.schedule!.isDueOnDate(date);
+      }
+    }
+
+    // 3. Unscheduled tasks: show under "Due Today" if they are pending (so they don't get lost)
+    // For the calendar, we only display unscheduled pending tasks on today's date.
+    final today = DateTime.now();
+    final isToday = date.year == today.year &&
+        date.month == today.month &&
+        date.day == today.day;
+    return isToday && task.status == 'pending';
+  }
+
+  bool _isTaskCompletedOnDate(TaskModel task, List<TaskHistoryModel> taskHistory, DateTime date) {
+    return taskHistory.any((h) =>
+        h.taskId == task.id &&
+        h.date.year == date.year &&
+        h.date.month == date.month &&
+        h.date.day == date.day);
   }
 
   void _initHistoryStream(String userId, DateTime focusedMonth) {
     if (_historyStreamUserId == userId &&
         _historyStream != null &&
+        _taskHistoryStream != null &&
         _cachedFocusedMonth != null &&
         _cachedFocusedMonth!.year == focusedMonth.year &&
         _cachedFocusedMonth!.month == focusedMonth.month) {
@@ -58,6 +120,7 @@ class _HomePageState extends State<HomePage> {
     _historyStreamUserId = userId;
     _cachedFocusedMonth = focusedMonth;
     _historyStream = _repository.getMonthlyHistory(userId, focusedMonth);
+    _taskHistoryStream = _taskRepository.getMonthlyTaskHistory(userId, focusedMonth);
   }
 
   @override
@@ -115,174 +178,277 @@ class _HomePageState extends State<HomePage> {
 
               final history = historySnapshot.data ?? [];
 
-              // Helper methods for daily status checking using monthly history
-              bool hasTrackerSlipUpOnDay(
-                TrackerModel tracker,
-                DateTime dayDate,
-              ) {
-                if (tracker.type != 'quit') return false;
-                return history.any(
-                  (h) =>
-                      h.trackerId == tracker.id &&
-                      h.type == 'slip_up' &&
-                      h.date.year == dayDate.year &&
-                      h.date.month == dayDate.month &&
-                      h.date.day == dayDate.day,
-                );
-              }
-
-              bool isTrackerCompletedOnDay(
-                TrackerModel tracker,
-                DateTime dayDate,
-              ) {
-                final dayZero = DateTime(
-                  dayDate.year,
-                  dayDate.month,
-                  dayDate.day,
-                );
-                final originalStartZero = DateTime(
-                  tracker.originalStartDate.year,
-                  tracker.originalStartDate.month,
-                  tracker.originalStartDate.day,
-                );
-                final todayZero = DateTime(
-                  DateTime.now().year,
-                  DateTime.now().month,
-                  DateTime.now().day,
-                );
-
-                if (dayZero.isBefore(originalStartZero) ||
-                    dayZero.isAfter(todayZero)) {
-                  return false;
-                }
-
-                if (tracker.type == 'maintain') {
-                  final hasManualCompletion = history.any(
-                    (h) =>
-                        h.trackerId == tracker.id &&
-                        h.type == 'completion' &&
-                        h.date.year == dayDate.year &&
-                        h.date.month == dayDate.month &&
-                        h.date.day == dayDate.day,
-                  );
-                  if (hasManualCompletion) return true;
-
-                  // Assume completed properly if it is in the past before the tracker was created
-                  final createdZero = DateTime(
-                    tracker.createdAt.year,
-                    tracker.createdAt.month,
-                    tracker.createdAt.day,
-                  );
-                  if (dayZero.isBefore(todayZero) &&
-                      dayZero.isBefore(createdZero)) {
-                    return true;
+              return StreamBuilder<List<TaskHistoryModel>>(
+                stream: _taskHistoryStream!,
+                builder: (context, taskHistorySnapshot) {
+                  if (taskHistorySnapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
                   }
 
-                  // Assume completed properly if it is part of the current active streak
-                  final currentStartZero = DateTime(
-                    tracker.startDate.year,
-                    tracker.startDate.month,
-                    tracker.startDate.day,
-                  );
-                  if (dayZero.isBefore(todayZero) &&
-                      !dayZero.isBefore(currentStartZero)) {
-                    return true;
+                  if (taskHistorySnapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error loading task history: ${taskHistorySnapshot.error}',
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 16,
+                        ),
+                      ),
+                    );
                   }
 
-                  return false;
-                } else {
-                  return !hasTrackerSlipUpOnDay(tracker, dayDate);
-                }
-              }
+                  final taskHistory = taskHistorySnapshot.data ?? [];
 
-              // Compute values for calendar grid
-              final year = _focusedMonth.year;
-              final month = _focusedMonth.month;
-              final firstDay = DateTime(year, month, 1);
-              final emptySlots = firstDay.weekday % 7; // Sunday is index 0
-              final daysInMonth = DateTime(year, month + 1, 0).day;
-              final totalCells = emptySlots + daysInMonth;
+                  return StreamBuilder<List<TaskGroupModel>>(
+                    stream: _groupsStream!,
+                    builder: (context, groupsSnapshot) {
+                      if (groupsSnapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-              // Look up completions and slip-ups for the currently selected day
-              final completedOnSelected = trackers.where((tracker) {
-                return isTrackerCompletedOnDay(tracker, _selectedDay);
-              }).toList();
+                      if (groupsSnapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error loading task groups: ${groupsSnapshot.error}',
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 16,
+                            ),
+                          ),
+                        );
+                      }
 
-              final slippedOnSelected = trackers.where((tracker) {
-                return hasTrackerSlipUpOnDay(tracker, _selectedDay);
-              }).toList();
+                      final groups = groupsSnapshot.data ?? [];
 
-              final width = MediaQuery.of(context).size.width;
-              final isLargeScreen = width >= 850;
+                      return StreamBuilder<List<TaskModel>>(
+                        stream: _tasksStream!,
+                        builder: (context, tasksSnapshot) {
+                          if (tasksSnapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
 
-              // Main Layout
-              final mainContent = Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const PageHeader(
-                      header: 'Dashboard',
-                      sub: 'Visualize your habit completion history',
-                    ),
-                    const SizedBox(height: 24),
-                    Expanded(
-                      child: isLargeScreen
-                          ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  flex: 4,
-                                  child: _buildCalendarCard(
-                                    emptySlots: emptySlots,
-                                    daysInMonth: daysInMonth,
-                                    totalCells: totalCells,
-                                    trackers: trackers,
-                                    history: history,
-                                  ),
+                          if (tasksSnapshot.hasError) {
+                            return Center(
+                              child: Text(
+                                'Error loading tasks: ${tasksSnapshot.error}',
+                                style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 16,
                                 ),
-                                const SizedBox(width: 24),
+                              ),
+                            );
+                          }
+
+                          final tasks = tasksSnapshot.data ?? [];
+
+                          // Dynamically run the check/reset scheduler logic
+                          if (tasks.isNotEmpty) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              _taskRepository.checkAndResetScheduledTasks(
+                                userId: userId,
+                                tasks: tasks,
+                                groups: groups,
+                              );
+                            });
+                          }
+
+                          // Helper methods for daily status checking using monthly history
+                          bool hasTrackerSlipUpOnDay(
+                            TrackerModel tracker,
+                            DateTime dayDate,
+                          ) {
+                            if (tracker.type != 'quit') return false;
+                            return history.any(
+                              (h) =>
+                                  h.trackerId == tracker.id &&
+                                  h.type == 'slip_up' &&
+                                  h.date.year == dayDate.year &&
+                                  h.date.month == dayDate.month &&
+                                  h.date.day == dayDate.day,
+                            );
+                          }
+
+                          bool isTrackerCompletedOnDay(
+                            TrackerModel tracker,
+                            DateTime dayDate,
+                          ) {
+                            final dayZero = DateTime(
+                              dayDate.year,
+                              dayDate.month,
+                              dayDate.day,
+                            );
+                            final originalStartZero = DateTime(
+                              tracker.originalStartDate.year,
+                              tracker.originalStartDate.month,
+                              tracker.originalStartDate.day,
+                            );
+                            final todayZero = DateTime(
+                              DateTime.now().year,
+                              DateTime.now().month,
+                              DateTime.now().day,
+                            );
+
+                            if (dayZero.isBefore(originalStartZero) ||
+                                dayZero.isAfter(todayZero)) {
+                              return false;
+                            }
+
+                            if (tracker.type == 'maintain') {
+                              final hasManualCompletion = history.any(
+                                (h) =>
+                                    h.trackerId == tracker.id &&
+                                    h.type == 'completion' &&
+                                    h.date.year == dayDate.year &&
+                                    h.date.month == dayDate.month &&
+                                    h.date.day == dayDate.day,
+                              );
+                              if (hasManualCompletion) return true;
+
+                              // Assume completed properly if it is in the past before the tracker was created
+                              final createdZero = DateTime(
+                                tracker.createdAt.year,
+                                tracker.createdAt.month,
+                                tracker.createdAt.day,
+                              );
+                              if (dayZero.isBefore(todayZero) &&
+                                  dayZero.isBefore(createdZero)) {
+                                return true;
+                              }
+
+                              // Assume completed properly if it is part of the current active streak
+                              final currentStartZero = DateTime(
+                                tracker.startDate.year,
+                                tracker.startDate.month,
+                                tracker.startDate.day,
+                              );
+                              if (dayZero.isBefore(todayZero) &&
+                                  !dayZero.isBefore(currentStartZero)) {
+                                return true;
+                              }
+
+                              return false;
+                            } else {
+                              return !hasTrackerSlipUpOnDay(tracker, dayDate);
+                            }
+                          }
+
+                          // Compute values for calendar grid
+                          final year = _focusedMonth.year;
+                          final month = _focusedMonth.month;
+                          final firstDay = DateTime(year, month, 1);
+                          final emptySlots = firstDay.weekday % 7; // Sunday is index 0
+                          final daysInMonth = DateTime(year, month + 1, 0).day;
+                          final totalCells = emptySlots + daysInMonth;
+
+                          // Look up completions and slip-ups for the currently selected day
+                          final completedOnSelected = trackers.where((tracker) {
+                            return isTrackerCompletedOnDay(tracker, _selectedDay);
+                          }).toList();
+
+                          final slippedOnSelected = trackers.where((tracker) {
+                            return hasTrackerSlipUpOnDay(tracker, _selectedDay);
+                          }).toList();
+
+                          // Look up tasks completed or pending on the currently selected day using history
+                          final completedTasksOnSelected = tasks.where((task) {
+                            return _isTaskCompletedOnDate(task, taskHistory, _selectedDay);
+                          }).toList();
+
+                          final pendingTasksOnSelected = tasks.where((task) {
+                            final isDue = _isTaskDueOnDate(task, groups, _selectedDay);
+                            final isCompleted = _isTaskCompletedOnDate(task, taskHistory, _selectedDay);
+                            return isDue && !isCompleted;
+                          }).toList();
+
+                          final width = MediaQuery.of(context).size.width;
+                          final isLargeScreen = width >= 850;
+
+                          // Main Layout
+                          final mainContent = Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                const PageHeader(
+                                  header: 'Dashboard',
+                                  sub: 'Visualize your habits and tasks history',
+                                ),
+                                const SizedBox(height: 24),
                                 Expanded(
-                                  flex: 3,
-                                  child: _buildDetailPanel(
-                                    completed: completedOnSelected,
-                                    slipped: slippedOnSelected,
-                                    isScrollable: true,
-                                  ),
+                                  child: isLargeScreen
+                                      ? Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              flex: 3,
+                                              child: _buildDetailPanel(
+                                                completedTrackers: completedOnSelected,
+                                                slippedTrackers: slippedOnSelected,
+                                                completedTasks: completedTasksOnSelected,
+                                                pendingTasks: pendingTasksOnSelected,
+                                                groups: groups,
+                                                isScrollable: true,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 24),
+                                            Expanded(
+                                              flex: 4,
+                                              child: _buildCalendarCard(
+                                                emptySlots: emptySlots,
+                                                daysInMonth: daysInMonth,
+                                                totalCells: totalCells,
+                                                trackers: trackers,
+                                                history: history,
+                                                tasks: tasks,
+                                                groups: groups,
+                                                taskHistory: taskHistory,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : SingleChildScrollView(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              _buildDetailPanel(
+                                                completedTrackers: completedOnSelected,
+                                                slippedTrackers: slippedOnSelected,
+                                                completedTasks: completedTasksOnSelected,
+                                                pendingTasks: pendingTasksOnSelected,
+                                                groups: groups,
+                                                isScrollable: false,
+                                              ),
+                                              const SizedBox(height: 24),
+                                              _buildCalendarCard(
+                                                emptySlots: emptySlots,
+                                                daysInMonth: daysInMonth,
+                                                totalCells: totalCells,
+                                                trackers: trackers,
+                                                history: history,
+                                                tasks: tasks,
+                                                groups: groups,
+                                                taskHistory: taskHistory,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                 ),
                               ],
-                            )
-                          : SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildCalendarCard(
-                                    emptySlots: emptySlots,
-                                    daysInMonth: daysInMonth,
-                                    totalCells: totalCells,
-                                    trackers: trackers,
-                                    history: history,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  _buildDetailPanel(
-                                    completed: completedOnSelected,
-                                    slipped: slippedOnSelected,
-                                    isScrollable: false,
-                                  ),
-                                ],
-                              ),
                             ),
-                    ),
-                  ],
-                ),
-              );
+                          );
 
-              return isLargeScreen
-                  ? mainContent
-                  : Scaffold(
-                      backgroundColor: Colors.transparent,
-                      body: mainContent,
-                    );
+                          return isLargeScreen
+                              ? mainContent
+                              : Scaffold(
+                                  backgroundColor: Colors.transparent,
+                                  body: mainContent,
+                                );
+                        },
+                      );
+                    },
+                  );
+                },
+              );
             },
           );
         },
@@ -297,27 +463,36 @@ class _HomePageState extends State<HomePage> {
     required int totalCells,
     required List<TrackerModel> trackers,
     required List<TrackerHistoryModel> history,
+    required List<TaskModel> tasks,
+    required List<TaskGroupModel> groups,
+    required List<TaskHistoryModel> taskHistory,
   }) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-          width: 1.5,
-        ),
-      ),
-      color: const Color(0xFF1E1E1E),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Calendar Header Month / Year & Buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = constraints.maxWidth;
+        final useTextBanners = cardWidth >= 520;
+        final cellAspectRatio = useTextBanners ? 0.95 : 0.72;
+
+        return Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              width: 1.5,
+            ),
+          ),
+          color: const Color(0xFF1E1E1E),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SingleChildScrollView(
+              child: Column(
                 children: [
-                  IconButton(
+                  // Calendar Header Month / Year & Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
                     icon: const Icon(Icons.chevron_left, color: Colors.grey),
                     onPressed: () {
                       setState(() {
@@ -375,11 +550,11 @@ class _HomePageState extends State<HomePage> {
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
-                  childAspectRatio: 1.0,
+                  childAspectRatio: cellAspectRatio,
                 ),
                 itemCount: totalCells,
                 itemBuilder: (context, index) {
@@ -489,12 +664,168 @@ class _HomePageState extends State<HomePage> {
                       return t.type == 'quit'
                           ? const Color(
                               0xFFEF5350,
-                            ) // Red dot matching quit cards
+                            ) // Red dot matching quit habits
                           : const Color(
                               0xFF26A69A,
-                            ); // Teal dot matching maintain cards
+                            ); // Teal dot matching maintain habits
                     }),
                   ];
+
+                  // Look up tasks completed or pending on this day using history
+                  final tasksOnDay = tasks.where((t) {
+                    return _isTaskDueOnDate(t, groups, dayDate) ||
+                        _isTaskCompletedOnDate(t, taskHistory, dayDate);
+                  }).toList();
+
+                  final List<Widget> taskBanners = [];
+                  final List<Widget> taskIndicators = [];
+
+                  if (tasksOnDay.isNotEmpty) {
+                    if (useTextBanners) {
+                      final displayLimit = 2;
+                      final showMore = tasksOnDay.length > displayLimit;
+                      final count = showMore ? displayLimit - 1 : tasksOnDay.length;
+
+                      for (int i = 0; i < count; i++) {
+                        final t = tasksOnDay[i];
+                        final isCompleted = _isTaskCompletedOnDate(t, taskHistory, dayDate);
+                        final group = t.groupId != null
+                            ? groups.firstWhere(
+                                (g) => g.id == t.groupId,
+                                orElse: () => TaskGroupModel(
+                                  id: '',
+                                  userId: '',
+                                  name: '',
+                                  colorValue: 0xFF9E9E9E,
+                                  createdAt: DateTime.now(),
+                                ),
+                              )
+                            : null;
+                        final color = group != null && group.id.isNotEmpty
+                            ? Color(group.colorValue)
+                            : Theme.of(context).colorScheme.primary;
+
+                        final isLightColor =
+                            ThemeData.estimateBrightnessForColor(color) ==
+                                Brightness.light;
+                        final textColor = isCompleted
+                            ? (isLightColor ? Colors.black87 : Colors.white70)
+                            : (isLightColor ? color.withValues(alpha: 0.9) : color);
+
+                        taskBanners.add(
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.symmetric(
+                              vertical: 1.0,
+                              horizontal: 2.0,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4.0,
+                              vertical: 2.0,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? color.withValues(alpha: 0.85)
+                                  : color.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                              border: isCompleted
+                                  ? null
+                                  : Border.all(
+                                      color: color.withValues(alpha: 0.5),
+                                      width: 0.8,
+                                    ),
+                            ),
+                            child: Text(
+                              t.name,
+                              style: TextStyle(
+                                fontSize: 8.0,
+                                fontWeight: FontWeight.bold,
+                                color: isCompleted
+                                    ? (isLightColor ? Colors.black : Colors.white)
+                                    : textColor,
+                                decoration:
+                                    isCompleted ? TextDecoration.lineThrough : null,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (showMore) {
+                        final remainingCount = tasksOnDay.length - count;
+                        taskBanners.add(
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.symmetric(
+                              vertical: 1.0,
+                              horizontal: 2.0,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4.0,
+                              vertical: 2.0,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '+$remainingCount more',
+                              style: const TextStyle(
+                                fontSize: 7.5,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+                    } else {
+                      // Render mini banners for tasks on mobile layout
+                      for (final t in tasksOnDay) {
+                        final isCompleted = _isTaskCompletedOnDate(t, taskHistory, dayDate);
+                        final group = t.groupId != null
+                            ? groups.firstWhere(
+                                (g) => g.id == t.groupId,
+                                orElse: () => TaskGroupModel(
+                                  id: '',
+                                  userId: '',
+                                  name: '',
+                                  colorValue: 0xFF9E9E9E,
+                                  createdAt: DateTime.now(),
+                                ),
+                              )
+                            : null;
+                        final color = group != null && group.id.isNotEmpty
+                            ? Color(group.colorValue)
+                            : Theme.of(context).colorScheme.primary;
+
+                        taskIndicators.add(
+                          Container(
+                            margin: const EdgeInsets.symmetric(
+                              vertical: 1.0,
+                              horizontal: 3.0,
+                            ),
+                            height: 6,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: isCompleted ? color : Colors.transparent,
+                              borderRadius: BorderRadius.circular(3),
+                              border: Border.all(
+                                color: color.withValues(alpha: isCompleted ? 1.0 : 0.6),
+                                width: 1.0,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  }
 
                   return GestureDetector(
                     onTap: () {
@@ -522,42 +853,67 @@ class _HomePageState extends State<HomePage> {
                           width: isSelected || isToday ? 1.5 : 1,
                         ),
                       ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Stack(
                           children: [
-                            Text(
-                              '$dayNum',
-                              style: TextStyle(
-                                color: isSelected
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Colors.white,
-                                fontWeight: isSelected || isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                fontSize: 14,
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: Text(
+                                '$dayNum',
+                                textScaler: TextScaler.noScaling,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Colors.white,
+                                  fontWeight: isSelected || isToday
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
-                            if (allIndicators.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: allIndicators.take(4).map((color) {
-                                  return Container(
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 1.0,
-                                    ),
-                                    width: 5,
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      color: color,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  );
-                                }).toList(),
+                            if (useTextBanners)
+                              Positioned.fill(
+                                top: 18,
+                                bottom: 10,
+                                child: ListView(
+                                  padding: EdgeInsets.zero,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  children: taskBanners,
+                                ),
                               ),
-                            ],
+                            Align(
+                              alignment: Alignment.bottomCenter,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (!useTextBanners && taskIndicators.isNotEmpty) ...[
+                                    Column(
+                                      children: taskIndicators.take(2).toList(),
+                                    ),
+                                    const SizedBox(height: 3),
+                                  ],
+                                  if (allIndicators.isNotEmpty)
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: allIndicators.take(4).map((color) {
+                                        return Container(
+                                          margin: const EdgeInsets.symmetric(
+                                            horizontal: 1.0,
+                                          ),
+                                          width: 4,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            color: color,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -570,21 +926,132 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
-  }
+  },
+);
+}
 
   // Build Details Panel Card (Completed / Pending trackers for selected day)
   Widget _buildDetailPanel({
-    required List<TrackerModel> completed,
-    required List<TrackerModel> slipped,
+    required List<TrackerModel> completedTrackers,
+    required List<TrackerModel> slippedTrackers,
+    required List<TaskModel> completedTasks,
+    required List<TaskModel> pendingTasks,
+    required List<TaskGroupModel> groups,
     required bool isScrollable,
   }) {
     final formattedDate =
         '${_selectedDay.year}-${_selectedDay.month.toString().padLeft(2, '0')}-${_selectedDay.day.toString().padLeft(2, '0')}';
 
+    final today = DateTime.now();
+    final isSelectedDayToday = _selectedDay.year == today.year &&
+        _selectedDay.month == today.month &&
+        _selectedDay.day == today.day;
+
     final listWidget = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Completions List
+        // --- TASKS SECTION ---
+        const Text(
+          'TODAY\'S TASKS',
+          style: TextStyle(
+            color: Colors.grey,
+            fontWeight: FontWeight.bold,
+            fontSize: 11,
+            letterSpacing: 1.0,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (pendingTasks.isEmpty && completedTasks.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12.0),
+            child: Row(
+              children: [
+                Icon(Icons.assignment_outlined, color: Colors.grey, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'No tasks scheduled or completed on this day.',
+                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          if (pendingTasks.isNotEmpty) ...[
+            const Text(
+              'PENDING',
+              style: TextStyle(
+                color: Color(0xFFD4AF37),
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...pendingTasks.map((task) {
+              final taskForCard = isSelectedDayToday
+                  ? task
+                  : task.copyWith(
+                      status: 'pending',
+                      steps: task.steps
+                          .map((s) => s.copyWith(
+                                isCompleted: false,
+                                clearTimerStartedAt: true,
+                                clearTimerPausedAt: true,
+                                timerSecondsRemaining: s.timerDuration,
+                                isTimerConfirmed: false,
+                              ))
+                          .toList(),
+                    );
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: TaskCard(
+                  task: taskForCard,
+                  groups: groups,
+                  repository: _taskRepository,
+                  isInteractive: isSelectedDayToday,
+                  showCompletionStatus: true,
+                ),
+              );
+            }),
+            const SizedBox(height: 12),
+          ],
+          if (completedTasks.isNotEmpty) ...[
+            const Text(
+              'COMPLETED',
+              style: TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...completedTasks.map((task) {
+              final taskForCard = isSelectedDayToday
+                  ? task
+                  : task.copyWith(
+                      status: 'completed',
+                      steps: task.steps.map((s) => s.copyWith(isCompleted: true)).toList(),
+                    );
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: TaskCard(
+                  task: taskForCard,
+                  groups: groups,
+                  repository: _taskRepository,
+                  isInteractive: isSelectedDayToday,
+                  showCompletionStatus: true,
+                ),
+              );
+            }),
+          ],
+        ],
+
+        const Divider(height: 32, thickness: 1, color: Colors.white10),
+
+        // --- HABIT TRACKERS SECTION ---
         const Text(
           'SUCCESSFUL HABITS / CLEAN DAYS',
           style: TextStyle(
@@ -595,7 +1062,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         const SizedBox(height: 12),
-        if (completed.isEmpty)
+        if (completedTrackers.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12.0),
             child: Row(
@@ -612,9 +1079,9 @@ class _HomePageState extends State<HomePage> {
             ),
           )
         else
-          ...completed.map((t) => _buildDetailItem(t, true)),
+          ...completedTrackers.map((t) => _buildDetailItem(t, true)),
 
-        if (slipped.isNotEmpty) ...[
+        if (slippedTrackers.isNotEmpty) ...[
           const SizedBox(height: 24),
           const Text(
             'SLIPPED UP / BROKEN HABITS',
@@ -626,7 +1093,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 12),
-          ...slipped.map((t) => _buildDetailItem(t, false, isSlip: true)),
+          ...slippedTrackers.map((t) => _buildDetailItem(t, false, isSlip: true)),
         ],
       ],
     );
@@ -656,7 +1123,7 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Habit completions details',
+              'Habits & tasks completion details',
               style: TextStyle(color: Colors.grey, fontSize: 13),
             ),
             const Divider(height: 32, thickness: 1, color: Colors.white10),

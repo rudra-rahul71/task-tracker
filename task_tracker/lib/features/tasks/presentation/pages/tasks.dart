@@ -66,7 +66,13 @@ class _TasksPageState extends State<TasksPage> {
     }
 
     // 3. Unscheduled tasks: show under "Due Today" if they are pending (so they don't get lost)
-    return task.status == 'pending';
+    // or if they were completed today.
+    final completedToday = task.status == 'completed' &&
+        task.lastCompletedAt != null &&
+        task.lastCompletedAt!.year == now.year &&
+        task.lastCompletedAt!.month == now.month &&
+        task.lastCompletedAt!.day == now.day;
+    return task.status == 'pending' || completedToday;
   }
 
   @override
@@ -223,12 +229,35 @@ class _TasksPageState extends State<TasksPage> {
                       // Apply filtering
                       if (_activeFilter == 'due') {
                         final dueTasks = tasks
-                            .where((t) => t.status == 'pending' && _isTaskDueToday(t, groups))
+                            .where((t) {
+                              final isDue = _isTaskDueToday(t, groups);
+                              if (t.status == 'completed') {
+                                final now = DateTime.now();
+                                final completedToday = t.lastCompletedAt != null &&
+                                    t.lastCompletedAt!.year == now.year &&
+                                    t.lastCompletedAt!.month == now.month &&
+                                    t.lastCompletedAt!.day == now.day;
+                                return isDue && completedToday;
+                              }
+                              return isDue;
+                            })
                             .toList();
 
-                        return _buildTaskList(dueTasks, groups, 'No tasks due today!');
+                        return _buildTaskList(
+                          dueTasks,
+                          groups,
+                          'No tasks due today!',
+                          isInteractive: true,
+                          showCompletionStatus: true,
+                        );
                       } else if (_activeFilter == 'all') {
-                        return _buildTaskList(tasks, groups, 'No tasks created yet!');
+                        return _buildTaskList(
+                          tasks,
+                          groups,
+                          'No tasks created yet!',
+                          isInteractive: false,
+                          showCompletionStatus: false,
+                        );
                       } else {
                         // Group sorting/categorizing
                         return _buildGroupedTasksView(tasks, groups);
@@ -244,7 +273,13 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  Widget _buildTaskList(List<TaskModel> taskList, List<TaskGroupModel> groups, String emptyMessage) {
+  Widget _buildTaskList(
+    List<TaskModel> taskList,
+    List<TaskGroupModel> groups,
+    String emptyMessage, {
+    bool isInteractive = true,
+    bool showCompletionStatus = true,
+  }) {
     if (taskList.isEmpty) {
       return Center(
         child: Column(
@@ -299,6 +334,8 @@ class _TasksPageState extends State<TasksPage> {
                             task: task,
                             groups: groups,
                             repository: _repository,
+                            isInteractive: isInteractive,
+                            showCompletionStatus: showCompletionStatus,
                           ),
                         ))
                     .toList(),
@@ -314,6 +351,8 @@ class _TasksPageState extends State<TasksPage> {
                             task: task,
                             groups: groups,
                             repository: _repository,
+                            isInteractive: isInteractive,
+                            showCompletionStatus: showCompletionStatus,
                           ),
                         ))
                     .toList(),
@@ -332,6 +371,8 @@ class _TasksPageState extends State<TasksPage> {
               task: taskList[index],
               groups: groups,
               repository: _repository,
+              isInteractive: isInteractive,
+              showCompletionStatus: showCompletionStatus,
             ),
           );
         },
@@ -402,6 +443,8 @@ class _TasksPageState extends State<TasksPage> {
                             task: task,
                             groups: groups,
                             repository: _repository,
+                            isInteractive: false,
+                            showCompletionStatus: false,
                           ),
                         );
                       }).toList(),
@@ -444,6 +487,8 @@ class _TasksPageState extends State<TasksPage> {
                           task: task,
                           groups: groups,
                           repository: _repository,
+                          isInteractive: false,
+                          showCompletionStatus: false,
                         ),
                       );
                     }).toList(),

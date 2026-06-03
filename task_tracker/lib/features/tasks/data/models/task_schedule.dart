@@ -79,18 +79,23 @@ class TaskSchedule {
     }
 
     if (type == 'weekly') {
+      for (int i = 0; i < 7; i++) {
+        final d = normalizedDate.subtract(Duration(days: i));
+        if (daysOfWeek.contains(d.weekday)) {
+          return d;
+        }
+      }
       return startOfWeek(normalizedDate);
     }
 
     if (type == 'bi_weekly') {
-      final anchor = startDate ?? normalizedDate;
-      final diffWeeks = (startOfWeek(normalizedDate).difference(startOfWeek(anchor)).inDays / 7).round();
-      final currentWeekStart = startOfWeek(normalizedDate);
-      if (diffWeeks.abs() % 2 != 0) {
-        // Current week is the off-week. The cycle started last week.
-        return currentWeekStart.subtract(const Duration(days: 7));
+      for (int i = 0; i < 14; i++) {
+        final d = normalizedDate.subtract(Duration(days: i));
+        if (isDueOnDate(d)) {
+          return d;
+        }
       }
-      return currentWeekStart;
+      return startOfWeek(normalizedDate);
     }
 
     if (type == 'monthly') {

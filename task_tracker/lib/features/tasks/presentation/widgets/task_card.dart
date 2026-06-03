@@ -10,12 +10,16 @@ class TaskCard extends StatefulWidget {
   final TaskModel task;
   final List<TaskGroupModel> groups;
   final TaskRepository repository;
+  final bool isInteractive;
+  final bool showCompletionStatus;
 
   const TaskCard({
     super.key,
     required this.task,
     required this.groups,
     required this.repository,
+    this.isInteractive = true,
+    this.showCompletionStatus = true,
   });
 
   @override
@@ -196,7 +200,7 @@ class _TaskCardState extends State<TaskCard> {
   Widget build(BuildContext context) {
     final group = _getGroup();
     final color = group != null ? Color(group.colorValue) : Theme.of(context).colorScheme.primary;
-    final isCompleted = widget.task.status == 'completed';
+    final isCompleted = widget.showCompletionStatus && (widget.task.status == 'completed');
 
     return Card(
       color: const Color(0xFF1E1E1E),
@@ -256,19 +260,26 @@ class _TaskCardState extends State<TaskCard> {
                       ],
                     ),
                   ),
-                  if (isCompleted) ...[
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.grey, size: 20),
-                      tooltip: 'Reset Task',
-                      onPressed: _resetTask,
-                    ),
-                    const Icon(Icons.check_circle, color: Colors.grey, size: 24),
+                  if (widget.isInteractive) ...[
+                    if (isCompleted) ...[
+                      IconButton(
+                        icon: const Icon(Icons.refresh, color: Colors.grey, size: 20),
+                        tooltip: 'Reset Task',
+                        onPressed: _resetTask,
+                      ),
+                      const Icon(Icons.check_circle, color: Colors.grey, size: 24),
+                    ] else ...[
+                      IconButton(
+                        icon: const Icon(Icons.refresh, color: Colors.grey, size: 18),
+                        tooltip: 'Reset Checklist',
+                        onPressed: _resetTask,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                        onPressed: _deleteTask,
+                      ),
+                    ],
                   ] else ...[
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.grey, size: 18),
-                      tooltip: 'Reset Checklist',
-                      onPressed: _resetTask,
-                    ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
                       onPressed: _deleteTask,
@@ -281,10 +292,12 @@ class _TaskCardState extends State<TaskCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
                         // Group Tag
-                        if (group != null) ...[
+                        if (group != null)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
@@ -296,8 +309,6 @@ class _TaskCardState extends State<TaskCard> {
                               style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                        ],
 
                         // Schedule Tag
                         Container(
@@ -313,30 +324,36 @@ class _TaskCardState extends State<TaskCard> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    
-                    // Steps progress text and bar
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${widget.task.steps.where((s) => s.isCompleted).length}/${widget.task.steps.length} steps completed',
-                          style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                        ),
-                        Text(
-                          '${(widget.task.progress * 100).toInt()}%',
-                          style: TextStyle(color: isCompleted ? Colors.grey : color, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    LinearProgressIndicator(
-                      value: widget.task.progress,
-                      backgroundColor: Colors.grey[800],
-                      valueColor: AlwaysStoppedAnimation<Color>(isCompleted ? Colors.grey : color),
-                      borderRadius: BorderRadius.circular(4),
-                      minHeight: 6,
-                    ),
+                    if (widget.showCompletionStatus) ...[
+                      const SizedBox(height: 12),
+                      // Steps progress text and bar
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${widget.task.steps.where((s) => s.isCompleted).length}/${widget.task.steps.length} steps completed',
+                              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${(widget.task.progress * 100).toInt()}%',
+                            style: TextStyle(color: isCompleted ? Colors.grey : color, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      LinearProgressIndicator(
+                        value: widget.task.progress,
+                        backgroundColor: Colors.grey[800],
+                        valueColor: AlwaysStoppedAnimation<Color>(isCompleted ? Colors.grey : color),
+                        borderRadius: BorderRadius.circular(4),
+                        minHeight: 6,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -357,28 +374,38 @@ class _TaskCardState extends State<TaskCard> {
                       // Checklist items list
                       ...List.generate(widget.task.steps.length, (index) {
                         final step = widget.task.steps[index];
+                        final isStepCompleted = widget.showCompletionStatus && step.isCompleted;
+
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4.0),
                           child: Row(
                             children: [
-                              Checkbox(
-                                value: step.isCompleted,
-                                activeColor: color,
-                                checkColor: Colors.black,
-                                onChanged: (val) => _toggleStepCompletion(index, val!),
-                              ),
+                              if (widget.showCompletionStatus)
+                                Checkbox(
+                                  value: isStepCompleted,
+                                  activeColor: color,
+                                  checkColor: Colors.black,
+                                  onChanged: widget.isInteractive
+                                      ? (val) => _toggleStepCompletion(index, val!)
+                                      : null,
+                                )
+                              else
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 12.0, right: 16.0),
+                                  child: Icon(Icons.fiber_manual_record, size: 8, color: color),
+                                ),
                               Expanded(
                                 child: Text(
                                   step.name,
                                   style: TextStyle(
-                                    color: step.isCompleted ? Colors.grey : Colors.white,
-                                    decoration: step.isCompleted ? TextDecoration.lineThrough : null,
+                                    color: isStepCompleted ? Colors.grey : Colors.white,
+                                    decoration: isStepCompleted ? TextDecoration.lineThrough : null,
                                     fontSize: 14,
                                   ),
                                 ),
                               ),
                               // If step has active/expired timer and is not complete, show StepTimerWidget
-                              if (step.timerDuration != null && !step.isCompleted) ...[
+                              if (widget.isInteractive && step.timerDuration != null && !isStepCompleted) ...[
                                 const SizedBox(width: 8),
                                 StepTimerWidget(
                                   task: widget.task,
@@ -393,55 +420,57 @@ class _TaskCardState extends State<TaskCard> {
                       }),
                       
                       // Action buttons
-                      if (!isCompleted) ...[
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: widget.task.isAllStepsCompleted
-                                  ? color
-                                  : Colors.grey[800],
-                              foregroundColor: widget.task.isAllStepsCompleted
-                                  ? Colors.black
-                                  : Colors.grey[500],
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                      if (widget.isInteractive) ...[
+                        if (!isCompleted) ...[
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: widget.task.isAllStepsCompleted
+                                    ? color
+                                    : Colors.grey[800],
+                                foregroundColor: widget.task.isAllStepsCompleted
+                                    ? Colors.black
+                                    : Colors.grey[500],
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            onPressed: widget.task.isAllStepsCompleted
-                                ? _completeTask
-                                : null,
-                            icon: const Icon(Icons.done_all, size: 20),
-                            label: const Text(
-                              'Complete Task',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              onPressed: widget.task.isAllStepsCompleted
+                                  ? _completeTask
+                                  : null,
+                              icon: const Icon(Icons.done_all, size: 20),
+                              label: const Text(
+                                'Complete Task',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ),
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: color.withValues(alpha: 0.15),
-                              foregroundColor: color,
-                              side: BorderSide(color: color.withValues(alpha: 0.3)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                        ] else ...[
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: color.withValues(alpha: 0.15),
+                                foregroundColor: color,
+                                side: BorderSide(color: color.withValues(alpha: 0.3)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            onPressed: _resetTask,
-                            icon: const Icon(Icons.refresh, size: 20),
-                            label: const Text(
-                              'Reset / Restart Task',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              onPressed: _resetTask,
+                              icon: const Icon(Icons.refresh, size: 20),
+                              label: const Text(
+                                'Reset / Restart Task',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ],
                   ),
