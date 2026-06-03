@@ -12,12 +12,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
+import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
 import 'features/splash/presentation/pages/splash.dart';
 
 final getIt = GetIt.instance;
 
 void setupLocator() {
-  // Ready to register API/State services in the future
+  getIt.registerLazySingleton<TaskRepository>(() => TaskRepository());
+  getIt.registerLazySingleton<TrackerRepository>(() => TrackerRepository());
 }
 
 Future<void> main() async {

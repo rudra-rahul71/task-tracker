@@ -13,16 +13,16 @@ class NavigatorScafold extends StatefulWidget {
 
 class _NavigatorScafoldState extends State<NavigatorScafold>
     with SingleTickerProviderStateMixin {
-  int _selectedIndex = 1;
+  int _selectedIndex = 0;
   bool extendRail = false;
 
   int _getSelectedIndexForLocation(String? location) {
-    if (location == null) return 1;
-    if (location.startsWith('/home')) return 1;
-    if (location.startsWith('/tasks')) return 2;
-    if (location.startsWith('/trackers')) return 3;
-    if (location.startsWith('/account')) return 4;
-    return 1;
+    if (location == null) return 0;
+    if (location.startsWith('/home')) return 0;
+    if (location.startsWith('/tasks')) return 1;
+    if (location.startsWith('/trackers')) return 2;
+    if (location.startsWith('/account')) return 3;
+    return 0;
   }
 
   late final AnimationController _overlayController;
@@ -90,26 +90,22 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
     });
 
     switch (index) {
-      case 1:
+      case 0:
         context.go('/home');
         break;
-      case 2:
+      case 1:
         context.go('/tasks');
         break;
-      case 3:
+      case 2:
         context.go('/trackers');
         break;
-      case 4:
+      case 3:
         context.go('/account');
         break;
     }
   }
 
   static const _destinations = <NavigationRailDestination>[
-    NavigationRailDestination(
-      icon: Icon(Icons.menu),
-      label: Text('Task Tracker'),
-    ),
     NavigationRailDestination(
       icon: Icon(Icons.home_outlined),
       selectedIcon: Icon(Icons.home),
@@ -152,15 +148,44 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
         color: Theme.of(context).colorScheme.primary,
         fontWeight: FontWeight.bold,
       ),
+      leading: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Align(
+          alignment: extended ? Alignment.centerLeft : Alignment.center,
+          child: InkWell(
+            onTap: _toggleRail,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: extended ? 12.0 : 8.0,
+                vertical: 8.0,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.menu, color: Colors.grey),
+                  if (extended) ...[
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Task Tracker',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
       onDestinationSelected: (int index) {
-        if (index == 0) {
-          _toggleRail();
-        } else {
-          if (autoCollapse && extendRail) {
-            _collapseOverlay();
-          }
-          _navigate(index, context);
+        if (autoCollapse && extendRail) {
+          _collapseOverlay();
         }
+        _navigate(index, context);
       },
     );
   }

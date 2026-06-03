@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
@@ -16,7 +17,7 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
-  final TaskRepository _repository = TaskRepository();
+  final TaskRepository _repository = getIt<TaskRepository>();
   String _activeFilter = 'due'; // 'due' (Due Today), 'all' (All Tasks), 'group' (By Group)
   String? _currentUserId;
   Stream<List<TaskGroupModel>>? _groupsStream;

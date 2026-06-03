@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
@@ -18,8 +19,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final TrackerRepository _repository = TrackerRepository();
-  final TaskRepository _taskRepository = TaskRepository();
+  final TrackerRepository _repository = getIt<TrackerRepository>();
+  final TaskRepository _taskRepository = getIt<TaskRepository>();
   DateTime _focusedMonth = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   String? _currentUserId;
@@ -121,6 +122,87 @@ class _HomePageState extends State<HomePage> {
     _cachedFocusedMonth = focusedMonth;
     _historyStream = _repository.getMonthlyHistory(userId, focusedMonth);
     _taskHistoryStream = _taskRepository.getMonthlyTaskHistory(userId, focusedMonth);
+  }
+
+  bool _hasTrackerSlipUpOnDay(
+    TrackerModel tracker,
+    DateTime dayDate,
+    List<TrackerHistoryModel> history,
+  ) {
+    if (tracker.type != 'quit') return false;
+    return history.any(
+      (h) =>
+          h.trackerId == tracker.id &&
+          h.type == 'slip_up' &&
+          h.date.year == dayDate.year &&
+          h.date.month == dayDate.month &&
+          h.date.day == dayDate.day,
+    );
+  }
+
+  bool _isTrackerCompletedOnDay(
+    TrackerModel tracker,
+    DateTime dayDate,
+    List<TrackerHistoryModel> history,
+  ) {
+    final dayZero = DateTime(
+      dayDate.year,
+      dayDate.month,
+      dayDate.day,
+    );
+    final originalStartZero = DateTime(
+      tracker.originalStartDate.year,
+      tracker.originalStartDate.month,
+      tracker.originalStartDate.day,
+    );
+    final todayZero = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+
+    if (dayZero.isBefore(originalStartZero) ||
+        dayZero.isAfter(todayZero)) {
+      return false;
+    }
+
+    if (tracker.type == 'maintain') {
+      final hasManualCompletion = history.any(
+        (h) =>
+            h.trackerId == tracker.id &&
+            h.type == 'completion' &&
+            h.date.year == dayDate.year &&
+            h.date.month == dayDate.month &&
+            h.date.day == dayDate.day,
+      );
+      if (hasManualCompletion) return true;
+
+      // Assume completed properly if it is in the past before the tracker was created
+      final createdZero = DateTime(
+        tracker.createdAt.year,
+        tracker.createdAt.month,
+        tracker.createdAt.day,
+      );
+      if (dayZero.isBefore(todayZero) &&
+          dayZero.isBefore(createdZero)) {
+        return true;
+      }
+
+      // Assume completed properly if it is part of the current active streak
+      final currentStartZero = DateTime(
+        tracker.startDate.year,
+        tracker.startDate.month,
+        tracker.startDate.day,
+      );
+      if (dayZero.isBefore(todayZero) &&
+          !dayZero.isBefore(currentStartZero)) {
+        return true;
+      }
+
+      return false;
+    } else {
+      return !_hasTrackerSlipUpOnDay(tracker, dayDate, history);
+    }
   }
 
   @override
@@ -252,86 +334,6 @@ class _HomePageState extends State<HomePage> {
                             });
                           }
 
-                          // Helper methods for daily status checking using monthly history
-                          bool hasTrackerSlipUpOnDay(
-                            TrackerModel tracker,
-                            DateTime dayDate,
-                          ) {
-                            if (tracker.type != 'quit') return false;
-                            return history.any(
-                              (h) =>
-                                  h.trackerId == tracker.id &&
-                                  h.type == 'slip_up' &&
-                                  h.date.year == dayDate.year &&
-                                  h.date.month == dayDate.month &&
-                                  h.date.day == dayDate.day,
-                            );
-                          }
-
-                          bool isTrackerCompletedOnDay(
-                            TrackerModel tracker,
-                            DateTime dayDate,
-                          ) {
-                            final dayZero = DateTime(
-                              dayDate.year,
-                              dayDate.month,
-                              dayDate.day,
-                            );
-                            final originalStartZero = DateTime(
-                              tracker.originalStartDate.year,
-                              tracker.originalStartDate.month,
-                              tracker.originalStartDate.day,
-                            );
-                            final todayZero = DateTime(
-                              DateTime.now().year,
-                              DateTime.now().month,
-                              DateTime.now().day,
-                            );
-
-                            if (dayZero.isBefore(originalStartZero) ||
-                                dayZero.isAfter(todayZero)) {
-                              return false;
-                            }
-
-                            if (tracker.type == 'maintain') {
-                              final hasManualCompletion = history.any(
-                                (h) =>
-                                    h.trackerId == tracker.id &&
-                                    h.type == 'completion' &&
-                                    h.date.year == dayDate.year &&
-                                    h.date.month == dayDate.month &&
-                                    h.date.day == dayDate.day,
-                              );
-                              if (hasManualCompletion) return true;
-
-                              // Assume completed properly if it is in the past before the tracker was created
-                              final createdZero = DateTime(
-                                tracker.createdAt.year,
-                                tracker.createdAt.month,
-                                tracker.createdAt.day,
-                              );
-                              if (dayZero.isBefore(todayZero) &&
-                                  dayZero.isBefore(createdZero)) {
-                                return true;
-                              }
-
-                              // Assume completed properly if it is part of the current active streak
-                              final currentStartZero = DateTime(
-                                tracker.startDate.year,
-                                tracker.startDate.month,
-                                tracker.startDate.day,
-                              );
-                              if (dayZero.isBefore(todayZero) &&
-                                  !dayZero.isBefore(currentStartZero)) {
-                                return true;
-                              }
-
-                              return false;
-                            } else {
-                              return !hasTrackerSlipUpOnDay(tracker, dayDate);
-                            }
-                          }
-
                           // Compute values for calendar grid
                           final year = _focusedMonth.year;
                           final month = _focusedMonth.month;
@@ -342,11 +344,11 @@ class _HomePageState extends State<HomePage> {
 
                           // Look up completions and slip-ups for the currently selected day
                           final completedOnSelected = trackers.where((tracker) {
-                            return isTrackerCompletedOnDay(tracker, _selectedDay);
+                            return _isTrackerCompletedOnDay(tracker, _selectedDay, history);
                           }).toList();
 
                           final slippedOnSelected = trackers.where((tracker) {
-                            return hasTrackerSlipUpOnDay(tracker, _selectedDay);
+                            return _hasTrackerSlipUpOnDay(tracker, _selectedDay, history);
                           }).toList();
 
                           // Look up tasks completed or pending on the currently selected day using history
@@ -580,83 +582,8 @@ class _HomePageState extends State<HomePage> {
                       today.month == dayDate.month &&
                       today.day == dayDate.day;
 
-                  bool hasTrackerSlipUpOnDay(
-                    TrackerModel tracker,
-                    DateTime date,
-                  ) {
-                    if (tracker.type != 'quit') return false;
-                    return history.any(
-                      (h) =>
-                          h.trackerId == tracker.id &&
-                          h.type == 'slip_up' &&
-                          h.date.year == date.year &&
-                          h.date.month == date.month &&
-                          h.date.day == date.day,
-                    );
-                  }
-
-                  bool isTrackerCompletedOnDay(
-                    TrackerModel tracker,
-                    DateTime date,
-                  ) {
-                    final dayZero = DateTime(date.year, date.month, date.day);
-                    final originalStartZero = DateTime(
-                      tracker.originalStartDate.year,
-                      tracker.originalStartDate.month,
-                      tracker.originalStartDate.day,
-                    );
-                    final todayZero = DateTime(
-                      DateTime.now().year,
-                      DateTime.now().month,
-                      DateTime.now().day,
-                    );
-
-                    if (dayZero.isBefore(originalStartZero) ||
-                        dayZero.isAfter(todayZero)) {
-                      return false;
-                    }
-
-                    if (tracker.type == 'maintain') {
-                      final hasManualCompletion = history.any(
-                        (h) =>
-                            h.trackerId == tracker.id &&
-                            h.type == 'completion' &&
-                            h.date.year == date.year &&
-                            h.date.month == date.month &&
-                            h.date.day == date.day,
-                      );
-                      if (hasManualCompletion) return true;
-
-                      // Assume completed properly if it is in the past before the tracker was created
-                      final createdZero = DateTime(
-                        tracker.createdAt.year,
-                        tracker.createdAt.month,
-                        tracker.createdAt.day,
-                      );
-                      if (dayZero.isBefore(todayZero) &&
-                          dayZero.isBefore(createdZero)) {
-                        return true;
-                      }
-
-                      // Assume completed properly if it is part of the current active streak
-                      final currentStartZero = DateTime(
-                        tracker.startDate.year,
-                        tracker.startDate.month,
-                        tracker.startDate.day,
-                      );
-                      if (dayZero.isBefore(todayZero) &&
-                          !dayZero.isBefore(currentStartZero)) {
-                        return true;
-                      }
-
-                      return false;
-                    } else {
-                      return !hasTrackerSlipUpOnDay(tracker, date);
-                    }
-                  }
-
                   final completedForDay = trackers
-                      .where((t) => isTrackerCompletedOnDay(t, dayDate))
+                      .where((t) => _isTrackerCompletedOnDay(t, dayDate, history))
                       .toList();
 
                   final allIndicators = [

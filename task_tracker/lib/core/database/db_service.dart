@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class DatabaseService {
   static final DatabaseService instance = DatabaseService._constructor();
@@ -22,10 +23,13 @@ class DatabaseService {
   }
 
   Future<void> clearAllData() async {
-    // Since persistenceEnabled is set to false in settings, all Firestore data is kept
-    // strictly in-memory and is automatically cleared and garbage collected on session logout.
-    // We avoid calling terminate() on the default instance because it permanently disables
-    // the Firestore client for the rest of the application session, causing crashes when
-    // a user logs back in or accesses the app without a full restart.
+    try {
+      if (_firestoreInstance != null) {
+        await _firestoreInstance!.clearPersistence();
+      }
+    } catch (e) {
+      // Handle cases where settings/persistence isn't enabled or can't be cleared (e.g. in tests)
+      debugPrint('Error clearing Firestore persistence: $e');
+    }
   }
 }

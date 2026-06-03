@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
@@ -14,7 +15,7 @@ class ManageGroupsDialog extends StatefulWidget {
 }
 
 class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
-  final _repository = TaskRepository();
+  final _repository = getIt<TaskRepository>();
   final _formKey = GlobalKey<FormState>();
 
   String _name = '';

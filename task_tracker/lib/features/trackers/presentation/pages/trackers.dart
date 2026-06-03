@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
@@ -14,7 +15,7 @@ class TrackersPage extends StatefulWidget {
 }
 
 class _TrackersPageState extends State<TrackersPage> {
-  final TrackerRepository _repository = TrackerRepository();
+  final TrackerRepository _repository = getIt<TrackerRepository>();
   String _activeFilter = 'all'; // 'all', 'maintain', 'quit'
   String? _currentUserId;
   Stream<List<TrackerModel>>? _trackersStream;
