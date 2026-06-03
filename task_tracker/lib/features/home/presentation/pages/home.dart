@@ -18,6 +18,9 @@ class _HomePageState extends State<HomePage> {
   DateTime _selectedDay = DateTime.now();
   String? _currentUserId;
   Stream<List<TrackerModel>>? _trackersStream;
+  Stream<List<TrackerHistoryModel>>? _historyStream;
+  DateTime? _cachedFocusedMonth;
+  String? _historyStreamUserId;
 
   final List<String> _months = [
     'January',
@@ -44,6 +47,19 @@ class _HomePageState extends State<HomePage> {
     _trackersStream = _repository.getTrackers(userId);
   }
 
+  void _initHistoryStream(String userId, DateTime focusedMonth) {
+    if (_historyStreamUserId == userId &&
+        _historyStream != null &&
+        _cachedFocusedMonth != null &&
+        _cachedFocusedMonth!.year == focusedMonth.year &&
+        _cachedFocusedMonth!.month == focusedMonth.month) {
+      return;
+    }
+    _historyStreamUserId = userId;
+    _cachedFocusedMonth = focusedMonth;
+    _historyStream = _repository.getMonthlyHistory(userId, focusedMonth);
+  }
+
   @override
   Widget build(BuildContext context) {
     final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -56,6 +72,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     _initStreamsForUser(userId);
+    _initHistoryStream(userId, _focusedMonth);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -78,7 +95,7 @@ class _HomePageState extends State<HomePage> {
           final trackers = trackersSnapshot.data ?? [];
 
           return StreamBuilder<List<TrackerHistoryModel>>(
-            stream: _repository.getMonthlyHistory(userId, _focusedMonth),
+            stream: _historyStream!,
             builder: (context, historySnapshot) {
               if (historySnapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
