@@ -146,6 +146,19 @@ class _TrackersPageState extends State<TrackersPage> {
                   }
 
                   final trackers = snapshot.data ?? [];
+
+                  // Check if any maintain trackers missed their period and require an auto-reset
+                  if (trackers.isNotEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final now = DateTime.now();
+                      for (final tracker in trackers) {
+                        final newStart = tracker.getNewStartDateIfResetNeeded(now);
+                        if (newStart != null) {
+                          _repository.autoResetTracker(tracker, newStart);
+                        }
+                      }
+                    });
+                  }
                   final filteredTrackers = trackers.where((t) {
                     if (_activeFilter == 'all') return true;
                     return t.type == _activeFilter;
@@ -193,7 +206,7 @@ class _TrackersPageState extends State<TrackersPage> {
                         crossAxisCount: 2,
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 8,
-                        mainAxisExtent: 190,
+                        mainAxisExtent: 265,
                       ),
                       itemCount: filteredTrackers.length,
                       itemBuilder: (context, index) {

@@ -56,55 +56,6 @@ class TrackerCard extends StatelessWidget {
     );
   }
 
-  void _showResetDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
-          'Reset Progress',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          tracker.type == 'quit'
-              ? 'Did you slip up? Resetting will restart your clean streak from now.'
-              : 'Are you sure you want to restart this tracker from now?',
-          style: const TextStyle(color: Colors.grey),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.black,
-            ),
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await _repository.resetTracker(tracker);
-                if (context.mounted) {
-                  SnackbarService(context).showSuccessSnackbar(
-                    message: 'Tracker reset successfully',
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  SnackbarService(context).showErrorSnackbar(
-                    message: 'Error resetting tracker: $e',
-                  );
-                }
-              }
-            },
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isQuit = tracker.type == 'quit';
@@ -123,11 +74,16 @@ class TrackerCard extends StatelessWidget {
             ? 'week'
             : tracker.measurementUnit == 'months'
                 ? 'month'
-                : tracker.measurementUnit == 'hours'
-                    ? 'hour'
-                    : tracker.measurementUnit == 'minutes'
-                        ? 'minute'
-                        : 'period';
+                : 'period';
+
+    final showTimeLeft = !isQuit && !isSetTime;
+    final displayProgress = showTimeLeft ? (1.0 - progress) : progress;
+
+    final currentPeriod = tracker.getCurrentPeriodIndex(DateTime.now());
+    final isCompletedForPeriod = tracker.isPeriodCompleted(currentPeriod);
+    final periodName = (singularUnit == 'day' || singularUnit == 'days')
+        ? 'today'
+        : 'this $singularUnit';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
@@ -208,11 +164,6 @@ class TrackerCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.amber, size: 22),
-                      tooltip: 'Reset timer to now',
-                      onPressed: () => _showResetDialog(context),
-                    ),
-                    IconButton(
                       icon: const Icon(Icons.delete_outline, color: Color(0xFFEF5350), size: 22),
                       tooltip: 'Delete tracker',
                       onPressed: () => _showDeleteDialog(context),
@@ -245,7 +196,7 @@ class TrackerCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value: progress,
+                value: displayProgress,
                 minHeight: 6,
                 backgroundColor: Colors.white.withValues(alpha: 0.08),
                 valueColor: AlwaysStoppedAnimation<Color>(accentColor),
@@ -257,8 +208,10 @@ class TrackerCard extends StatelessWidget {
               children: [
                 Text(
                   isSetTime
-                      ? '${(progress * 100).toStringAsFixed(0)}% completed'
-                      : '${(progress * 100).toStringAsFixed(0)}% of current $singularUnit completed',
+                      ? '${(displayProgress * 100).toStringAsFixed(0)}% completed'
+                      : showTimeLeft
+                          ? '${(displayProgress * 100).toStringAsFixed(0)}% of current $singularUnit left'
+                          : '${(displayProgress * 100).toStringAsFixed(0)}% of current $singularUnit completed',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[500],
@@ -274,6 +227,103 @@ class TrackerCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (!isQuit) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: isCompletedForPeriod
+                    ? OutlinedButton.icon(
+                        onPressed: null,
+                        icon: const Icon(Icons.check, color: Color(0xFF26A69A)),
+                        label: Text(
+                          'Completed for $periodName',
+                          style: const TextStyle(
+                            color: Color(0xFF26A69A),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF26A69A), width: 1.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      )
+                    : ElevatedButton.icon(
+                        onPressed: () async {
+                          try {
+                            await _repository.markTrackerCompleted(tracker);
+                            if (context.mounted) {
+                              SnackbarService(context).showSuccessSnackbar(
+                                message: 'Habit marked completed!',
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              SnackbarService(context).showErrorSnackbar(
+                                message: 'Error marking completed: $e',
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.check_circle_outline, color: Colors.black),
+                        label: Text(
+                          'Mark Completed for $periodName',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accentColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+              ),
+            ],
+            if (isQuit) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await _repository.reportSlipUp(tracker);
+                      if (context.mounted) {
+                        SnackbarService(context).showSuccessSnackbar(
+                          message: 'Streak reset. Stay strong, you can do this!',
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        SnackbarService(context).showErrorSnackbar(
+                          message: 'Error reporting slip-up: $e',
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                  label: const Text(
+                    'Report Slip-Up (Reset Streak)',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF5350),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

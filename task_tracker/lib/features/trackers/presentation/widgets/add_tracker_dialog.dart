@@ -22,7 +22,11 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
   String _measurementUnit = 'days'; // 'days', 'weeks', 'months'
   int? _durationValue;
   bool _isLoading = false;
-  DateTime _startDate = DateTime.now();
+  DateTime _startDate = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  );
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -43,17 +47,11 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
     });
 
     final now = DateTime.now();
-    final start = _startDate;
+    final start = DateTime(_startDate.year, _startDate.month, _startDate.day);
     DateTime? endDate;
 
     if (_durationType == 'set_time' && _durationValue != null) {
       switch (_measurementUnit) {
-        case 'minutes':
-          endDate = start.add(Duration(minutes: _durationValue!));
-          break;
-        case 'hours':
-          endDate = start.add(Duration(hours: _durationValue!));
-          break;
         case 'weeks':
           endDate = start.add(Duration(days: _durationValue! * 7));
           break;
@@ -78,6 +76,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
       startDate: start,
       endDate: endDate,
       createdAt: now,
+      originalStartDate: start,
     );
 
     try {
@@ -264,8 +263,6 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                   dropdownColor: const Color(0xFF1E1E1E),
                   style: const TextStyle(color: Colors.white),
                   items: const [
-                    DropdownMenuItem(value: 'minutes', child: Text('Minutes', style: TextStyle(color: Colors.white))),
-                    DropdownMenuItem(value: 'hours', child: Text('Hours', style: TextStyle(color: Colors.white))),
                     DropdownMenuItem(value: 'days', child: Text('Days', style: TextStyle(color: Colors.white))),
                     DropdownMenuItem(value: 'weeks', child: Text('Weeks', style: TextStyle(color: Colors.white))),
                     DropdownMenuItem(value: 'months', child: Text('Months', style: TextStyle(color: Colors.white))),
@@ -325,9 +322,9 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                 // Start Date Picker Row
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Start Date & Time', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
+                  title: const Text('Start Date', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
                   subtitle: Text(
-                    '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')} ${_startDate.hour.toString().padLeft(2, '0')}:${_startDate.minute.toString().padLeft(2, '0')}',
+                    '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
                     style: const TextStyle(color: Colors.white, fontSize: 15),
                   ),
                   trailing: IconButton(
@@ -341,32 +338,13 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                       );
 
                       if (pickedDate != null) {
-                        if (!context.mounted) return;
-                        final pickedTime = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.fromDateTime(_startDate),
-                        );
-                        if (pickedTime != null) {
-                          setState(() {
-                            _startDate = DateTime(
-                              pickedDate.year,
-                              pickedDate.month,
-                              pickedDate.day,
-                              pickedTime.hour,
-                              pickedTime.minute,
-                            );
-                          });
-                        } else {
-                          setState(() {
-                            _startDate = DateTime(
-                              pickedDate.year,
-                              pickedDate.month,
-                              pickedDate.day,
-                              _startDate.hour,
-                              _startDate.minute,
-                            );
-                          });
-                        }
+                        setState(() {
+                          _startDate = DateTime(
+                            pickedDate.year,
+                            pickedDate.month,
+                            pickedDate.day,
+                          );
+                        });
                       }
                     },
                   ),
