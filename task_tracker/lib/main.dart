@@ -3,6 +3,7 @@ import 'package:task_tracker/features/account/presentation/pages/account.dart';
 import 'package:task_tracker/features/auth/presentation/pages/sign_in.dart';
 import 'package:task_tracker/features/auth/presentation/pages/verify_email.dart';
 import 'package:task_tracker/features/home/presentation/pages/home.dart';
+import 'package:task_tracker/features/tasks/presentation/pages/tasks.dart';
 import 'package:task_tracker/features/trackers/presentation/pages/trackers.dart';
 import 'package:task_tracker/core/database/db_service.dart';
 import 'package:task_tracker/core/widgets/app_shell.dart';
@@ -134,6 +135,12 @@ final GoRouter _router = GoRouter(
           path: '/home',
           builder: (BuildContext context, GoRouterState state) {
             return const HomePage();
+          },
+        ),
+        GoRoute(
+          path: '/tasks',
+          builder: (BuildContext context, GoRouterState state) {
+            return const TasksPage();
           },
         ),
         GoRoute(

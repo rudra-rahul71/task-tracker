@@ -16,6 +16,16 @@ class TrackersPage extends StatefulWidget {
 class _TrackersPageState extends State<TrackersPage> {
   final TrackerRepository _repository = TrackerRepository();
   String _activeFilter = 'all'; // 'all', 'maintain', 'quit'
+  String? _currentUserId;
+  Stream<List<TrackerModel>>? _trackersStream;
+
+  void _initStreamsForUser(String userId) {
+    if (_currentUserId == userId && _trackersStream != null) {
+      return;
+    }
+    _currentUserId = userId;
+    _trackersStream = _repository.getTrackers(userId);
+  }
 
   void _showAddTrackerDialog(BuildContext context) {
     showDialog(
@@ -37,6 +47,8 @@ class _TrackersPageState extends State<TrackersPage> {
         ),
       );
     }
+
+    _initStreamsForUser(userId);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -118,7 +130,7 @@ class _TrackersPageState extends State<TrackersPage> {
             // Trackers StreamBuilder
             Expanded(
               child: StreamBuilder<List<TrackerModel>>(
-                stream: _repository.getTrackers(userId),
+                stream: _trackersStream!,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());

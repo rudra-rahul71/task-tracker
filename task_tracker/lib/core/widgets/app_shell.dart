@@ -19,8 +19,9 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
   int _getSelectedIndexForLocation(String? location) {
     if (location == null) return 1;
     if (location.startsWith('/home')) return 1;
-    if (location.startsWith('/trackers')) return 2;
-    if (location.startsWith('/account')) return 3;
+    if (location.startsWith('/tasks')) return 2;
+    if (location.startsWith('/trackers')) return 3;
+    if (location.startsWith('/account')) return 4;
     return 1;
   }
 
@@ -93,9 +94,12 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
         context.go('/home');
         break;
       case 2:
-        context.go('/trackers');
+        context.go('/tasks');
         break;
       case 3:
+        context.go('/trackers');
+        break;
+      case 4:
         context.go('/account');
         break;
     }
@@ -110,6 +114,11 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
       icon: Icon(Icons.home_outlined),
       selectedIcon: Icon(Icons.home),
       label: Text('Home'),
+    ),
+    NavigationRailDestination(
+      icon: Icon(Icons.checklist_outlined),
+      selectedIcon: Icon(Icons.checklist),
+      label: Text('Tasks'),
     ),
     NavigationRailDestination(
       icon: Icon(Icons.track_changes_outlined),
