@@ -2,62 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class NavigatorScafold extends StatefulWidget {
-  final Widget child;
-  final String? location;
+  final StatefulNavigationShell navigationShell;
 
-  const NavigatorScafold({super.key, required this.child, this.location});
+  const NavigatorScafold({super.key, required this.navigationShell});
 
   @override
   State<NavigatorScafold> createState() => _NavigatorScafoldState();
 }
 
 class _NavigatorScafoldState extends State<NavigatorScafold> {
-  int _selectedIndex = 0;
-
-  int _getSelectedIndexForLocation(String? location) {
-    if (location == null) return 0;
-    if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/tasks')) return 1;
-    if (location.startsWith('/trackers')) return 2;
-    if (location.startsWith('/account')) return 3;
-    return 0;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedIndex = _getSelectedIndexForLocation(widget.location);
-  }
-
-  @override
-  void didUpdateWidget(NavigatorScafold oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.location != oldWidget.location) {
-      setState(() {
-        _selectedIndex = _getSelectedIndexForLocation(widget.location);
-      });
-    }
-  }
-
   void _navigate(int index, BuildContext context) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    switch (index) {
-      case 0:
-        context.go('/home');
-        break;
-      case 1:
-        context.go('/tasks');
-        break;
-      case 2:
-        context.go('/trackers');
-        break;
-      case 3:
-        context.go('/account');
-        break;
-    }
+    widget.navigationShell.goBranch(
+      index,
+      initialLocation: index == widget.navigationShell.currentIndex,
+    );
   }
 
   static const _destinations = [
@@ -117,7 +75,7 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(_destinations.length, (index) {
               final destination = _destinations[index];
-              final isSelected = _selectedIndex == index;
+              final isSelected = widget.navigationShell.currentIndex == index;
 
               return InkWell(
                 onTap: () => _navigate(index, context),
@@ -171,7 +129,7 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: widget.child,
+        child: widget.navigationShell,
       ),
       bottomNavigationBar: SafeArea(
         top: false,

@@ -100,58 +100,70 @@ final GoRouter _router = GoRouter(
     }
   },
   routes: <RouteBase>[
-    ShellRoute(
-      builder: (BuildContext context, GoRouterState state, Widget child) {
-        if (state.fullPath == '/' || state.fullPath!.startsWith('/auth')) {
-          return child;
-        }
+    GoRoute(
+      path: '/',
+      builder: (BuildContext context, GoRouterState state) {
+        return const SplashPage();
+      },
+    ),
+    GoRoute(
+      path: '/auth/sign-in',
+      builder: (BuildContext context, GoRouterState state) {
+        return const SignInPage();
+      },
+    ),
+    GoRoute(
+      path: '/auth/verify-email',
+      builder: (BuildContext context, GoRouterState state) {
+        return const VerifyEmailPage();
+      },
+    ),
+    StatefulShellRoute.indexedStack(
+      builder: (BuildContext context, GoRouterState state, StatefulNavigationShell navigationShell) {
         return NavigatorScafold(
-          location: state.fullPath,
-          child: child,
+          navigationShell: navigationShell,
         );
       },
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (BuildContext context, GoRouterState state) {
-            return const SplashPage();
-          },
+      branches: [
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/home',
+              builder: (BuildContext context, GoRouterState state) {
+                return const HomePage();
+              },
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/auth/sign-in',
-          builder: (BuildContext context, GoRouterState state) {
-            return const SignInPage();
-          },
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/tasks',
+              builder: (BuildContext context, GoRouterState state) {
+                return const TasksPage();
+              },
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/auth/verify-email',
-          builder: (BuildContext context, GoRouterState state) {
-            return const VerifyEmailPage();
-          },
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/trackers',
+              builder: (BuildContext context, GoRouterState state) {
+                return const TrackersPage();
+              },
+            ),
+          ],
         ),
-        GoRoute(
-          path: '/home',
-          builder: (BuildContext context, GoRouterState state) {
-            return const HomePage();
-          },
-        ),
-        GoRoute(
-          path: '/tasks',
-          builder: (BuildContext context, GoRouterState state) {
-            return const TasksPage();
-          },
-        ),
-        GoRoute(
-          path: '/trackers',
-          builder: (BuildContext context, GoRouterState state) {
-            return const TrackersPage();
-          },
-        ),
-        GoRoute(
-          path: '/account',
-          builder: (BuildContext context, GoRouterState state) {
-            return const AccountPage();
-          },
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/account',
+              builder: (BuildContext context, GoRouterState state) {
+                return const AccountPage();
+              },
+            ),
+          ],
         ),
       ],
     ),
