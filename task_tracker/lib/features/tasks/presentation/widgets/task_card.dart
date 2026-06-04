@@ -237,76 +237,149 @@ class _TaskCardState extends State<TaskCard> {
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.task.name,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isCompleted ? Colors.grey : Colors.white,
-                                decoration: isCompleted ? TextDecoration.lineThrough : null,
-                              ),
-                            ),
-                            if (widget.task.description.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double nameWidth = widget.task.name.length * 11.0;
+                      double actionsWidth = 52.0; // non-interactive size (delete + spacing + chevron)
+                      if (widget.isInteractive) {
+                        actionsWidth = isCompleted ? 88.0 : 84.0;
+                      }
+
+                      final totalEstimatedWidth = nameWidth + actionsWidth + 32.0;
+                      final bool fitsOnOneLine = totalEstimatedWidth <= constraints.maxWidth;
+
+                      final Widget titleText = Text(
+                        widget.task.name,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isCompleted ? Colors.grey : Colors.white,
+                          decoration: isCompleted ? TextDecoration.lineThrough : null,
+                        ),
+                      );
+
+                      final Widget descriptionText = widget.task.description.isNotEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
                                 widget.task.description,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Colors.grey[400],
                                 ),
                               ),
+                            )
+                          : const SizedBox.shrink();
+
+                      final Widget actionsAndChevron = Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (widget.isInteractive) ...[
+                            if (isCompleted) ...[
+                              GestureDetector(
+                                onTap: _resetTask,
+                                behavior: HitTestBehavior.opaque,
+                                child: const Tooltip(
+                                  message: 'Reset Task',
+                                  child: Padding(
+                                    padding: EdgeInsets.all(6.0),
+                                    child: Icon(Icons.refresh, color: Colors.grey, size: 20),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Padding(
+                                padding: EdgeInsets.all(6.0),
+                                child: Icon(Icons.check_circle, color: Colors.grey, size: 24),
+                              ),
+                            ] else ...[
+                              GestureDetector(
+                                onTap: _resetTask,
+                                behavior: HitTestBehavior.opaque,
+                                child: const Tooltip(
+                                  message: 'Reset Checklist',
+                                  child: Padding(
+                                    padding: EdgeInsets.all(6.0),
+                                    child: Icon(Icons.refresh, color: Colors.grey, size: 18),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: _deleteTask,
+                                behavior: HitTestBehavior.opaque,
+                                child: const Tooltip(
+                                  message: 'Delete Task',
+                                  child: Padding(
+                                    padding: EdgeInsets.all(6.0),
+                                    child: Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                                  ),
+                                ),
+                              ),
                             ],
+                          ] else ...[
+                            GestureDetector(
+                              onTap: _deleteTask,
+                              behavior: HitTestBehavior.opaque,
+                              child: const Tooltip(
+                                message: 'Delete Task',
+                                child: Padding(
+                                  padding: EdgeInsets.all(6.0),
+                                  child: Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                                ),
+                              ),
+                            ),
                           ],
-                        ),
-                      ),
-                      if (widget.isInteractive) ...[
-                        if (isCompleted) ...[
-                          IconButton(
-                            icon: const Icon(Icons.refresh, color: Colors.grey, size: 20),
-                            tooltip: 'Reset Task',
-                            onPressed: _resetTask,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          const SizedBox(width: 12),
-                          const Icon(Icons.check_circle, color: Colors.grey, size: 24),
-                        ] else ...[
-                          IconButton(
-                            icon: const Icon(Icons.refresh, color: Colors.grey, size: 18),
-                            tooltip: 'Reset Checklist',
-                            onPressed: _resetTask,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          const SizedBox(width: 12),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
-                            onPressed: _deleteTask,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                          GestureDetector(
+                            onTap: () {
+                              // ExpansionTile handles expand/collapse internally on header tap,
+                              // but this keeps the touch target clickable.
+                            },
+                            behavior: HitTestBehavior.translucent,
+                            child: Padding(
+                              padding: const EdgeInsets.all(6.0),
+                              child: Icon(
+                                _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                color: Colors.grey,
+                                size: 20,
+                              ),
+                            ),
                           ),
                         ],
-                      ] else ...[
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
-                          onPressed: _deleteTask,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                      const SizedBox(width: 12),
-                      Icon(
-                        _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                        color: Colors.grey,
-                        size: 20,
-                      ),
-                    ],
+                      );
+
+                      if (fitsOnOneLine) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  titleText,
+                                  descriptionText,
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            actionsAndChevron,
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            titleText,
+                            descriptionText,
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                actionsAndChevron,
+                              ],
+                            ),
+                          ],
+                        );
+                      }
+                    },
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),

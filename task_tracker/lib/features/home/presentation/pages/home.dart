@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
@@ -29,6 +30,7 @@ class _HomePageState extends State<HomePage> {
   Stream<List<TaskModel>>? _tasksStream;
   Stream<List<TaskGroupModel>>? _groupsStream;
   Stream<List<TaskHistoryModel>>? _taskHistoryStream;
+  Stream<_HomeData>? _combinedStream;
   DateTime? _cachedFocusedMonth;
   String? _historyStreamUserId;
 
@@ -49,17 +51,58 @@ class _HomePageState extends State<HomePage> {
 
   final List<String> _weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  void _initStreamsForUser(String userId) {
-    if (_currentUserId == userId &&
-        _trackersStream != null &&
-        _tasksStream != null &&
-        _groupsStream != null) {
-      return;
+  void _initCombinedStream(String userId, DateTime focusedMonth) {
+    bool streamsChanged = false;
+
+    if (_currentUserId != userId ||
+        _trackersStream == null ||
+        _tasksStream == null ||
+        _groupsStream == null) {
+      _currentUserId = userId;
+      _trackersStream = _repository.getTrackers(userId);
+      _tasksStream = _taskRepository.getTasks(userId);
+      _groupsStream = _taskRepository.getGroups(userId);
+      streamsChanged = true;
     }
-    _currentUserId = userId;
-    _trackersStream = _repository.getTrackers(userId);
-    _tasksStream = _taskRepository.getTasks(userId);
-    _groupsStream = _taskRepository.getGroups(userId);
+
+    if (_historyStreamUserId != userId ||
+        _historyStream == null ||
+        _taskHistoryStream == null ||
+        _cachedFocusedMonth == null ||
+        _cachedFocusedMonth!.year != focusedMonth.year ||
+        _cachedFocusedMonth!.month != focusedMonth.month) {
+      _historyStreamUserId = userId;
+      _cachedFocusedMonth = focusedMonth;
+      _historyStream = _repository.getMonthlyHistory(userId, focusedMonth);
+      _taskHistoryStream = _taskRepository.getMonthlyTaskHistory(
+        userId,
+        focusedMonth,
+      );
+      streamsChanged = true;
+    }
+
+    if (streamsChanged || _combinedStream == null) {
+      _combinedStream = Rx.combineLatest5<
+          List<TrackerModel>,
+          List<TrackerHistoryModel>,
+          List<TaskHistoryModel>,
+          List<TaskGroupModel>,
+          List<TaskModel>,
+          _HomeData>(
+        _trackersStream!,
+        _historyStream!,
+        _taskHistoryStream!,
+        _groupsStream!,
+        _tasksStream!,
+        (trackers, history, taskHistory, groups, tasks) => _HomeData(
+          trackers: trackers,
+          history: history,
+          taskHistory: taskHistory,
+          groups: groups,
+          tasks: tasks,
+        ),
+      );
+    }
   }
 
   bool _isTaskDueOnDate(
@@ -126,23 +169,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _initHistoryStream(String userId, DateTime focusedMonth) {
-    if (_historyStreamUserId == userId &&
-        _historyStream != null &&
-        _taskHistoryStream != null &&
-        _cachedFocusedMonth != null &&
-        _cachedFocusedMonth!.year == focusedMonth.year &&
-        _cachedFocusedMonth!.month == focusedMonth.month) {
-      return;
-    }
-    _historyStreamUserId = userId;
-    _cachedFocusedMonth = focusedMonth;
-    _historyStream = _repository.getMonthlyHistory(userId, focusedMonth);
-    _taskHistoryStream = _taskRepository.getMonthlyTaskHistory(
-      userId,
-      focusedMonth,
-    );
-  }
 
   bool _hasTrackerSlipUpOnDay(
     TrackerModel tracker,
@@ -257,28 +283,36 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    _initStreamsForUser(userId);
-    _initHistoryStream(userId, _focusedMonth);
+    _initCombinedStream(userId, _focusedMonth);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: StreamBuilder<List<TrackerModel>>(
-        stream: _trackersStream!,
-        builder: (context, trackersSnapshot) {
-          if (trackersSnapshot.connectionState == ConnectionState.waiting) {
+      body: StreamBuilder<_HomeData>(
+        stream: _combinedStream!,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (trackersSnapshot.hasError) {
+          if (snapshot.hasError) {
             return Center(
               child: Text(
-                'Error loading trackers: ${trackersSnapshot.error}',
+                'Error loading dashboard: ${snapshot.error}',
                 style: const TextStyle(color: Colors.redAccent, fontSize: 16),
               ),
             );
           }
 
-          final trackers = trackersSnapshot.data ?? [];
+          final data = snapshot.data;
+          if (data == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final trackers = data.trackers;
+          final history = data.history;
+          final taskHistory = data.taskHistory;
+          final groups = data.groups;
+          final tasks = data.tasks;
 
           // Check if any maintain trackers missed their period and require an auto-reset
           if (trackers.isNotEmpty) {
@@ -293,105 +327,16 @@ class _HomePageState extends State<HomePage> {
             });
           }
 
-          return StreamBuilder<List<TrackerHistoryModel>>(
-            stream: _historyStream!,
-            builder: (context, historySnapshot) {
-              if (historySnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (historySnapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Error loading monthly history: ${historySnapshot.error}',
-                    style: const TextStyle(
-                      color: Colors.redAccent,
-                      fontSize: 16,
-                    ),
-                  ),
-                );
-              }
-
-              final history = historySnapshot.data ?? [];
-
-              return StreamBuilder<List<TaskHistoryModel>>(
-                stream: _taskHistoryStream!,
-                builder: (context, taskHistorySnapshot) {
-                  if (taskHistorySnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (taskHistorySnapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error loading task history: ${taskHistorySnapshot.error}',
-                        style: const TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 16,
-                        ),
-                      ),
-                    );
-                  }
-
-                  final taskHistory = taskHistorySnapshot.data ?? [];
-
-                  return StreamBuilder<List<TaskGroupModel>>(
-                    stream: _groupsStream!,
-                    builder: (context, groupsSnapshot) {
-                      if (groupsSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      if (groupsSnapshot.hasError) {
-                        return Center(
-                          child: Text(
-                            'Error loading task groups: ${groupsSnapshot.error}',
-                            style: const TextStyle(
-                              color: Colors.redAccent,
-                              fontSize: 16,
-                            ),
-                          ),
-                        );
-                      }
-
-                      final groups = groupsSnapshot.data ?? [];
-
-                      return StreamBuilder<List<TaskModel>>(
-                        stream: _tasksStream!,
-                        builder: (context, tasksSnapshot) {
-                          if (tasksSnapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
-
-                          if (tasksSnapshot.hasError) {
-                            return Center(
-                              child: Text(
-                                'Error loading tasks: ${tasksSnapshot.error}',
-                                style: const TextStyle(
-                                  color: Colors.redAccent,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            );
-                          }
-
-                          final tasks = tasksSnapshot.data ?? [];
-
-                          // Dynamically run the check/reset scheduler logic
-                          if (tasks.isNotEmpty) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              _taskRepository.checkAndResetScheduledTasks(
-                                userId: userId,
-                                tasks: tasks,
-                                groups: groups,
-                              );
-                            });
-                          }
+          // Dynamically run the check/reset scheduler logic
+          if (tasks.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _taskRepository.checkAndResetScheduledTasks(
+                userId: userId,
+                tasks: tasks,
+                groups: groups,
+              );
+            });
+          }
 
                           // Compute values for calendar grid
                           final year = _focusedMonth.year;
@@ -536,14 +481,6 @@ class _HomePageState extends State<HomePage> {
                                   backgroundColor: Colors.transparent,
                                   body: mainContent,
                                 );
-                        },
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          );
         },
       ),
     );
@@ -1292,4 +1229,20 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+class _HomeData {
+  final List<TrackerModel> trackers;
+  final List<TrackerHistoryModel> history;
+  final List<TaskHistoryModel> taskHistory;
+  final List<TaskGroupModel> groups;
+  final List<TaskModel> tasks;
+
+  _HomeData({
+    required this.trackers,
+    required this.history,
+    required this.taskHistory,
+    required this.groups,
+    required this.tasks,
+  });
 }
