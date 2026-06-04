@@ -822,21 +822,24 @@ class _HomePageState extends State<HomePage> {
                                     const SizedBox(height: 3),
                                   ],
                                   if (allIndicators.isNotEmpty)
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: allIndicators.take(4).map((color) {
-                                        return Container(
-                                          margin: const EdgeInsets.symmetric(
-                                            horizontal: 1.0,
-                                          ),
-                                          width: 4,
-                                          height: 4,
-                                          decoration: BoxDecoration(
-                                            color: color,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        );
-                                      }).toList(),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: allIndicators.take(4).map((color) {
+                                          return Container(
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 1.0,
+                                            ),
+                                            width: 4,
+                                            height: 4,
+                                            decoration: BoxDecoration(
+                                              color: color,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
                                     ),
                                 ],
                               ),

@@ -205,10 +205,14 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4), width: 1.5),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.timer_off_outlined, color: Colors.redAccent, size: 20),
                 const SizedBox(width: 8),
@@ -219,6 +223,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
               ],
             ),
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
                   icon: Icon(Icons.replay, color: Colors.redAccent[100], size: 18),
@@ -257,6 +262,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
     }
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           isRunning ? Icons.hourglass_top_rounded : Icons.hourglass_empty_rounded,

@@ -232,130 +232,153 @@ class _TaskCardState extends State<TaskCard> {
                   _isExpanded = expanded;
                 });
               },
-              title: Row(
+              tilePadding: const EdgeInsets.only(left: 16.0, right: 0.0),
+              trailing: const SizedBox.shrink(),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.task.name,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isCompleted ? Colors.grey : Colors.white,
+                                decoration: isCompleted ? TextDecoration.lineThrough : null,
+                              ),
+                            ),
+                            if (widget.task.description.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.task.description,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (widget.isInteractive) ...[
+                        if (isCompleted) ...[
+                          IconButton(
+                            icon: const Icon(Icons.refresh, color: Colors.grey, size: 20),
+                            tooltip: 'Reset Task',
+                            onPressed: _resetTask,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          const SizedBox(width: 12),
+                          const Icon(Icons.check_circle, color: Colors.grey, size: 24),
+                        ] else ...[
+                          IconButton(
+                            icon: const Icon(Icons.refresh, color: Colors.grey, size: 18),
+                            tooltip: 'Reset Checklist',
+                            onPressed: _resetTask,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          const SizedBox(width: 12),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                            onPressed: _deleteTask,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ] else ...[
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                          onPressed: _deleteTask,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                      const SizedBox(width: 12),
+                      Icon(
+                        _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.task.name,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isCompleted ? Colors.grey : Colors.white,
-                            decoration: isCompleted ? TextDecoration.lineThrough : null,
-                          ),
-                        ),
-                        if (widget.task.description.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.task.description,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[400],
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            // Group Tag
+                            if (group != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  group.name,
+                                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+
+                            // Schedule Tag
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _getScheduleText(),
+                                style: const TextStyle(color: Colors.grey, fontSize: 11),
+                              ),
                             ),
+                          ],
+                        ),
+                        if (widget.showCompletionStatus) ...[
+                          const SizedBox(height: 12),
+                          // Steps progress text and bar
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${widget.task.steps.where((s) => s.isCompleted).length}/${widget.task.steps.length} steps completed',
+                                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${(widget.task.progress * 100).toInt()}%',
+                                style: TextStyle(color: isCompleted ? Colors.grey : color, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          LinearProgressIndicator(
+                            value: widget.task.progress,
+                            backgroundColor: Colors.grey[800],
+                            valueColor: AlwaysStoppedAnimation<Color>(isCompleted ? Colors.grey : color),
+                            borderRadius: BorderRadius.circular(4),
+                            minHeight: 6,
                           ),
                         ],
                       ],
                     ),
                   ),
-                  if (widget.isInteractive) ...[
-                    if (isCompleted) ...[
-                      IconButton(
-                        icon: const Icon(Icons.refresh, color: Colors.grey, size: 20),
-                        tooltip: 'Reset Task',
-                        onPressed: _resetTask,
-                      ),
-                      const Icon(Icons.check_circle, color: Colors.grey, size: 24),
-                    ] else ...[
-                      IconButton(
-                        icon: const Icon(Icons.refresh, color: Colors.grey, size: 18),
-                        tooltip: 'Reset Checklist',
-                        onPressed: _resetTask,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
-                        onPressed: _deleteTask,
-                      ),
-                    ],
-                  ] else ...[
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.grey, size: 20),
-                      onPressed: _deleteTask,
-                    ),
-                  ],
                 ],
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        // Group Tag
-                        if (group != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              group.name,
-                              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-
-                        // Schedule Tag
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            _getScheduleText(),
-                            style: const TextStyle(color: Colors.grey, fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (widget.showCompletionStatus) ...[
-                      const SizedBox(height: 12),
-                      // Steps progress text and bar
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${widget.task.steps.where((s) => s.isCompleted).length}/${widget.task.steps.length} steps completed',
-                              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${(widget.task.progress * 100).toInt()}%',
-                            style: TextStyle(color: isCompleted ? Colors.grey : color, fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      LinearProgressIndicator(
-                        value: widget.task.progress,
-                        backgroundColor: Colors.grey[800],
-                        valueColor: AlwaysStoppedAnimation<Color>(isCompleted ? Colors.grey : color),
-                        borderRadius: BorderRadius.circular(4),
-                        minHeight: 6,
-                      ),
-                    ],
-                  ],
-                ),
               ),
               children: [
                 const Divider(height: 1, color: Colors.grey),
@@ -376,46 +399,122 @@ class _TaskCardState extends State<TaskCard> {
                         final step = widget.task.steps[index];
                         final isStepCompleted = widget.showCompletionStatus && step.isCompleted;
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Row(
-                            children: [
-                              if (widget.showCompletionStatus)
-                                Checkbox(
-                                  value: isStepCompleted,
-                                  activeColor: color,
-                                  checkColor: Colors.black,
-                                  onChanged: widget.isInteractive
-                                      ? (val) => _toggleStepCompletion(index, val!)
-                                      : null,
-                                )
-                              else
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 12.0, right: 16.0),
-                                  child: Icon(Icons.fiber_manual_record, size: 8, color: color),
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            final hasTimer = widget.isInteractive && step.timerDuration != null && !isStepCompleted;
+
+                            bool fitsOnOneLine = true;
+                            if (hasTimer) {
+                              final isTimerExpired = step.isTimerExpired() || step.getSecondsRemaining() <= 0;
+                              final timerWidth = isTimerExpired ? 250.0 : 134.0;
+                              final checkboxWidth = widget.showCompletionStatus ? 36.0 : 44.0;
+                              final textWidth = step.name.length * 8.5;
+                              final totalEstimatedWidth = checkboxWidth + textWidth + timerWidth + 16.0;
+                              fitsOnOneLine = totalEstimatedWidth <= constraints.maxWidth;
+                            }
+
+                            if (fitsOnOneLine) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    if (widget.showCompletionStatus)
+                                      Checkbox(
+                                        value: isStepCompleted,
+                                        activeColor: color,
+                                        checkColor: Colors.black,
+                                        onChanged: widget.isInteractive
+                                            ? (val) => _toggleStepCompletion(index, val!)
+                                            : null,
+                                        visualDensity: VisualDensity.compact,
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      )
+                                    else
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 12.0, right: 16.0),
+                                        child: Icon(Icons.fiber_manual_record, size: 8, color: color),
+                                      ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        step.name,
+                                        style: TextStyle(
+                                          color: isStepCompleted ? Colors.grey : Colors.white,
+                                          decoration: isStepCompleted ? TextDecoration.lineThrough : null,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    if (hasTimer) ...[
+                                      const SizedBox(width: 8),
+                                      StepTimerWidget(
+                                        task: widget.task,
+                                        stepIndex: index,
+                                        step: step,
+                                        repository: widget.repository,
+                                      ),
+                                    ],
+                                  ],
                                 ),
-                              Expanded(
-                                child: Text(
-                                  step.name,
-                                  style: TextStyle(
-                                    color: isStepCompleted ? Colors.grey : Colors.white,
-                                    decoration: isStepCompleted ? TextDecoration.lineThrough : null,
-                                    fontSize: 14,
-                                  ),
+                              );
+                            } else {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        if (widget.showCompletionStatus)
+                                          Checkbox(
+                                            value: isStepCompleted,
+                                            activeColor: color,
+                                            checkColor: Colors.black,
+                                            onChanged: widget.isInteractive
+                                                ? (val) => _toggleStepCompletion(index, val!)
+                                                : null,
+                                            visualDensity: VisualDensity.compact,
+                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          )
+                                        else
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 12.0, right: 16.0),
+                                            child: Icon(Icons.fiber_manual_record, size: 8, color: color),
+                                          ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            step.name,
+                                            style: TextStyle(
+                                              color: isStepCompleted ? Colors.grey : Colors.white,
+                                              decoration: isStepCompleted ? TextDecoration.lineThrough : null,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (hasTimer) ...[
+                                      const SizedBox(height: 6),
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                          left: widget.showCompletionStatus ? 36.0 : 44.0,
+                                        ),
+                                        child: StepTimerWidget(
+                                          task: widget.task,
+                                          stepIndex: index,
+                                          step: step,
+                                          repository: widget.repository,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
-                              ),
-                              // If step has active/expired timer and is not complete, show StepTimerWidget
-                              if (widget.isInteractive && step.timerDuration != null && !isStepCompleted) ...[
-                                const SizedBox(width: 8),
-                                StepTimerWidget(
-                                  task: widget.task,
-                                  stepIndex: index,
-                                  step: step,
-                                  repository: widget.repository,
-                                ),
-                              ],
-                            ],
-                          ),
+                              );
+                            }
+                          },
                         );
                       }),
                       
