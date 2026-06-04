@@ -47,33 +47,17 @@ class _SplashPageState extends State<SplashPage>
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/logo.png',
-                width: 200,
-                height: 200,
-                errorBuilder: (context, error, stackTrace) {
-                  // Fallback if logo is missing or loading fails
-                  return const Icon(
-                    Icons.check_circle_outline,
-                    size: 120,
-                    color: Colors.amber,
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'TASK TRACKER',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 4,
-                  color: Colors.amber[800],
-                ),
-              ),
-            ],
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: 250,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback if logo is missing or loading fails
+              return const Icon(
+                Icons.check_circle_outline,
+                size: 120,
+                color: Colors.amber,
+              );
+            },
           ),
         ),
       ),
