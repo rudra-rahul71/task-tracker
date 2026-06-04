@@ -107,7 +107,7 @@ class _HomePageState extends State<HomePage> {
 
   bool _isTaskDueOnDate(
     TaskModel task,
-    List<TaskGroupModel> groups,
+    Map<String, TaskGroupModel> groupMap,
     DateTime date,
   ) {
     // A task cannot be due before its creation date
@@ -128,17 +128,8 @@ class _HomePageState extends State<HomePage> {
 
     // 2. Task inherits its group schedule
     if (task.groupId != null) {
-      final group = groups.firstWhere(
-        (g) => g.id == task.groupId,
-        orElse: () => TaskGroupModel(
-          id: '',
-          userId: '',
-          name: '',
-          colorValue: 0xFF9E9E9E,
-          createdAt: DateTime.now(),
-        ),
-      );
-      if (group.id.isNotEmpty &&
+      final group = groupMap[task.groupId];
+      if (group != null &&
           group.schedule != null &&
           group.schedule!.type != 'none') {
         return group.schedule!.isDueOnDate(date);
@@ -157,33 +148,21 @@ class _HomePageState extends State<HomePage> {
 
   bool _isTaskCompletedOnDate(
     TaskModel task,
-    List<TaskHistoryModel> taskHistory,
-    DateTime date,
+    Map<String, bool> taskHistoryMap,
+    String dateKey,
   ) {
-    return taskHistory.any(
-      (h) =>
-          h.taskId == task.id &&
-          h.date.year == date.year &&
-          h.date.month == date.month &&
-          h.date.day == date.day,
-    );
+    return taskHistoryMap["${task.id}_$dateKey"] ?? false;
   }
-
 
   bool _hasTrackerSlipUpOnDay(
     TrackerModel tracker,
     DateTime dayDate,
-    List<TrackerHistoryModel> history,
+    String dateKey,
+    Map<String, Set<String>> trackerHistoryMap,
   ) {
+    final lookupKey = "${tracker.id}_$dateKey";
     if (tracker.type == 'quit') {
-      return history.any(
-        (h) =>
-            h.trackerId == tracker.id &&
-            h.type == 'slip_up' &&
-            h.date.year == dayDate.year &&
-            h.date.month == dayDate.month &&
-            h.date.day == dayDate.day,
-      );
+      return trackerHistoryMap[lookupKey]?.contains('slip_up') ?? false;
     } else {
       final dayZero = DateTime(dayDate.year, dayDate.month, dayDate.day);
       final originalStartZero = DateTime(
@@ -207,7 +186,7 @@ class _HomePageState extends State<HomePage> {
       if (dayZero.isBefore(todayZero) &&
           !dayZero.isBefore(originalStartZero) &&
           (endZero == null || !dayZero.isAfter(endZero))) {
-        return !_isTrackerCompletedOnDay(tracker, dayDate, history);
+        return !_isTrackerCompletedOnDay(tracker, dayDate, dateKey, trackerHistoryMap);
       }
       return false;
     }
@@ -216,7 +195,8 @@ class _HomePageState extends State<HomePage> {
   bool _isTrackerCompletedOnDay(
     TrackerModel tracker,
     DateTime dayDate,
-    List<TrackerHistoryModel> history,
+    String dateKey,
+    Map<String, Set<String>> trackerHistoryMap,
   ) {
     final dayZero = DateTime(dayDate.year, dayDate.month, dayDate.day);
     final originalStartZero = DateTime(
@@ -235,14 +215,8 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (tracker.type == 'maintain') {
-      final hasManualCompletion = history.any(
-        (h) =>
-            h.trackerId == tracker.id &&
-            h.type == 'completion' &&
-            h.date.year == dayDate.year &&
-            h.date.month == dayDate.month &&
-            h.date.day == dayDate.day,
-      );
+      final lookupKey = "${tracker.id}_$dateKey";
+      final hasManualCompletion = trackerHistoryMap[lookupKey]?.contains('completion') ?? false;
       if (hasManualCompletion) return true;
 
       // Assume completed properly if it is in the past before the tracker was created
@@ -268,7 +242,7 @@ class _HomePageState extends State<HomePage> {
 
       return false;
     } else {
-      return !_hasTrackerSlipUpOnDay(tracker, dayDate, history);
+      return !_hasTrackerSlipUpOnDay(tracker, dayDate, dateKey, trackerHistoryMap);
     }
   }
 
@@ -314,6 +288,27 @@ class _HomePageState extends State<HomePage> {
           final groups = data.groups;
           final tasks = data.tasks;
 
+          // Pre-index monthly tracker history
+          final Map<String, Set<String>> trackerHistoryMap = {};
+          for (var h in history) {
+            final dateKey = "${h.date.year}-${h.date.month}-${h.date.day}";
+            final key = "${h.trackerId}_$dateKey";
+            trackerHistoryMap.putIfAbsent(key, () => {}).add(h.type);
+          }
+
+          // Pre-index monthly task history
+          final Map<String, bool> taskHistoryMap = {};
+          for (var h in taskHistory) {
+            final dateKey = "${h.date.year}-${h.date.month}-${h.date.day}";
+            final key = "${h.taskId}_$dateKey";
+            taskHistoryMap[key] = true;
+          }
+
+          // Pre-index task groups
+          final Map<String, TaskGroupModel> groupMap = {
+            for (var g in groups) g.id: g
+          };
+
           // Check if any maintain trackers missed their period and require an auto-reset
           if (trackers.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -338,54 +333,58 @@ class _HomePageState extends State<HomePage> {
             });
           }
 
-                          // Compute values for calendar grid
-                          final year = _focusedMonth.year;
-                          final month = _focusedMonth.month;
-                          final firstDay = DateTime(year, month, 1);
-                          final emptySlots =
-                              firstDay.weekday % 7; // Sunday is index 0
-                          final daysInMonth = DateTime(year, month + 1, 0).day;
-                          final totalCells = emptySlots + daysInMonth;
+          // Compute values for calendar grid
+          final year = _focusedMonth.year;
+          final month = _focusedMonth.month;
+          final firstDay = DateTime(year, month, 1);
+          final emptySlots =
+              firstDay.weekday % 7; // Sunday is index 0
+          final daysInMonth = DateTime(year, month + 1, 0).day;
+          final totalCells = emptySlots + daysInMonth;
 
-                          // Look up completions and slip-ups for the currently selected day
-                          final completedOnSelected = trackers.where((tracker) {
-                            return _isTrackerCompletedOnDay(
-                              tracker,
-                              _selectedDay,
-                              history,
-                            );
-                          }).toList();
+          final selectedDayKey = "${_selectedDay.year}-${_selectedDay.month}-${_selectedDay.day}";
 
-                          final slippedOnSelected = trackers.where((tracker) {
-                            return _hasTrackerSlipUpOnDay(
-                              tracker,
-                              _selectedDay,
-                              history,
-                            );
-                          }).toList();
+          // Look up completions and slip-ups for the currently selected day
+          final completedOnSelected = trackers.where((tracker) {
+            return _isTrackerCompletedOnDay(
+              tracker,
+              _selectedDay,
+              selectedDayKey,
+              trackerHistoryMap,
+            );
+          }).toList();
 
-                          // Look up tasks completed or pending on the currently selected day using history
-                          final completedTasksOnSelected = tasks.where((task) {
-                            return _isTaskCompletedOnDate(
-                              task,
-                              taskHistory,
-                              _selectedDay,
-                            );
-                          }).toList();
+          final slippedOnSelected = trackers.where((tracker) {
+            return _hasTrackerSlipUpOnDay(
+              tracker,
+              _selectedDay,
+              selectedDayKey,
+              trackerHistoryMap,
+            );
+          }).toList();
 
-                          final pendingTasksOnSelected = tasks.where((task) {
-                            final isDue = _isTaskDueOnDate(
-                              task,
-                              groups,
-                              _selectedDay,
-                            );
-                            final isCompleted = _isTaskCompletedOnDate(
-                              task,
-                              taskHistory,
-                              _selectedDay,
-                            );
-                            return isDue && !isCompleted;
-                          }).toList();
+          // Look up tasks completed or pending on the currently selected day using history
+          final completedTasksOnSelected = tasks.where((task) {
+            return _isTaskCompletedOnDate(
+              task,
+              taskHistoryMap,
+              selectedDayKey,
+            );
+          }).toList();
+
+          final pendingTasksOnSelected = tasks.where((task) {
+            final isDue = _isTaskDueOnDate(
+              task,
+              groupMap,
+              _selectedDay,
+            );
+            final isCompleted = _isTaskCompletedOnDate(
+              task,
+              taskHistoryMap,
+              selectedDayKey,
+            );
+            return isDue && !isCompleted;
+          }).toList();
 
                           final width = MediaQuery.of(context).size.width;
                           final isLargeScreen = width >= 850;
@@ -431,10 +430,10 @@ class _HomePageState extends State<HomePage> {
                                                 daysInMonth: daysInMonth,
                                                 totalCells: totalCells,
                                                 trackers: trackers,
-                                                history: history,
+                                                trackerHistoryMap: trackerHistoryMap,
                                                 tasks: tasks,
-                                                groups: groups,
-                                                taskHistory: taskHistory,
+                                                groupMap: groupMap,
+                                                taskHistoryMap: taskHistoryMap,
                                               ),
                                             ),
                                           ],
@@ -462,10 +461,10 @@ class _HomePageState extends State<HomePage> {
                                                 daysInMonth: daysInMonth,
                                                 totalCells: totalCells,
                                                 trackers: trackers,
-                                                history: history,
+                                                trackerHistoryMap: trackerHistoryMap,
                                                 tasks: tasks,
-                                                groups: groups,
-                                                taskHistory: taskHistory,
+                                                groupMap: groupMap,
+                                                taskHistoryMap: taskHistoryMap,
                                               ),
                                             ],
                                           ),
@@ -492,10 +491,10 @@ class _HomePageState extends State<HomePage> {
     required int daysInMonth,
     required int totalCells,
     required List<TrackerModel> trackers,
-    required List<TrackerHistoryModel> history,
+    required Map<String, Set<String>> trackerHistoryMap,
     required List<TaskModel> tasks,
-    required List<TaskGroupModel> groups,
-    required List<TaskHistoryModel> taskHistory,
+    required Map<String, TaskGroupModel> groupMap,
+    required Map<String, bool> taskHistoryMap,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -618,10 +617,12 @@ class _HomePageState extends State<HomePage> {
                           today.month == dayDate.month &&
                           today.day == dayDate.day;
 
+                      final dayDateKey = "${dayDate.year}-${dayDate.month}-${dayDate.day}";
+
                       final completedForDay = trackers
                           .where(
                             (t) =>
-                                _isTrackerCompletedOnDay(t, dayDate, history),
+                                _isTrackerCompletedOnDay(t, dayDate, dayDateKey, trackerHistoryMap),
                           )
                           .toList();
 
@@ -639,8 +640,8 @@ class _HomePageState extends State<HomePage> {
 
                       // Look up tasks completed or pending on this day using history
                       final tasksOnDay = tasks.where((t) {
-                        return _isTaskDueOnDate(t, groups, dayDate) ||
-                            _isTaskCompletedOnDate(t, taskHistory, dayDate);
+                        return _isTaskDueOnDate(t, groupMap, dayDate) ||
+                            _isTaskCompletedOnDate(t, taskHistoryMap, dayDateKey);
                       }).toList();
 
                       final List<Widget> taskBanners = [];
@@ -658,20 +659,11 @@ class _HomePageState extends State<HomePage> {
                             final t = tasksOnDay[i];
                             final isCompleted = _isTaskCompletedOnDate(
                               t,
-                              taskHistory,
-                              dayDate,
+                              taskHistoryMap,
+                              dayDateKey,
                             );
                             final group = t.groupId != null
-                                ? groups.firstWhere(
-                                    (g) => g.id == t.groupId,
-                                    orElse: () => TaskGroupModel(
-                                      id: '',
-                                      userId: '',
-                                      name: '',
-                                      colorValue: 0xFF9E9E9E,
-                                      createdAt: DateTime.now(),
-                                    ),
-                                  )
+                                ? groupMap[t.groupId]
                                 : null;
                             final color = group != null && group.id.isNotEmpty
                                 ? Color(group.colorValue)
@@ -769,20 +761,11 @@ class _HomePageState extends State<HomePage> {
                           for (final t in tasksOnDay) {
                             final isCompleted = _isTaskCompletedOnDate(
                               t,
-                              taskHistory,
-                              dayDate,
+                              taskHistoryMap,
+                              dayDateKey,
                             );
                             final group = t.groupId != null
-                                ? groups.firstWhere(
-                                    (g) => g.id == t.groupId,
-                                    orElse: () => TaskGroupModel(
-                                      id: '',
-                                      userId: '',
-                                      name: '',
-                                      colorValue: 0xFF9E9E9E,
-                                      createdAt: DateTime.now(),
-                                    ),
-                                  )
+                                ? groupMap[t.groupId]
                                 : null;
                             final color = group != null && group.id.isNotEmpty
                                 ? Color(group.colorValue)

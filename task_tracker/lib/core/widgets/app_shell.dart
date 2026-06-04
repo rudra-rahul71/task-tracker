@@ -11,10 +11,8 @@ class NavigatorScafold extends StatefulWidget {
   State<NavigatorScafold> createState() => _NavigatorScafoldState();
 }
 
-class _NavigatorScafoldState extends State<NavigatorScafold>
-    with SingleTickerProviderStateMixin {
+class _NavigatorScafoldState extends State<NavigatorScafold> {
   int _selectedIndex = 0;
-  bool extendRail = false;
 
   int _getSelectedIndexForLocation(String? location) {
     if (location == null) return 0;
@@ -25,16 +23,10 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
     return 0;
   }
 
-  late final AnimationController _overlayController;
-
   @override
   void initState() {
     super.initState();
     _selectedIndex = _getSelectedIndexForLocation(widget.location);
-    _overlayController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-    );
   }
 
   @override
@@ -45,43 +37,6 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
         _selectedIndex = _getSelectedIndexForLocation(widget.location);
       });
     }
-  }
-  late final Animation<Offset> _slideAnimation =
-      Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero).animate(
-        CurvedAnimation(parent: _overlayController, curve: Curves.easeOutCubic),
-      );
-  late final Animation<double> _scrimAnimation = CurvedAnimation(
-    parent: _overlayController,
-    curve: Curves.easeOut,
-  );
-
-  @override
-  void dispose() {
-    _overlayController.dispose();
-    super.dispose();
-  }
-
-  void _toggleRail() {
-    final isSmallScreen = MediaQuery.of(context).size.width < 600;
-
-    setState(() {
-      extendRail = !extendRail;
-    });
-
-    if (isSmallScreen) {
-      if (extendRail) {
-        _overlayController.forward();
-      } else {
-        _overlayController.reverse();
-      }
-    }
-  }
-
-  void _collapseOverlay() {
-    setState(() {
-      extendRail = false;
-    });
-    _overlayController.reverse();
   }
 
   void _navigate(int index, BuildContext context) {
@@ -105,144 +60,135 @@ class _NavigatorScafoldState extends State<NavigatorScafold>
     }
   }
 
-  static const _destinations = <NavigationRailDestination>[
-    NavigationRailDestination(
-      icon: Icon(Icons.home_outlined),
-      selectedIcon: Icon(Icons.home),
-      label: Text('Home'),
+  static const _destinations = [
+    _Destination(
+      icon: Icons.home_outlined,
+      selectedIcon: Icons.home,
+      label: 'Home',
     ),
-    NavigationRailDestination(
-      icon: Icon(Icons.checklist_outlined),
-      selectedIcon: Icon(Icons.checklist),
-      label: Text('Tasks'),
+    _Destination(
+      icon: Icons.checklist_outlined,
+      selectedIcon: Icons.checklist,
+      label: 'Tasks',
     ),
-    NavigationRailDestination(
-      icon: Icon(Icons.track_changes_outlined),
-      selectedIcon: Icon(Icons.track_changes),
-      label: Text('Trackers'),
+    _Destination(
+      icon: Icons.track_changes_outlined,
+      selectedIcon: Icons.track_changes,
+      label: 'Trackers',
     ),
-    NavigationRailDestination(
-      icon: Icon(Icons.account_circle_outlined),
-      selectedIcon: Icon(Icons.account_circle),
-      label: Text('Account'),
+    _Destination(
+      icon: Icons.account_circle_outlined,
+      selectedIcon: Icons.account_circle,
+      label: 'Account',
     ),
   ];
 
-  Widget _buildRail(
-    BuildContext context, {
-    required bool extended,
-    bool autoCollapse = false,
-  }) {
-    return NavigationRail(
-      extended: extended,
-      minWidth: 60,
-      minExtendedWidth: 180,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
-      selectedIndex: _selectedIndex,
-      groupAlignment: -1.0,
-      destinations: _destinations,
-      selectedIconTheme: IconThemeData(
-        color: Theme.of(context).colorScheme.primary,
-      ),
-      selectedLabelTextStyle: TextStyle(
-        color: Theme.of(context).colorScheme.primary,
-        fontWeight: FontWeight.bold,
-      ),
-      leading: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Align(
-          alignment: extended ? Alignment.centerLeft : Alignment.center,
-          child: InkWell(
-            onTap: _toggleRail,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: extended ? 12.0 : 8.0,
-                vertical: 8.0,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.menu, color: Colors.grey),
-                  if (extended) ...[
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Task Tracker',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+  Widget _buildBottomIsland(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final islandWidth = width < 600 ? double.infinity : 480.0;
+
+    return Center(
+      heightFactor: 1.0,
+      child: Container(
+        width: islandWidth,
+        margin: EdgeInsets.only(
+          left: width < 600 ? 16.0 : 0.0,
+          right: width < 600 ? 16.0 : 0.0,
+          bottom: 24.0,
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
             ),
+          ],
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+            width: 1.5,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(_destinations.length, (index) {
+              final destination = _destinations[index];
+              final isSelected = _selectedIndex == index;
+
+              return InkWell(
+                onTap: () => _navigate(index, context),
+                borderRadius: BorderRadius.circular(20),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSelected ? destination.selectedIcon : destination.icon,
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey,
+                        size: 24,
+                      ),
+                      if (isSelected) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          destination.label,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
           ),
         ),
       ),
-      onDestinationSelected: (int index) {
-        if (autoCollapse && extendRail) {
-          _collapseOverlay();
-        }
-        _navigate(index, context);
-      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isSmallScreen = MediaQuery.of(context).size.width < 600;
-
     return Scaffold(
       body: SafeArea(
-        child: Stack(
-          children: <Widget>[
-            // Base layer: collapsed/expanded rail + page content
-            Row(
-              children: <Widget>[
-                if (isSmallScreen)
-                  _buildRail(context, extended: false)
-                else
-                  _buildRail(context, extended: extendRail),
-                const VerticalDivider(thickness: 1, width: 1),
-                Expanded(child: widget.child),
-              ],
-            ),
-            // Overlay layer: animated scrim + sliding rail (small screens only)
-            if (isSmallScreen) ...[
-              // Scrim fades in/out
-               IgnorePointer(
-                ignoring: !extendRail,
-                child: FadeTransition(
-                  opacity: _scrimAnimation,
-                  child: GestureDetector(
-                    onTap: _collapseOverlay,
-                    child: Container(color: Colors.black54),
-                  ),
-                ),
-              ),
-              // Rail slides in from the left
-              Positioned(
-                top: 0,
-                bottom: 0,
-                left: 0,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Material(
-                    elevation: 16,
-                    child: _buildRail(
-                      context,
-                      extended: true,
-                      autoCollapse: true,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
+        child: widget.child,
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: _buildBottomIsland(context),
       ),
     );
   }
+}
+
+class _Destination {
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+
+  const _Destination({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+  });
 }

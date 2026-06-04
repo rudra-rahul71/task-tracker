@@ -67,11 +67,6 @@ class MyApp extends StatelessWidget {
               onSurface: Colors.white,
             ),
             scaffoldBackgroundColor: const Color(0xFF121212),
-            navigationRailTheme: const NavigationRailThemeData(
-              backgroundColor: Color(0xFF1A1A1A),
-              selectedIconTheme: IconThemeData(color: Color(0xFFD4AF37)),
-              unselectedIconTheme: IconThemeData(color: Colors.grey),
-            ),
           ),
           routerConfig: _router,
         );
