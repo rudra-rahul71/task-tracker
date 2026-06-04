@@ -31,23 +31,29 @@ class TrackerModel {
 
   // Convert Firestore DocumentSnapshot to TrackerModel
   factory TrackerModel.fromMap(Map<String, dynamic> map, String documentId) {
-    final rawStart = map['startDate'] != null 
-        ? (map['startDate'] as Timestamp).toDate() 
+    final rawStart = map['startDate'] != null
+        ? (map['startDate'] as Timestamp).toDate()
         : DateTime.now();
     final start = DateTime(rawStart.year, rawStart.month, rawStart.day);
 
     final rawOriginalStart = map['originalStartDate'] != null
         ? (map['originalStartDate'] as Timestamp).toDate()
         : start;
-    final originalStart = DateTime(rawOriginalStart.year, rawOriginalStart.month, rawOriginalStart.day);
+    final originalStart = DateTime(
+      rawOriginalStart.year,
+      rawOriginalStart.month,
+      rawOriginalStart.day,
+    );
 
-    final rawEndDate = map['endDate'] != null 
-        ? (map['endDate'] as Timestamp).toDate() 
+    final rawEndDate = map['endDate'] != null
+        ? (map['endDate'] as Timestamp).toDate()
         : null;
-    final endDate = rawEndDate != null ? DateTime(rawEndDate.year, rawEndDate.month, rawEndDate.day) : null;
+    final endDate = rawEndDate != null
+        ? DateTime(rawEndDate.year, rawEndDate.month, rawEndDate.day)
+        : null;
 
-    final createdAt = map['createdAt'] != null 
-        ? (map['createdAt'] as Timestamp).toDate() 
+    final createdAt = map['createdAt'] != null
+        ? (map['createdAt'] as Timestamp).toDate()
         : DateTime.now();
 
     return TrackerModel(
@@ -61,12 +67,11 @@ class TrackerModel {
       startDate: start,
       endDate: endDate,
       createdAt: createdAt,
-      completedDates: (map['completedDates'] as List<dynamic>?)
-              ?.map((item) {
-                final d = (item as Timestamp).toDate();
-                return DateTime(d.year, d.month, d.day);
-              })
-              .toList() ??
+      completedDates:
+          (map['completedDates'] as List<dynamic>?)?.map((item) {
+            final d = (item as Timestamp).toDate();
+            return DateTime(d.year, d.month, d.day);
+          }).toList() ??
           [],
       originalStartDate: originalStart,
     );
@@ -84,7 +89,9 @@ class TrackerModel {
       'startDate': Timestamp.fromDate(startDate),
       'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
       'createdAt': Timestamp.fromDate(createdAt),
-      'completedDates': completedDates.map((d) => Timestamp.fromDate(d)).toList(),
+      'completedDates': completedDates
+          .map((d) => Timestamp.fromDate(d))
+          .toList(),
       'originalStartDate': Timestamp.fromDate(originalStartDate),
     };
   }
@@ -97,8 +104,8 @@ class TrackerModel {
       final unit = measurementUnit == 'weeks'
           ? (streak == 1 ? 'week' : 'weeks')
           : measurementUnit == 'months'
-              ? (streak == 1 ? 'month' : 'months')
-              : (streak == 1 ? 'day' : 'days');
+          ? (streak == 1 ? 'month' : 'months')
+          : (streak == 1 ? 'day' : 'days');
       return '$streak $unit';
     } else {
       // Set time countdown
@@ -120,13 +127,18 @@ class TrackerModel {
         case 'months':
           int yearsDiff = endDate!.year - now.year;
           int monthsDiff = endDate!.month - now.month + (yearsDiff * 12);
-          DateTime tempDate = DateTime(now.year, now.month + monthsDiff, now.day);
+          DateTime tempDate = DateTime(
+            now.year,
+            now.month + monthsDiff,
+            now.day,
+          );
           if (tempDate.isAfter(endDate!)) {
             monthsDiff--;
             tempDate = DateTime(now.year, now.month + monthsDiff, now.day);
           }
           final daysDiff = endDate!.difference(tempDate).inDays;
-          final monthsStr = '$monthsDiff ${monthsDiff == 1 ? 'month' : 'months'}';
+          final monthsStr =
+              '$monthsDiff ${monthsDiff == 1 ? 'month' : 'months'}';
           if (daysDiff == 0) return '$monthsStr remaining';
           return '$monthsStr, $daysDiff ${daysDiff == 1 ? 'day' : 'days'} remaining';
 
@@ -154,15 +166,31 @@ class TrackerModel {
         case 'months':
           int yearsDiff = now.year - startDate.year;
           int monthsDiff = now.month - startDate.month + (yearsDiff * 12);
-          DateTime currentAnniversary = DateTime(startDate.year, startDate.month + monthsDiff, startDate.day);
+          DateTime currentAnniversary = DateTime(
+            startDate.year,
+            startDate.month + monthsDiff,
+            startDate.day,
+          );
           if (currentAnniversary.isAfter(now)) {
             monthsDiff--;
-            currentAnniversary = DateTime(startDate.year, startDate.month + monthsDiff, startDate.day);
+            currentAnniversary = DateTime(
+              startDate.year,
+              startDate.month + monthsDiff,
+              startDate.day,
+            );
           }
-          DateTime nextAnniversary = DateTime(startDate.year, startDate.month + monthsDiff + 1, startDate.day);
+          DateTime nextAnniversary = DateTime(
+            startDate.year,
+            startDate.month + monthsDiff + 1,
+            startDate.day,
+          );
 
-          final totalDaysInMonth = nextAnniversary.difference(currentAnniversary).inDays;
-          final daysSinceAnniversary = now.difference(currentAnniversary).inDays;
+          final totalDaysInMonth = nextAnniversary
+              .difference(currentAnniversary)
+              .inDays;
+          final daysSinceAnniversary = now
+              .difference(currentAnniversary)
+              .inDays;
 
           if (totalDaysInMonth <= 0) return 0.0;
           return (daysSinceAnniversary / totalDaysInMonth).clamp(0.0, 1.0);
@@ -217,9 +245,11 @@ class TrackerModel {
   bool isPeriodCompleted(int i) {
     final start = getPeriodStart(i);
     final end = getPeriodEnd(i);
-    return completedDates.any((date) =>
-        (date.isAfter(start) || date.isAtSameMomentAs(start)) &&
-        date.isBefore(end));
+    return completedDates.any(
+      (date) =>
+          (date.isAfter(start) || date.isAtSameMomentAs(start)) &&
+          date.isBefore(end),
+    );
   }
 
   DateTime? getNewStartDateIfResetNeeded(DateTime now) {
@@ -252,7 +282,11 @@ class TrackerModel {
       } else if (measurementUnit == 'months') {
         int yearsDiff = today.year - start.year;
         int monthsDiff = today.month - start.month + (yearsDiff * 12);
-        DateTime tempDate = DateTime(start.year, start.month + monthsDiff, start.day);
+        DateTime tempDate = DateTime(
+          start.year,
+          start.month + monthsDiff,
+          start.day,
+        );
         if (tempDate.isAfter(today)) {
           monthsDiff--;
         }
@@ -264,13 +298,13 @@ class TrackerModel {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     // We count periods backwards from the current period
     final currentPeriod = getCurrentPeriodIndex(today);
-    
+
     // Check if the current period is completed
     bool currentCompleted = isPeriodCompleted(currentPeriod);
-    
+
     int streak = 0;
     if (currentCompleted) {
       streak = 1;
@@ -281,7 +315,7 @@ class TrackerModel {
         p--;
       }
     } else {
-      // Current period is not completed yet. 
+      // Current period is not completed yet.
       // The user still has time left to complete it, so the streak is not broken.
       // We check if the previous period (currentPeriod - 1) was completed.
       if (currentPeriod > 0 && isPeriodCompleted(currentPeriod - 1)) {
@@ -301,24 +335,46 @@ class TrackerModel {
 
   bool isCompletedOnDay(DateTime dayDate) {
     final dayZero = DateTime(dayDate.year, dayDate.month, dayDate.day);
-    final originalStartZero = DateTime(originalStartDate.year, originalStartDate.month, originalStartDate.day);
-    final todayZero = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final originalStartZero = DateTime(
+      originalStartDate.year,
+      originalStartDate.month,
+      originalStartDate.day,
+    );
+    final todayZero = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
 
     if (dayZero.isBefore(originalStartZero) || dayZero.isAfter(todayZero)) {
       return false;
     }
 
     if (type == 'maintain') {
-      final hasManualCompletion = completedDates.any((d) =>
-          d.year == dayDate.year && d.month == dayDate.month && d.day == dayDate.day);
+      final hasManualCompletion = completedDates.any(
+        (d) =>
+            d.year == dayDate.year &&
+            d.month == dayDate.month &&
+            d.day == dayDate.day,
+      );
       if (hasManualCompletion) return true;
 
-      final createdZero = DateTime(createdAt.year, createdAt.month, createdAt.day);
+      final createdZero = DateTime(
+        createdAt.year,
+        createdAt.month,
+        createdAt.day,
+      );
       if (dayZero.isBefore(todayZero) && dayZero.isBefore(createdZero)) {
         return true;
       }
 
-      final currentStartZero = DateTime(startDate.year, startDate.month, startDate.day);
+      // Assume completed properly if it is part of the current active streak
+      final newStartDate = getNewStartDateIfResetNeeded(DateTime.now());
+      final currentStartZero = DateTime(
+        (newStartDate ?? startDate).year,
+        (newStartDate ?? startDate).month,
+        (newStartDate ?? startDate).day,
+      );
       if (dayZero.isBefore(todayZero) && !dayZero.isBefore(currentStartZero)) {
         return true;
       }
@@ -331,8 +387,35 @@ class TrackerModel {
   }
 
   bool hasSlipUpOnDay(DateTime dayDate) {
-    if (type != 'quit') return false;
-    return completedDates.any((d) =>
-        d.year == dayDate.year && d.month == dayDate.month && d.day == dayDate.day);
+    if (type == 'quit') {
+      return completedDates.any(
+        (d) =>
+            d.year == dayDate.year &&
+            d.month == dayDate.month &&
+            d.day == dayDate.day,
+      );
+    } else {
+      final dayZero = DateTime(dayDate.year, dayDate.month, dayDate.day);
+      final originalStartZero = DateTime(
+        originalStartDate.year,
+        originalStartDate.month,
+        originalStartDate.day,
+      );
+      final todayZero = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+      );
+      final endZero = endDate != null
+          ? DateTime(endDate!.year, endDate!.month, endDate!.day)
+          : null;
+
+      if (dayZero.isBefore(todayZero) &&
+          !dayZero.isBefore(originalStartZero) &&
+          (endZero == null || !dayZero.isAfter(endZero))) {
+        return !isCompletedOnDay(dayDate);
+      }
+      return false;
+    }
   }
 }
