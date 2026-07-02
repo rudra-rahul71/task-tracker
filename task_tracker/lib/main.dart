@@ -1,45 +1,70 @@
 import 'package:task_tracker/firebase_options.dart';
 import 'package:task_tracker/features/account/presentation/pages/account.dart';
 import 'package:task_tracker/features/auth/presentation/pages/sign_in.dart';
-import 'package:task_tracker/features/auth/presentation/pages/verify_email.dart';
+import 'package:task_tracker/features/auth/presentation/pages/hosting_wizard_page.dart';
 import 'package:task_tracker/features/home/presentation/pages/home.dart';
 import 'package:task_tracker/features/tasks/presentation/pages/tasks.dart';
 import 'package:task_tracker/features/trackers/presentation/pages/trackers.dart';
 import 'package:task_tracker/core/database/db_service.dart';
 import 'package:task_tracker/core/widgets/app_shell.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
 import 'features/splash/presentation/pages/splash.dart';
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 
 final getIt = GetIt.instance;
+final configNotifier = ValueNotifier<AppConfig?>(null);
 
 void setupLocator() {
+  if (getIt.isRegistered<TaskRepository>()) {
+    getIt.unregister<TaskRepository>();
+  }
+  if (getIt.isRegistered<TrackerRepository>()) {
+    getIt.unregister<TrackerRepository>();
+  }
   getIt.registerLazySingleton<TaskRepository>(() => TaskRepository());
   getIt.registerLazySingleton<TrackerRepository>(() => TrackerRepository());
+}
+
+void setupAuthListener() {
+  if (getIt.isRegistered<AuthRepository>()) {
+    getIt<AuthRepository>().authStateChanges.listen((UserEntity? user) async {
+      if (user == null) {
+        await DatabaseService.instance.clearAllData();
+      }
+    });
+  }
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  } catch (e) {
-    // Graceful error handling if options are placeholders or mock configurations
-    debugPrint('Firebase failed to initialize: $e');
-  }
+  final configService = ConfigService();
+  final savedConfig = await configService.getSavedConfig();
   
   setupLocator();
 
-  FirebaseAuth.instance.authStateChanges().listen((User? user) async {
-    if (user == null) {
-      await DatabaseService.instance.clearAllData();
+  if (savedConfig != null) {
+    try {
+      await DynamicBackendBridge.initialize(
+        config: savedConfig,
+        getIt: getIt,
+        defaultFirebaseOptions: DefaultFirebaseOptions.currentPlatform,
+      );
+      setupLocator(); // Refresh repository instances to bind to the newly initialized backend
+      configNotifier.value = savedConfig;
+      setupAuthListener();
+    } catch (e) {
+      debugPrint('Error initializing saved backend config: $e');
     }
-  });
+  }
+
+  // Register the global notifier so pages can trigger rebuilds on backend change
+  getIt.registerSingleton<ValueNotifier<AppConfig?>>(configNotifier);
+  getIt.registerSingleton<ConfigService>(configService);
 
   runApp(const MyApp());
 }
@@ -49,51 +74,69 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        return MaterialApp.router(
-          title: 'Task Tracker',
-          debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            useMaterial3: true,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFD4AF37), // Gold seed color
-              brightness: Brightness.dark,
-              primary: const Color(0xFFD4AF37), // Darker yellow / Gold accent
-              onPrimary: Colors.black,
-              secondary: const Color(0xFFE5A93C),
-              surface: const Color(0xFF1E1E1E),
-              onSurface: Colors.white,
-            ),
-            scaffoldBackgroundColor: const Color(0xFF121212),
-          ),
-          routerConfig: _router,
+    final theme = ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFFD4AF37), // Gold seed color
+        brightness: Brightness.dark,
+        primary: const Color(0xFFD4AF37), // Darker yellow / Gold accent
+        onPrimary: Colors.black,
+        secondary: const Color(0xFFE5A93C),
+        surface: const Color(0xFF1E1E1E),
+        onSurface: Colors.white,
+      ),
+      scaffoldBackgroundColor: const Color(0xFF121212),
+    );
+
+    return ValueListenableBuilder<AppConfig?>(
+      valueListenable: configNotifier,
+      builder: (context, config, child) {
+        final authStream = getIt.isRegistered<AuthRepository>()
+            ? getIt<AuthRepository>().authStateChanges
+            : Stream<UserEntity?>.value(null);
+
+        return StreamBuilder<UserEntity?>(
+          stream: authStream,
+          builder: (context, snapshot) {
+            return MaterialApp.router(
+              title: 'Task Tracker',
+              debugShowCheckedModeBanner: false,
+              theme: theme,
+              routerConfig: _router,
+            );
+          },
         );
       },
     );
   }
 }
 
-const List<String> publicRoutes = ['/', '/auth/sign-in'];
-const String verifyEmailRoute = '/auth/verify-email';
-
 final GoRouter _router = GoRouter(
   initialLocation: '/',
   redirect: (BuildContext context, GoRouterState state) {
-    final User? user = FirebaseAuth.instance.currentUser;
-    final bool loggedIn = user != null;
-    final bool emailVerified = user?.emailVerified ?? false;
-
+    final bool hasConfig = getIt.isRegistered<AuthRepository>();
     final String goingTo = state.fullPath ?? '/';
 
+    // 1. If backend isn't configured, force redirect to /hosting-wizard
+    if (!hasConfig) {
+      if (goingTo != '/hosting-wizard') {
+        return '/hosting-wizard';
+      }
+      return null;
+    }
+
+    // 2. If backend is configured, handle standard auth states
+    final auth = getIt<AuthRepository>();
+    final UserEntity? user = auth.currentUser;
+    final bool loggedIn = user != null;
+
     if (loggedIn) {
-      if (!emailVerified && goingTo != verifyEmailRoute) {
-        return verifyEmailRoute;
+      if (goingTo == '/auth/sign-in' || goingTo == '/hosting-wizard') {
+        return '/home';
       }
       return null;
     } else {
-      if (!publicRoutes.contains(goingTo)) {
+      if (goingTo != '/' && goingTo != '/auth/sign-in') {
         return '/auth/sign-in';
       }
       return null;
@@ -107,15 +150,17 @@ final GoRouter _router = GoRouter(
       },
     ),
     GoRoute(
-      path: '/auth/sign-in',
+      path: '/hosting-wizard',
       builder: (BuildContext context, GoRouterState state) {
-        return const SignInPage();
+        return HostingWizardPage(
+          configService: getIt<ConfigService>(),
+        );
       },
     ),
     GoRoute(
-      path: '/auth/verify-email',
+      path: '/auth/sign-in',
       builder: (BuildContext context, GoRouterState state) {
-        return const VerifyEmailPage();
+        return const SignInPage();
       },
     ),
     StatefulShellRoute.indexedStack(

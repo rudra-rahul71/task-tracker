@@ -1,6 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
+import 'package:task_tracker/core/utils/date_parser.dart';
 
 class TaskModel {
   final String id;
@@ -41,15 +41,9 @@ class TaskModel {
           ? (map['steps'] as List).map((stepMap) => TaskStep.fromMap(Map<String, dynamic>.from(stepMap))).toList()
           : [],
       status: map['status'] ?? 'pending',
-      lastCompletedAt: map['lastCompletedAt'] != null
-          ? (map['lastCompletedAt'] as Timestamp).toDate()
-          : null,
-      lastResetAt: map['lastResetAt'] != null
-          ? (map['lastResetAt'] as Timestamp).toDate()
-          : null,
-      createdAt: map['createdAt'] != null
-          ? (map['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
+      lastCompletedAt: parseDateTime(map['lastCompletedAt']),
+      lastResetAt: parseDateTime(map['lastResetAt']),
+      createdAt: parseDateTime(map['createdAt']) ?? DateTime.now(),
     );
   }
 
@@ -62,9 +56,9 @@ class TaskModel {
       'schedule': schedule?.toMap(),
       'steps': steps.map((step) => step.toMap()).toList(),
       'status': status,
-      'lastCompletedAt': lastCompletedAt != null ? Timestamp.fromDate(lastCompletedAt!) : null,
-      'lastResetAt': lastResetAt != null ? Timestamp.fromDate(lastResetAt!) : null,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'lastCompletedAt': lastCompletedAt,
+      'lastResetAt': lastResetAt,
+      'createdAt': createdAt,
     };
   }
 

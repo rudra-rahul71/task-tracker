@@ -1,35 +1,41 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:task_tracker/core/database/db_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:get_it/get_it.dart';
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker_history.dart';
 
 class TrackerRepository {
-  final FirebaseFirestore _firestore = DatabaseService.instance.firestore;
+  final DatabaseRepository _repo = GetIt.instance<DatabaseRepository>();
+
+  late final _trackerCollection = TypedCollection<TrackerModel>(
+    repo: _repo,
+    collectionName: 'trackers',
+    toMap: (tracker) => tracker.toMap(),
+    fromMap: (map, id) => TrackerModel.fromMap(map, id),
+  );
+
+  late final _historyCollection = TypedCollection<TrackerHistoryModel>(
+    repo: _repo,
+    collectionName: 'tracker_history',
+    toMap: (history) => history.toMap(),
+    fromMap: (map, id) => TrackerHistoryModel.fromMap(map, id),
+  );
 
   // Stream of trackers for a specific user, sorted by creation date
   Stream<List<TrackerModel>> getTrackers(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('trackers')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => TrackerModel.fromMap(doc.data(), doc.id))
-          .toList();
+    return _trackerCollection.watch(
+      filters: [QueryFilter.eq('userId', userId)],
+    ).map((trackers) {
+      trackers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return trackers;
     });
   }
 
   // Add a new tracker and backfill completion entries if started in the past
   Future<void> addTracker(TrackerModel tracker) async {
-    final batch = _firestore.batch();
-    
-    final trackerRef = _firestore
-        .collection('users')
-        .doc(tracker.userId)
-        .collection('trackers')
-        .doc();
+    // Generate a temporary / fallback ID for tracker if empty, but library saveMap handles empty ID by adding.
+    // However, to link history records, we need a tracker ID. Let's generate a unique string using DateTime.
+    final trackerId = tracker.id.isNotEmpty ? tracker.id : 'tr_${DateTime.now().millisecondsSinceEpoch}';
 
     final start = DateTime(tracker.startDate.year, tracker.startDate.month, tracker.startDate.day);
     final originalStart = DateTime(tracker.originalStartDate.year, tracker.originalStartDate.month, tracker.originalStartDate.day);
@@ -47,28 +53,23 @@ class TrackerRepository {
           completedDates.add(current);
         }
         
-        final historyRef = _firestore
-            .collection('users')
-            .doc(tracker.userId)
-            .collection('history')
-            .doc();
-            
         final historyRecord = TrackerHistoryModel(
           id: '',
-          trackerId: trackerRef.id,
+          userId: tracker.userId,
+          trackerId: trackerId,
           trackerName: tracker.name,
           trackerType: tracker.type,
           date: current,
           type: 'completion',
         );
-        batch.set(historyRef, historyRecord.toMap());
+        await _historyCollection.save(historyRecord, '');
         
         current = current.add(const Duration(days: 1));
       }
     }
     
     final updatedTracker = TrackerModel(
-      id: trackerRef.id,
+      id: trackerId,
       userId: tracker.userId,
       name: tracker.name,
       type: tracker.type,
@@ -82,48 +83,25 @@ class TrackerRepository {
       originalStartDate: originalStart,
     );
     
-    batch.set(trackerRef, updatedTracker.toMap());
-    await batch.commit();
+    await _trackerCollection.save(updatedTracker, trackerId);
   }
 
   // Delete an existing tracker and its associated history records
   Future<void> deleteTracker(String userId, String trackerId) async {
-    final batch = _firestore.batch();
-
     // 1. Delete the tracker document itself
-    final trackerRef = _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('trackers')
-        .doc(trackerId);
-    batch.delete(trackerRef);
+    await _trackerCollection.delete(trackerId);
 
-    // 2. Fetch history records for this tracker
-    final historySnapshot = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('history')
-        .where('trackerId', isEqualTo: trackerId)
-        .get();
+    // 2. Fetch and delete history records for this tracker
+    try {
+      final history = await _historyCollection.watch(
+        filters: [QueryFilter.eq('trackerId', trackerId)],
+      ).first;
 
-    // 3. Add deletions of all history records to batch, handling Firestore batch limit of 500 operations
-    int operationCount = 1; // 1 for the tracker deletion
-    var currentBatch = batch;
-
-    for (final doc in historySnapshot.docs) {
-      if (operationCount >= 500) {
-        // Commit current batch and start a new one
-        await currentBatch.commit();
-        currentBatch = _firestore.batch();
-        operationCount = 0;
+      for (final doc in history) {
+        await _historyCollection.delete(doc.id);
       }
-      currentBatch.delete(doc.reference);
-      operationCount++;
-    }
-
-    // Commit any remaining operations in the last batch
-    if (operationCount > 0) {
-      await currentBatch.commit();
+    } catch (e) {
+      debugPrint('Error deleting history records on tracker deletion: $e');
     }
   }
 
@@ -148,52 +126,57 @@ class TrackerRepository {
       }
     }
 
-    await _firestore
-        .collection('users')
-        .doc(tracker.userId)
-        .collection('trackers')
-        .doc(tracker.id)
-        .update({
-      'startDate': Timestamp.fromDate(today),
-      'endDate': newEndDate != null ? Timestamp.fromDate(newEndDate) : null,
-    });
+    final updated = TrackerModel(
+      id: tracker.id,
+      userId: tracker.userId,
+      name: tracker.name,
+      type: tracker.type,
+      durationType: tracker.durationType,
+      measurementUnit: tracker.measurementUnit,
+      durationValue: tracker.durationValue,
+      startDate: today,
+      endDate: newEndDate,
+      createdAt: tracker.createdAt,
+      completedDates: tracker.completedDates,
+      originalStartDate: tracker.originalStartDate,
+    );
+
+    await _trackerCollection.save(updated, tracker.id);
   }
 
   // Mark a tracker as completed by appending the current date/time to completedDates and writing history
   Future<void> markTrackerCompleted(TrackerModel tracker) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final updated = List<DateTime>.from(tracker.completedDates)..add(today);
+    final updatedDates = List<DateTime>.from(tracker.completedDates)..add(today);
 
-    final batch = _firestore.batch();
+    final updatedTracker = TrackerModel(
+      id: tracker.id,
+      userId: tracker.userId,
+      name: tracker.name,
+      type: tracker.type,
+      durationType: tracker.durationType,
+      measurementUnit: tracker.measurementUnit,
+      durationValue: tracker.durationValue,
+      startDate: tracker.startDate,
+      endDate: tracker.endDate,
+      createdAt: tracker.createdAt,
+      completedDates: updatedDates,
+      originalStartDate: tracker.originalStartDate,
+    );
 
-    // 1. Update the tracker document
-    final trackerRef = _firestore
-        .collection('users')
-        .doc(tracker.userId)
-        .collection('trackers')
-        .doc(tracker.id);
-    batch.update(trackerRef, {
-      'completedDates': updated.map((d) => Timestamp.fromDate(d)).toList(),
-    });
+    await _trackerCollection.save(updatedTracker, tracker.id);
 
-    // 2. Add history record
-    final historyRef = _firestore
-        .collection('users')
-        .doc(tracker.userId)
-        .collection('history')
-        .doc();
     final historyRecord = TrackerHistoryModel(
       id: '',
+      userId: tracker.userId,
       trackerId: tracker.id,
       trackerName: tracker.name,
       trackerType: tracker.type,
       date: today,
       type: 'completion',
     );
-    batch.set(historyRef, historyRecord.toMap());
-
-    await batch.commit();
+    await _historyCollection.save(historyRecord, '');
   }
 
   // Auto-reset a tracker to a specific startDate when a period has been missed
@@ -216,15 +199,22 @@ class TrackerRepository {
       }
     }
 
-    await _firestore
-        .collection('users')
-        .doc(tracker.userId)
-        .collection('trackers')
-        .doc(tracker.id)
-        .update({
-      'startDate': Timestamp.fromDate(start),
-      'endDate': newEndDate != null ? Timestamp.fromDate(newEndDate) : null,
-    });
+    final updatedTracker = TrackerModel(
+      id: tracker.id,
+      userId: tracker.userId,
+      name: tracker.name,
+      type: tracker.type,
+      durationType: tracker.durationType,
+      measurementUnit: tracker.measurementUnit,
+      durationValue: tracker.durationValue,
+      startDate: start,
+      endDate: newEndDate,
+      createdAt: tracker.createdAt,
+      completedDates: tracker.completedDates,
+      originalStartDate: tracker.originalStartDate,
+    );
+
+    await _trackerCollection.save(updatedTracker, tracker.id);
   }
 
   // Report a slip-up for a bad habit (type == 'quit')
@@ -250,56 +240,46 @@ class TrackerRepository {
       }
     }
 
-    final batch = _firestore.batch();
+    final updatedTracker = TrackerModel(
+      id: tracker.id,
+      userId: tracker.userId,
+      name: tracker.name,
+      type: tracker.type,
+      durationType: tracker.durationType,
+      measurementUnit: tracker.measurementUnit,
+      durationValue: tracker.durationValue,
+      startDate: today,
+      endDate: newEndDate,
+      createdAt: tracker.createdAt,
+      completedDates: updatedCompleted,
+      originalStartDate: tracker.originalStartDate,
+    );
 
-    // 1. Update the tracker document
-    final trackerRef = _firestore
-        .collection('users')
-        .doc(tracker.userId)
-        .collection('trackers')
-        .doc(tracker.id);
-    batch.update(trackerRef, {
-      'startDate': Timestamp.fromDate(today),
-      'endDate': newEndDate != null ? Timestamp.fromDate(newEndDate) : null,
-      'completedDates': updatedCompleted.map((d) => Timestamp.fromDate(d)).toList(),
-    });
+    await _trackerCollection.save(updatedTracker, tracker.id);
 
-    // 2. Add history record
-    final historyRef = _firestore
-        .collection('users')
-        .doc(tracker.userId)
-        .collection('history')
-        .doc();
     final historyRecord = TrackerHistoryModel(
       id: '',
+      userId: tracker.userId,
       trackerId: tracker.id,
       trackerName: tracker.name,
       trackerType: tracker.type,
       date: today,
       type: 'slip_up',
     );
-    batch.set(historyRef, historyRecord.toMap());
-
-    await batch.commit();
+    await _historyCollection.save(historyRecord, '');
   }
 
-  // Get completions/slip-ups stream for a specific month to keep memory usage low
+  // Get completions/slip-ups stream for a specific month
   Stream<List<TrackerHistoryModel>> getMonthlyHistory(String userId, DateTime month) {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1).subtract(const Duration(microseconds: 1));
 
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('history')
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => TrackerHistoryModel.fromMap(doc.data(), doc.id))
-          .toList();
+    return _historyCollection.watch(
+      filters: [QueryFilter.eq('userId', userId)],
+    ).map((history) {
+      // Filter date range client side for simplicity across database drivers
+      return history.where((h) => h.date.isAfter(start.subtract(const Duration(microseconds: 1))) && h.date.isBefore(end.add(const Duration(microseconds: 1)))).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
     });
   }
 }

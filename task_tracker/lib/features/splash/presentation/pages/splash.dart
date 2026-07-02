@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:get_it/get_it.dart';
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -29,7 +31,13 @@ class _SplashPageState extends State<SplashPage>
 
     _animationController.forward().then((onValue) {
       if (mounted) {
-        context.go('/auth/sign-in');
+        final authRepo = GetIt.instance<AuthRepository>();
+        final UserEntity? user = authRepo.currentUser;
+        if (user != null) {
+          context.go('/home');
+        } else {
+          context.go('/auth/sign-in');
+        }
       }
     });
   }

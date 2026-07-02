@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:task_tracker/core/utils/date_parser.dart';
 
 class TrackerModel {
   final String id;
@@ -31,30 +31,22 @@ class TrackerModel {
 
   // Convert Firestore DocumentSnapshot to TrackerModel
   factory TrackerModel.fromMap(Map<String, dynamic> map, String documentId) {
-    final rawStart = map['startDate'] != null
-        ? (map['startDate'] as Timestamp).toDate()
-        : DateTime.now();
+    final rawStart = parseDateTime(map['startDate']) ?? DateTime.now();
     final start = DateTime(rawStart.year, rawStart.month, rawStart.day);
 
-    final rawOriginalStart = map['originalStartDate'] != null
-        ? (map['originalStartDate'] as Timestamp).toDate()
-        : start;
+    final rawOriginalStart = parseDateTime(map['originalStartDate']) ?? start;
     final originalStart = DateTime(
       rawOriginalStart.year,
       rawOriginalStart.month,
       rawOriginalStart.day,
     );
 
-    final rawEndDate = map['endDate'] != null
-        ? (map['endDate'] as Timestamp).toDate()
-        : null;
+    final rawEndDate = parseDateTime(map['endDate']);
     final endDate = rawEndDate != null
         ? DateTime(rawEndDate.year, rawEndDate.month, rawEndDate.day)
         : null;
 
-    final createdAt = map['createdAt'] != null
-        ? (map['createdAt'] as Timestamp).toDate()
-        : DateTime.now();
+    final createdAt = parseDateTime(map['createdAt']) ?? DateTime.now();
 
     return TrackerModel(
       id: documentId,
@@ -69,7 +61,7 @@ class TrackerModel {
       createdAt: createdAt,
       completedDates:
           (map['completedDates'] as List<dynamic>?)?.map((item) {
-            final d = (item as Timestamp).toDate();
+            final d = parseDateTime(item) ?? DateTime.now();
             return DateTime(d.year, d.month, d.day);
           }).toList() ??
           [],
@@ -86,13 +78,11 @@ class TrackerModel {
       'durationType': durationType,
       'measurementUnit': measurementUnit,
       'durationValue': durationValue,
-      'startDate': Timestamp.fromDate(startDate),
-      'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'completedDates': completedDates
-          .map((d) => Timestamp.fromDate(d))
-          .toList(),
-      'originalStartDate': Timestamp.fromDate(originalStartDate),
+      'startDate': startDate,
+      'endDate': endDate,
+      'createdAt': createdAt,
+      'completedDates': completedDates,
+      'originalStartDate': originalStartDate,
     };
   }
 

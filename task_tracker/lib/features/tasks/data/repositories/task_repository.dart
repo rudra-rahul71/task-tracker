@@ -1,171 +1,169 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:task_tracker/core/database/db_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:get_it/get_it.dart';
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
-import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 import 'package:task_tracker/features/tasks/data/models/task_history.dart';
+import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 
 class TaskRepository {
-  final FirebaseFirestore _firestore = DatabaseService.instance.firestore;
+  final DatabaseRepository _repo = GetIt.instance<DatabaseRepository>();
+
+  late final _groupCollection = TypedCollection<TaskGroupModel>(
+    repo: _repo,
+    collectionName: 'task_groups',
+    toMap: (group) => group.toMap(),
+    fromMap: (map, id) => TaskGroupModel.fromMap(map, id),
+  );
+
+  late final _taskCollection = TypedCollection<TaskModel>(
+    repo: _repo,
+    collectionName: 'tasks',
+    toMap: (task) => task.toMap(),
+    fromMap: (map, id) => TaskModel.fromMap(map, id),
+  );
+
+  late final _historyCollection = TypedCollection<TaskHistoryModel>(
+    repo: _repo,
+    collectionName: 'task_history',
+    toMap: (history) => history.toMap(),
+    fromMap: (map, id) => TaskHistoryModel.fromMap(map, id),
+  );
 
   // --- GROUPS ---
 
   Stream<List<TaskGroupModel>> getGroups(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('task_groups')
-        .orderBy('createdAt', descending: false)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => TaskGroupModel.fromMap(doc.data(), doc.id))
-          .toList();
+    return _groupCollection.watch(
+      filters: [QueryFilter.eq('userId', userId)],
+    ).map((groups) {
+      groups.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      return groups;
     });
   }
 
   Future<void> addGroup(TaskGroupModel group) async {
-    await _firestore
-        .collection('users')
-        .doc(group.userId)
-        .collection('task_groups')
-        .add(group.toMap());
+    await _groupCollection.save(group, '');
   }
 
   Future<void> updateGroup(TaskGroupModel group) async {
-    await _firestore
-        .collection('users')
-        .doc(group.userId)
-        .collection('task_groups')
-        .doc(group.id)
-        .update(group.toMap());
+    await _groupCollection.save(group, group.id);
   }
 
   Future<void> deleteGroup(String userId, String groupId) async {
     // Delete the group itself
-    await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('task_groups')
-        .doc(groupId)
-        .delete();
+    await _groupCollection.delete(groupId);
 
     // Also clear the groupId reference for all tasks in this group
-    final tasksSnapshot = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('tasks')
-        .where('groupId', isEqualTo: groupId)
-        .get();
+    try {
+      final tasks = await _taskCollection.watch(
+        filters: [QueryFilter.eq('userId', userId)],
+      ).first;
 
-    final batch = _firestore.batch();
-    for (var doc in tasksSnapshot.docs) {
-      batch.update(doc.reference, {'groupId': null});
+      final tasksToUpdate = tasks.where((t) => t.groupId == groupId).toList();
+      for (var task in tasksToUpdate) {
+        final updatedTask = TaskModel(
+          id: task.id,
+          userId: task.userId,
+          groupId: null,
+          name: task.name,
+          description: task.description,
+          schedule: task.schedule,
+          steps: task.steps,
+          status: task.status,
+          lastCompletedAt: task.lastCompletedAt,
+          lastResetAt: task.lastResetAt,
+          createdAt: task.createdAt,
+        );
+        await _taskCollection.save(updatedTask, task.id);
+      }
+    } catch (e) {
+      debugPrint('Error updating tasks on group deletion: $e');
     }
-    await batch.commit();
   }
 
   // --- TASKS ---
 
   Stream<List<TaskModel>> getTasks(String userId) {
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('tasks')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => TaskModel.fromMap(doc.data(), doc.id))
-          .toList();
+    return _taskCollection.watch(
+      filters: [QueryFilter.eq('userId', userId)],
+    ).map((tasks) {
+      tasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return tasks;
     });
   }
 
   Future<void> addTask(TaskModel task) async {
-    await _firestore
-        .collection('users')
-        .doc(task.userId)
-        .collection('tasks')
-        .add(task.toMap());
+    await _taskCollection.save(task, '');
   }
 
   Future<void> updateTask(TaskModel task) async {
-    final docRef = _firestore
-        .collection('users')
-        .doc(task.userId)
-        .collection('tasks')
-        .doc(task.id);
+    // To fetch the old status, we query for this task by ID
+    String? oldStatus;
+    try {
+      final existingTasks = await _taskCollection.watch(
+        filters: [QueryFilter.eq('id', task.id)],
+      ).first;
+      if (existingTasks.isNotEmpty) {
+        oldStatus = existingTasks.first.status;
+      }
+    } catch (e) {
+      debugPrint('Error fetching task for status check: $e');
+    }
 
-    // Get the current snapshot to compare status changes
-    final docSnap = await docRef.get();
-    final Map<String, dynamic>? oldMap = docSnap.data();
-    final String? oldStatus = oldMap?['status'];
-
-    final batch = _firestore.batch();
-    batch.update(docRef, task.toMap());
+    await _taskCollection.save(task, task.id);
 
     final today = DateTime.now();
     final todayZero = DateTime(today.year, today.month, today.day);
 
     if (task.status == 'completed' && oldStatus != 'completed') {
       // 1. Task completed! Log history
-      final historyRef = _firestore
-          .collection('users')
-          .doc(task.userId)
-          .collection('task_history')
-          .doc();
-
       final historyRecord = TaskHistoryModel(
         id: '',
+        userId: task.userId,
         taskId: task.id,
         taskName: task.name,
         groupId: task.groupId,
         date: todayZero,
         completedSteps: task.steps.where((s) => s.isCompleted).map((s) => s.name).toList(),
       );
-      batch.set(historyRef, historyRecord.toMap());
+      await _historyCollection.save(historyRecord, '');
     } else if (task.status == 'pending' && oldStatus == 'completed') {
       // 2. Task went from completed to pending (reset/uncompleted). Delete history for today
-      final historySnapshot = await _firestore
-          .collection('users')
-          .doc(task.userId)
-          .collection('task_history')
-          .where('taskId', isEqualTo: task.id)
-          .where('date', isEqualTo: Timestamp.fromDate(todayZero))
-          .get();
+      try {
+        final history = await _historyCollection.watch(
+          filters: [QueryFilter.eq('taskId', task.id)],
+        ).first;
 
-      for (var doc in historySnapshot.docs) {
-        batch.delete(doc.reference);
+        final todayHistory = history.where((h) {
+          final hDate = DateTime(h.date.year, h.date.month, h.date.day);
+          return hDate == todayZero;
+        }).toList();
+
+        for (var doc in todayHistory) {
+          await _historyCollection.delete(doc.id);
+        }
+      } catch (e) {
+        debugPrint('Error deleting today history on status reset: $e');
       }
     }
-
-    await batch.commit();
   }
 
   Future<void> deleteTask(String userId, String taskId) async {
-    final batch = _firestore.batch();
-
     // 1. Delete task doc
-    final taskRef = _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('tasks')
-        .doc(taskId);
-    batch.delete(taskRef);
+    await _taskCollection.delete(taskId);
 
     // 2. Delete history docs
-    final historySnapshot = await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('task_history')
-        .where('taskId', isEqualTo: taskId)
-        .get();
+    try {
+      final history = await _historyCollection.watch(
+        filters: [QueryFilter.eq('taskId', taskId)],
+      ).first;
 
-    for (var doc in historySnapshot.docs) {
-      batch.delete(doc.reference);
+      for (var doc in history) {
+        await _historyCollection.delete(doc.id);
+      }
+    } catch (e) {
+      debugPrint('Error clearing history on task deletion: $e');
     }
-
-    await batch.commit();
   }
 
   // Get completions stream for a specific month
@@ -173,18 +171,12 @@ class TaskRepository {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1).subtract(const Duration(microseconds: 1));
 
-    return _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('task_history')
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(end))
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => TaskHistoryModel.fromMap(doc.data(), doc.id))
-          .toList();
+    return _historyCollection.watch(
+      filters: [QueryFilter.eq('userId', userId)],
+    ).map((history) {
+      // Filter date range client side for simplicity across database drivers
+      return history.where((h) => h.date.isAfter(start.subtract(const Duration(microseconds: 1))) && h.date.isBefore(end.add(const Duration(microseconds: 1)))).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
     });
   }
 
@@ -195,11 +187,8 @@ class TaskRepository {
     required List<TaskGroupModel> groups,
   }) async {
     final now = DateTime.now();
-    final batch = _firestore.batch();
-    bool hasUpdates = false;
-
-    // Build a map of groups for quick lookup
     final groupMap = {for (var g in groups) g.id: g};
+    final List<Future<void>> updateFutures = [];
 
     for (var task in tasks) {
       // Determine effective schedule
@@ -231,20 +220,13 @@ class TaskRepository {
             lastResetAt: now,
           );
 
-          final docRef = _firestore
-              .collection('users')
-              .doc(userId)
-              .collection('tasks')
-              .doc(task.id);
-
-          batch.update(docRef, updatedTask.toMap());
-          hasUpdates = true;
+          updateFutures.add(_taskCollection.save(updatedTask, task.id));
         }
       }
     }
 
-    if (hasUpdates) {
-      await batch.commit();
+    if (updateFutures.isNotEmpty) {
+      await Future.wait(updateFutures);
     }
   }
 }

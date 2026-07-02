@@ -1,7 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:task_tracker/core/utils/date_parser.dart';
 
 class TrackerHistoryModel {
   final String id;
+  final String userId;
   final String trackerId;
   final String trackerName;
   final String trackerType;
@@ -10,6 +11,7 @@ class TrackerHistoryModel {
 
   TrackerHistoryModel({
     required this.id,
+    required this.userId,
     required this.trackerId,
     required this.trackerName,
     required this.trackerType,
@@ -20,20 +22,22 @@ class TrackerHistoryModel {
   factory TrackerHistoryModel.fromMap(Map<String, dynamic> map, String id) {
     return TrackerHistoryModel(
       id: id,
+      userId: map['userId'] ?? '',
       trackerId: map['trackerId'] ?? '',
       trackerName: map['trackerName'] ?? '',
       trackerType: map['trackerType'] ?? 'maintain',
-      date: map['date'] != null ? (map['date'] as Timestamp).toDate() : DateTime.now(),
+      date: parseDateTime(map['date']) ?? DateTime.now(),
       type: map['type'] ?? 'completion',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
+      'userId': userId,
       'trackerId': trackerId,
       'trackerName': trackerName,
       'trackerType': trackerType,
-      'date': Timestamp.fromDate(date),
+      'date': date,
       'type': type,
     };
   }

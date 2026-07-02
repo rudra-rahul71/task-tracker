@@ -1,4 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get_it/get_it.dart';
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
@@ -32,7 +33,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    final user = FirebaseAuth.instance.currentUser;
+    final user = GetIt.instance<AuthRepository>().currentUser;
     final navigator = Navigator.of(context);
 
     if (user == null) {

@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:task_tracker/core/utils/date_parser.dart';
 
 class TaskStep {
   final String name;
@@ -48,12 +48,8 @@ class TaskStep {
       name: map['name'] ?? '',
       isCompleted: map['isCompleted'] ?? false,
       timerDuration: map['timerDuration'],
-      timerStartedAt: map['timerStartedAt'] != null
-          ? (map['timerStartedAt'] as Timestamp).toDate()
-          : null,
-      timerPausedAt: map['timerPausedAt'] != null
-          ? (map['timerPausedAt'] as Timestamp).toDate()
-          : null,
+      timerStartedAt: parseDateTime(map['timerStartedAt']),
+      timerPausedAt: parseDateTime(map['timerPausedAt']),
       timerSecondsRemaining: map['timerSecondsRemaining'],
       isTimerConfirmed: map['isTimerConfirmed'] ?? false,
     );
@@ -64,8 +60,8 @@ class TaskStep {
       'name': name,
       'isCompleted': isCompleted,
       'timerDuration': timerDuration,
-      'timerStartedAt': timerStartedAt != null ? Timestamp.fromDate(timerStartedAt!) : null,
-      'timerPausedAt': timerPausedAt != null ? Timestamp.fromDate(timerPausedAt!) : null,
+      'timerStartedAt': timerStartedAt,
+      'timerPausedAt': timerPausedAt,
       'timerSecondsRemaining': timerSecondsRemaining,
       'isTimerConfirmed': isTimerConfirmed,
     };

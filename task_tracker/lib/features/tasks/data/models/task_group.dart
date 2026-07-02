@@ -1,5 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
+import 'package:task_tracker/core/utils/date_parser.dart';
 
 class TaskGroupModel {
   final String id;
@@ -25,9 +25,7 @@ class TaskGroupModel {
       name: map['name'] ?? '',
       colorValue: map['colorValue'] ?? 0xFF4CAF50, // default green
       schedule: map['schedule'] != null ? TaskSchedule.fromMap(map['schedule']) : null,
-      createdAt: map['createdAt'] != null
-          ? (map['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
+      createdAt: parseDateTime(map['createdAt']) ?? DateTime.now(),
     );
   }
 
@@ -37,7 +35,7 @@ class TaskGroupModel {
       'name': name,
       'colorValue': colorValue,
       'schedule': schedule?.toMap(),
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': createdAt,
     };
   }
 

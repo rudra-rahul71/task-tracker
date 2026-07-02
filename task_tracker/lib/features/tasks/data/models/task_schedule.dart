@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:task_tracker/core/utils/date_parser.dart';
 
 class TaskSchedule {
   final String type; // 'none', 'weekly', 'bi_weekly', 'monthly'
@@ -23,9 +23,7 @@ class TaskSchedule {
       type: map['type'] ?? 'none',
       daysOfWeek: List<int>.from(map['daysOfWeek'] ?? []),
       dayOfMonth: map['dayOfMonth'] ?? 1,
-      startDate: map['startDate'] != null
-          ? (map['startDate'] as Timestamp).toDate()
-          : null,
+      startDate: parseDateTime(map['startDate']),
     );
   }
 
@@ -34,7 +32,7 @@ class TaskSchedule {
       'type': type,
       'daysOfWeek': daysOfWeek,
       'dayOfMonth': dayOfMonth,
-      'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
+      'startDate': startDate,
     };
   }
 

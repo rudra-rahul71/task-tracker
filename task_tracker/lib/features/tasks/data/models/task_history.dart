@@ -1,7 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:task_tracker/core/utils/date_parser.dart';
 
 class TaskHistoryModel {
   final String id;
+  final String userId;
   final String taskId;
   final String taskName;
   final String? groupId;
@@ -11,6 +12,7 @@ class TaskHistoryModel {
 
   TaskHistoryModel({
     required this.id,
+    required this.userId,
     required this.taskId,
     required this.taskName,
     this.groupId,
@@ -22,10 +24,11 @@ class TaskHistoryModel {
   factory TaskHistoryModel.fromMap(Map<String, dynamic> map, String id) {
     return TaskHistoryModel(
       id: id,
+      userId: map['userId'] ?? '',
       taskId: map['taskId'] ?? '',
       taskName: map['taskName'] ?? '',
       groupId: map['groupId'],
-      date: map['date'] != null ? (map['date'] as Timestamp).toDate() : DateTime.now(),
+      date: parseDateTime(map['date']) ?? DateTime.now(),
       type: map['type'] ?? 'completion',
       completedSteps: List<String>.from(map['completedSteps'] ?? []),
     );
@@ -33,10 +36,11 @@ class TaskHistoryModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'userId': userId,
       'taskId': taskId,
       'taskName': taskName,
       'groupId': groupId,
-      'date': Timestamp.fromDate(date),
+      'date': date,
       'type': type,
       'completedSteps': completedSteps,
     };
