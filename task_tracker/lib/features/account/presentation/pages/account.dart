@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:get_it/get_it.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
-import 'package:task_tracker/core/database/db_service.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
 
 class AccountPage extends StatefulWidget {
@@ -23,7 +22,6 @@ class _AccountPageState extends State<AccountPage> {
 
   Future<void> _handleSignOut() async {
     final authRepo = GetIt.instance<AuthRepository>();
-    await DatabaseService.instance.clearAllData();
     await authRepo.signOut();
     if (mounted) {
       context.go('/auth/sign-in');
