@@ -305,19 +305,12 @@ class _TaskCardState extends State<TaskCard> {
                                 ),
                               ),
                             ),
-                          GestureDetector(
-                            onTap: () {
-                              // ExpansionTile handles expand/collapse internally on header tap,
-                              // but this keeps the touch target clickable.
-                            },
-                            behavior: HitTestBehavior.translucent,
-                            child: Padding(
-                              padding: const EdgeInsets.all(6.0),
-                              child: Icon(
-                                _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                                color: Colors.grey,
-                                size: 20,
-                              ),
+                          Padding(
+                            padding: const EdgeInsets.all(6.0),
+                            child: Icon(
+                              _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                              color: Colors.grey,
+                              size: 20,
                             ),
                           ),
                         ],
