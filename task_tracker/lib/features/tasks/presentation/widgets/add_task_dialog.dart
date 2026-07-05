@@ -11,7 +11,9 @@ import 'package:task_tracker/features/tasks/data/models/task_step.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
 
 class AddTaskDialog extends StatefulWidget {
-  const AddTaskDialog({super.key});
+  final TaskModel? task;
+  
+  const AddTaskDialog({super.key, this.task});
 
   @override
   State<AddTaskDialog> createState() => _AddTaskDialogState();
@@ -48,6 +50,37 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   void initState() {
     super.initState();
     _loadGroups();
+    
+    if (widget.task != null) {
+      _name = widget.task!.name;
+      _description = widget.task!.description;
+      _selectedGroupId = widget.task!.groupId;
+      
+      if (widget.task!.schedule != null) {
+        if (widget.task!.schedule!.type == 'none') {
+          _scheduleSetting = 'none';
+        } else {
+          _scheduleSetting = 'custom';
+          _scheduleType = widget.task!.schedule!.type;
+          _selectedDays = List<int>.from(widget.task!.schedule!.daysOfWeek ?? []);
+          _dayOfMonth = widget.task!.schedule!.dayOfMonth ?? 1;
+          _startDate = widget.task!.schedule!.startDate ?? DateTime.now();
+        }
+      } else if (widget.task!.groupId != null) {
+        _scheduleSetting = 'inherit';
+      }
+      
+      if (widget.task!.steps.isNotEmpty) {
+        _stepsList.clear();
+        for (var step in widget.task!.steps) {
+          _stepsList.add({
+            'name': step.name,
+            'hasTimer': step.timerDuration != null,
+            'minutes': step.timerDuration != null ? step.timerDuration! ~/ 60 : 10,
+          });
+        }
+      }
+    }
   }
 
   void _loadGroups() {
@@ -109,12 +142,22 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     // Note: If scheduleSetting is 'inherit', task.schedule will remain null,
     // thereby letting the task inherit its group schedule during execution.
 
-    // Map step lists to TaskStep objects
     final taskSteps = _stepsList.map((stepMap) {
       final stepName = stepMap['name'] as String;
       final hasTimer = stepMap['hasTimer'] as bool;
       final minutes = stepMap['minutes'] as int;
       final durationSeconds = hasTimer ? minutes * 60 : null;
+
+      if (widget.task != null) {
+        // Find existing step by name to preserve completion status if possible
+        final existingStep = widget.task!.steps.where((s) => s.name == stepName).firstOrNull;
+        if (existingStep != null) {
+           return existingStep.copyWith(
+             timerDuration: durationSeconds,
+             timerSecondsRemaining: existingStep.timerSecondsRemaining ?? durationSeconds,
+           );
+        }
+      }
 
       return TaskStep(
         name: stepName,
@@ -124,30 +167,43 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
       );
     }).toList();
 
-    final newTask = TaskModel(
-      id: '',
-      userId: userId,
-      groupId: _selectedGroupId,
-      name: _name,
-      description: _description,
-      schedule: taskSchedule,
-      steps: taskSteps,
-      status: 'pending',
-      createdAt: DateTime.now(),
-    );
-
     try {
-      await _repository.addTask(newTask);
-      navigator.pop();
-      if (mounted) {
-        SnackbarService(context).showSuccessSnackbar(message: 'Task created successfully');
+      if (widget.task != null) {
+        final updatedTask = widget.task!.copyWith(
+          groupId: _selectedGroupId,
+          name: _name,
+          description: _description,
+          schedule: taskSchedule,
+          steps: taskSteps,
+        );
+        await _repository.updateTask(updatedTask, oldStatus: widget.task!.status);
+        if (mounted) {
+          SnackbarService(context).showSuccessSnackbar(message: 'Task updated successfully');
+        }
+      } else {
+        final newTask = TaskModel(
+          id: '',
+          userId: userId,
+          groupId: _selectedGroupId,
+          name: _name,
+          description: _description,
+          schedule: taskSchedule,
+          steps: taskSteps,
+          status: 'pending',
+          createdAt: DateTime.now(),
+        );
+        await _repository.addTask(newTask);
+        if (mounted) {
+          SnackbarService(context).showSuccessSnackbar(message: 'Task created successfully');
+        }
       }
+      navigator.pop();
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
       if (mounted) {
-        SnackbarService(context).showErrorSnackbar(message: 'Failed to create task: $e');
+        SnackbarService(context).showErrorSnackbar(message: 'Failed to save task: $e');
       }
     }
   }
@@ -190,7 +246,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Create Task',
+                        widget.task != null ? 'Edit Task' : 'Create Task',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -213,6 +269,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                         children: [
                           // Task Name
                           TextFormField(
+                            initialValue: _name,
                             decoration: InputDecoration(
                               labelText: 'Task Name',
                               hintText: 'e.g. Do Laundry, Take Vitamins',
@@ -234,6 +291,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
                           // Description
                           TextFormField(
+                            initialValue: _description,
                             decoration: InputDecoration(
                               labelText: 'Description (Optional)',
                               hintText: 'Add details or instructions...',
@@ -255,7 +313,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
                           // Group Dropdown
                           DropdownButtonFormField<String>(
-                            initialValue: _selectedGroupId,
+                            value: (_selectedGroupId != null && _groups.any((g) => g.id == _selectedGroupId)) ? _selectedGroupId : null,
                             decoration: InputDecoration(
                               labelText: 'Task Group (Optional)',
                               labelStyle: const TextStyle(color: Colors.grey),
@@ -578,7 +636,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         ),
                         onPressed: _submit,
-                        child: const Text('Create Task', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text(widget.task != null ? 'Save Task' : 'Create Task', style: const TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),

@@ -999,6 +999,7 @@ class _HomePageState extends State<HomePage> {
                   repository: _taskRepository,
                   isInteractive: isSelectedDayToday,
                   showCompletionStatus: isSelectedDayToday,
+                  showEditAction: false,
                   showDeleteAction: false,
                 ),
               );
@@ -1033,6 +1034,7 @@ class _HomePageState extends State<HomePage> {
                   repository: _taskRepository,
                   isInteractive: isSelectedDayToday,
                   showCompletionStatus: isSelectedDayToday,
+                  showEditAction: false,
                   showDeleteAction: false,
                 ),
               );

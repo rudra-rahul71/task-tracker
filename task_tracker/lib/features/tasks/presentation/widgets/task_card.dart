@@ -4,6 +4,7 @@ import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
+import 'package:task_tracker/features/tasks/presentation/widgets/add_task_dialog.dart';
 import 'package:task_tracker/features/tasks/presentation/widgets/step_timer_widget.dart';
 
 class TaskCard extends StatefulWidget {
@@ -12,6 +13,7 @@ class TaskCard extends StatefulWidget {
   final TaskRepository repository;
   final bool isInteractive;
   final bool showCompletionStatus;
+  final bool showEditAction;
   final bool showDeleteAction;
 
   const TaskCard({
@@ -21,6 +23,7 @@ class TaskCard extends StatefulWidget {
     required this.repository,
     this.isInteractive = true,
     this.showCompletionStatus = true,
+    this.showEditAction = true,
     this.showDeleteAction = true,
   });
 
@@ -242,13 +245,18 @@ class _TaskCardState extends State<TaskCard> {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final double nameWidth = widget.task.name.length * 11.0;
-                      double actionsWidth = widget.showDeleteAction ? 52.0 : 20.0;
+                      double actionsWidth = 32.0; // chevron (with padding)
+                      
                       if (widget.isInteractive) {
-                        if (isCompleted) {
-                          actionsWidth = 52.0;
-                        } else {
-                          actionsWidth = widget.showDeleteAction ? 84.0 : 52.0;
-                        }
+                        actionsWidth += 32.0; // refresh button
+                      }
+                      
+                      if (widget.showEditAction && !widget.showCompletionStatus && !isCompleted) {
+                        actionsWidth += 32.0; // edit button
+                      }
+                      
+                      if (widget.showDeleteAction && (!widget.isInteractive || !isCompleted)) {
+                        actionsWidth += 32.0; // delete button
                       }
 
                       final totalEstimatedWidth = nameWidth + actionsWidth + 32.0;
@@ -293,6 +301,23 @@ class _TaskCardState extends State<TaskCard> {
                               ),
                             ),
                           ],
+                          if (widget.showEditAction && !widget.showCompletionStatus && !isCompleted)
+                            GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AddTaskDialog(task: widget.task),
+                                );
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: const Tooltip(
+                                message: 'Edit Task',
+                                child: Padding(
+                                  padding: EdgeInsets.all(6.0),
+                                  child: Icon(Icons.edit_outlined, color: Colors.grey, size: 20),
+                                ),
+                              ),
+                            ),
                           if (widget.showDeleteAction && (!widget.isInteractive || !isCompleted))
                             GestureDetector(
                               onTap: _deleteTask,
