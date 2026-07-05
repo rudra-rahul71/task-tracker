@@ -96,18 +96,19 @@ class TaskRepository {
     await _taskCollection.save(task, '');
   }
 
-  Future<void> updateTask(TaskModel task) async {
-    // To fetch the old status, we query for this task by ID
-    String? oldStatus;
-    try {
-      final existingTasks = await _taskCollection.watch(
-        filters: [QueryFilter.eq('id', task.id)],
-      ).first;
-      if (existingTasks.isNotEmpty) {
-        oldStatus = existingTasks.first.status;
+  Future<void> updateTask(TaskModel task, {String? oldStatus}) async {
+    // To fetch the old status, we query for this task by ID if not provided
+    if (oldStatus == null) {
+      try {
+        final existingTasks = await _taskCollection.watch(
+          filters: [QueryFilter.eq('id', task.id)],
+        ).first;
+        if (existingTasks.isNotEmpty) {
+          oldStatus = existingTasks.first.status;
+        }
+      } catch (e) {
+        debugPrint('Error fetching task for status check: $e');
       }
-    } catch (e) {
-      debugPrint('Error fetching task for status check: $e');
     }
 
     await _taskCollection.save(task, task.id);

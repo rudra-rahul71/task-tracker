@@ -12,6 +12,7 @@ class TaskCard extends StatefulWidget {
   final TaskRepository repository;
   final bool isInteractive;
   final bool showCompletionStatus;
+  final bool showDeleteAction;
 
   const TaskCard({
     super.key,
@@ -20,6 +21,7 @@ class TaskCard extends StatefulWidget {
     required this.repository,
     this.isInteractive = true,
     this.showCompletionStatus = true,
+    this.showDeleteAction = true,
   });
 
   @override
@@ -99,7 +101,7 @@ class _TaskCardState extends State<TaskCard> {
       steps: updatedSteps,
       status: newStatus,
     );
-    await widget.repository.updateTask(updatedTask);
+    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
   }
 
   void _resetTask() async {
@@ -119,7 +121,7 @@ class _TaskCardState extends State<TaskCard> {
     );
 
     try {
-      await widget.repository.updateTask(updatedTask);
+      await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
       if (mounted) {
         SnackbarService(context).showSuccessSnackbar(
           message: 'Task "${widget.task.name}" checklist reset.',
@@ -143,7 +145,7 @@ class _TaskCardState extends State<TaskCard> {
     );
 
     try {
-      await widget.repository.updateTask(updatedTask);
+      await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
       if (mounted) {
         SnackbarService(context).showSuccessSnackbar(
           message: '🏆 Task "${widget.task.name}" completed!',
@@ -240,9 +242,13 @@ class _TaskCardState extends State<TaskCard> {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final double nameWidth = widget.task.name.length * 11.0;
-                      double actionsWidth = 52.0; // non-interactive size (delete + spacing + chevron)
+                      double actionsWidth = widget.showDeleteAction ? 52.0 : 20.0;
                       if (widget.isInteractive) {
-                        actionsWidth = isCompleted ? 88.0 : 84.0;
+                        if (isCompleted) {
+                          actionsWidth = 52.0;
+                        } else {
+                          actionsWidth = widget.showDeleteAction ? 84.0 : 52.0;
+                        }
                       }
 
                       final totalEstimatedWidth = nameWidth + actionsWidth + 32.0;
@@ -275,48 +281,19 @@ class _TaskCardState extends State<TaskCard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (widget.isInteractive) ...[
-                            if (isCompleted) ...[
-                              GestureDetector(
-                                onTap: _resetTask,
-                                behavior: HitTestBehavior.opaque,
-                                child: const Tooltip(
-                                  message: 'Reset Task',
-                                  child: Padding(
-                                    padding: EdgeInsets.all(6.0),
-                                    child: Icon(Icons.refresh, color: Colors.grey, size: 20),
-                                  ),
+                            GestureDetector(
+                              onTap: _resetTask,
+                              behavior: HitTestBehavior.opaque,
+                              child: Tooltip(
+                                message: isCompleted ? 'Reset Task' : 'Reset Checklist',
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: Icon(Icons.refresh, color: Colors.grey, size: isCompleted ? 20 : 18),
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              const Padding(
-                                padding: EdgeInsets.all(6.0),
-                                child: Icon(Icons.check_circle, color: Colors.grey, size: 24),
-                              ),
-                            ] else ...[
-                              GestureDetector(
-                                onTap: _resetTask,
-                                behavior: HitTestBehavior.opaque,
-                                child: const Tooltip(
-                                  message: 'Reset Checklist',
-                                  child: Padding(
-                                    padding: EdgeInsets.all(6.0),
-                                    child: Icon(Icons.refresh, color: Colors.grey, size: 18),
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: _deleteTask,
-                                behavior: HitTestBehavior.opaque,
-                                child: const Tooltip(
-                                  message: 'Delete Task',
-                                  child: Padding(
-                                    padding: EdgeInsets.all(6.0),
-                                    child: Icon(Icons.delete_outline, color: Colors.grey, size: 20),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ] else ...[
+                            ),
+                          ],
+                          if (widget.showDeleteAction && (!widget.isInteractive || !isCompleted))
                             GestureDetector(
                               onTap: _deleteTask,
                               behavior: HitTestBehavior.opaque,
@@ -328,7 +305,6 @@ class _TaskCardState extends State<TaskCard> {
                                 ),
                               ),
                             ),
-                          ],
                           GestureDetector(
                             onTap: () {
                               // ExpansionTile handles expand/collapse internally on header tap,

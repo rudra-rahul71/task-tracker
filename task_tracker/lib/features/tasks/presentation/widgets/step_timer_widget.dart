@@ -83,7 +83,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
     );
 
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask);
+    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
   }
 
   void _toggleTimer() async {
@@ -113,7 +113,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
     updatedSteps[widget.stepIndex] = newStep;
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask);
+    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
   }
 
   void _extendTimer() async {
@@ -135,7 +135,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
     updatedSteps[widget.stepIndex] = newStep;
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask);
+    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
   }
 
   void _confirmComplete() async {
@@ -151,7 +151,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
     updatedSteps[widget.stepIndex] = newStep;
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask);
+    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
   }
 
   void _restartTimer() async {
@@ -168,7 +168,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
     updatedSteps[widget.stepIndex] = newStep;
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask);
+    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
     
     if (mounted) {
       setState(() {

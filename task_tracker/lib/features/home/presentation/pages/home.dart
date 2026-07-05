@@ -998,7 +998,8 @@ class _HomePageState extends State<HomePage> {
                   groups: groups,
                   repository: _taskRepository,
                   isInteractive: isSelectedDayToday,
-                  showCompletionStatus: true,
+                  showCompletionStatus: isSelectedDayToday,
+                  showDeleteAction: false,
                 ),
               );
             }),
@@ -1031,7 +1032,8 @@ class _HomePageState extends State<HomePage> {
                   groups: groups,
                   repository: _taskRepository,
                   isInteractive: isSelectedDayToday,
-                  showCompletionStatus: true,
+                  showCompletionStatus: isSelectedDayToday,
+                  showDeleteAction: false,
                 ),
               );
             }),
