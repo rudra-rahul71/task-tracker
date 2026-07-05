@@ -247,7 +247,10 @@ class _TaskCardState extends State<TaskCard> {
                       final double nameWidth = widget.task.name.length * 11.0;
                       double actionsWidth = 32.0; // chevron (with padding)
                       
-                      if (widget.isInteractive) {
+                      final bool hasAnyProgress = isCompleted || widget.task.steps.any((s) => s.isCompleted);
+                      final bool showResetAction = widget.isInteractive && hasAnyProgress;
+
+                      if (showResetAction) {
                         actionsWidth += 32.0; // refresh button
                       }
                       
@@ -288,7 +291,7 @@ class _TaskCardState extends State<TaskCard> {
                       final Widget actionsAndChevron = Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (widget.isInteractive) ...[
+                          if (showResetAction) ...[
                             GestureDetector(
                               onTap: _resetTask,
                               behavior: HitTestBehavior.opaque,
