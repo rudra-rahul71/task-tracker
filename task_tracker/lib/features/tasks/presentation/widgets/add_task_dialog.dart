@@ -33,6 +33,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   List<int> _selectedDays = [];
   int _dayOfMonth = 1;
   DateTime _startDate = DateTime.now();
+  DateTime _targetDate = DateTime.now();
 
   // Checklist steps
   final List<Map<String, dynamic>> _stepsList = [
@@ -59,6 +60,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
       if (widget.task!.schedule != null) {
         if (widget.task!.schedule!.type == 'none') {
           _scheduleSetting = 'none';
+          _targetDate = widget.task!.schedule!.startDate ?? DateTime.now();
         } else {
           _scheduleSetting = 'custom';
           _scheduleType = widget.task!.schedule!.type;
@@ -137,7 +139,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         startDate: _scheduleType == 'bi_weekly' ? _startDate : null,
       );
     } else if (_scheduleSetting == 'none') {
-      taskSchedule = TaskSchedule(type: 'none');
+      taskSchedule = TaskSchedule(type: 'none', startDate: _targetDate);
     }
     // Note: If scheduleSetting is 'inherit', task.schedule will remain null,
     // thereby letting the task inherit its group schedule during execution.
@@ -390,6 +392,37 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                               ),
                             ),
                           ),
+
+                          if (_scheduleSetting == 'none') ...[
+                            const SizedBox(height: 8),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Target Completion Date', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                              subtitle: Text(
+                                '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-${_targetDate.day.toString().padLeft(2, '0')}',
+                                style: const TextStyle(color: Colors.white, fontSize: 15),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.calendar_month, color: Theme.of(context).colorScheme.primary),
+                                    onPressed: () async {
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: _targetDate,
+                                        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                                        lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+                                      );
+                                      if (picked != null) {
+                                        setState(() => _targetDate = picked);
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
 
                           if (_scheduleSetting == 'custom') ...[
                             const SizedBox(height: 8),

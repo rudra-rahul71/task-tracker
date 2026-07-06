@@ -52,18 +52,22 @@ class _TasksPageState extends State<TasksPage> {
     final now = DateTime.now();
 
     // 1. Task has its own schedule
-    if (task.schedule != null && task.schedule!.type != 'none') {
-      return task.schedule!.isDueOnDate(now);
-    }
-
-    // 2. Task inherits its group schedule
-    if (task.groupId != null) {
-      final group = groups.firstWhere(
-        (g) => g.id == task.groupId,
-        orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()),
-      );
-      if (group.id.isNotEmpty && group.schedule != null && group.schedule!.type != 'none') {
-        return group.schedule!.isDueOnDate(now);
+    if (task.schedule != null) {
+      if (task.schedule!.type != 'none' || task.schedule!.startDate != null) {
+        return task.schedule!.isDueOnDate(now);
+      }
+    } else {
+      // 2. Task inherits its group schedule
+      if (task.groupId != null) {
+        final group = groups.firstWhere(
+          (g) => g.id == task.groupId,
+          orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()),
+        );
+        if (group.id.isNotEmpty && group.schedule != null) {
+          if (group.schedule!.type != 'none' || group.schedule!.startDate != null) {
+            return group.schedule!.isDueOnDate(now);
+          }
+        }
       }
     }
 

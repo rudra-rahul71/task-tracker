@@ -38,9 +38,15 @@ class TaskSchedule {
 
   // Checks if the schedule triggers on a given date
   bool isDueOnDate(DateTime date) {
-    if (type == 'none') return false;
-
     final normalizedDate = DateTime(date.year, date.month, date.day);
+
+    if (type == 'none') {
+      if (startDate != null) {
+        final normalizedStart = DateTime(startDate!.year, startDate!.month, startDate!.day);
+        return normalizedDate == normalizedStart;
+      }
+      return false;
+    }
 
     if (type == 'weekly') {
       return daysOfWeek.contains(normalizedDate.weekday);
@@ -49,7 +55,7 @@ class TaskSchedule {
     if (type == 'bi_weekly') {
       if (startDate == null) return false;
       final anchor = startDate!;
-      if (normalizedDate.isBefore(anchor)) return false;
+      if (normalizedDate.isBefore(DateTime(anchor.year, anchor.month, anchor.day))) return false;
 
       // Calculate difference in weeks between date and anchor
       final diffWeeks = (startOfWeek(normalizedDate).difference(startOfWeek(anchor)).inDays / 7).round();

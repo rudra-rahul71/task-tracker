@@ -123,17 +123,19 @@ class _HomePageState extends State<HomePage> {
     }
 
     // 1. Task has its own schedule
-    if (task.schedule != null && task.schedule!.type != 'none') {
-      return task.schedule!.isDueOnDate(date);
-    }
-
-    // 2. Task inherits its group schedule
-    if (task.groupId != null) {
-      final group = groupMap[task.groupId];
-      if (group != null &&
-          group.schedule != null &&
-          group.schedule!.type != 'none') {
-        return group.schedule!.isDueOnDate(date);
+    if (task.schedule != null) {
+      if (task.schedule!.type != 'none' || task.schedule!.startDate != null) {
+        return task.schedule!.isDueOnDate(date);
+      }
+    } else {
+      // 2. Task inherits its group schedule
+      if (task.groupId != null) {
+        final group = groupMap[task.groupId];
+        if (group != null && group.schedule != null) {
+          if (group.schedule!.type != 'none' || group.schedule!.startDate != null) {
+            return group.schedule!.isDueOnDate(date);
+          }
+        }
       }
     }
 
