@@ -408,11 +408,14 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                   IconButton(
                                     icon: Icon(Icons.calendar_month, color: Theme.of(context).colorScheme.primary),
                                     onPressed: () async {
+                                      final now = DateTime.now();
+                                      final today = DateTime(now.year, now.month, now.day);
+                                      final initialDate = _targetDate.isBefore(today) ? today : _targetDate;
                                       final picked = await showDatePicker(
                                         context: context,
-                                        initialDate: _targetDate,
-                                        firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                                        lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+                                        initialDate: initialDate,
+                                        firstDate: today,
+                                        lastDate: today.add(const Duration(days: 365 * 5)),
                                       );
                                       if (picked != null) {
                                         setState(() => _targetDate = picked);
@@ -496,11 +499,14 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 trailing: IconButton(
                                   icon: Icon(Icons.calendar_month, color: Theme.of(context).colorScheme.primary),
                                   onPressed: () async {
+                                    final now = DateTime.now();
+                                    final today = DateTime(now.year, now.month, now.day);
+                                    final initialDate = _startDate.isBefore(today) ? today : _startDate;
                                     final picked = await showDatePicker(
                                       context: context,
-                                      initialDate: _startDate,
-                                      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                                      initialDate: initialDate,
+                                      firstDate: today,
+                                      lastDate: today.add(const Duration(days: 365)),
                                     );
                                     if (picked != null) {
                                       setState(() => _startDate = picked);
