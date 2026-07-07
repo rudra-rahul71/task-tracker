@@ -134,7 +134,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     if (_scheduleSetting == 'custom') {
       taskSchedule = TaskSchedule(
         type: _scheduleType,
-        daysOfWeek: _scheduleType == 'monthly' ? [] : _selectedDays,
+        daysOfWeek: (_scheduleType == 'monthly' || _scheduleType == 'daily') ? [] : _selectedDays,
         dayOfMonth: _scheduleType == 'monthly' ? _dayOfMonth : 1,
         startDate: _scheduleType == 'bi_weekly' ? _startDate : null,
       );
@@ -442,6 +442,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                               dropdownColor: const Color(0xFF1E1E1E),
                               style: const TextStyle(color: Colors.white),
                               items: const [
+                                DropdownMenuItem(value: 'daily', child: Text('Daily', style: TextStyle(color: Colors.white))),
                                 DropdownMenuItem(value: 'weekly', child: Text('Weekly', style: TextStyle(color: Colors.white))),
                                 DropdownMenuItem(value: 'bi_weekly', child: Text('Bi-Weekly', style: TextStyle(color: Colors.white))),
                                 DropdownMenuItem(value: 'monthly', child: Text('Monthly', style: TextStyle(color: Colors.white))),

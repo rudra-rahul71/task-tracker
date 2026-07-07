@@ -48,6 +48,10 @@ class TaskSchedule {
       return false;
     }
 
+    if (type == 'daily') {
+      return true;
+    }
+
     if (type == 'weekly') {
       return daysOfWeek.contains(normalizedDate.weekday);
     }
@@ -80,6 +84,10 @@ class TaskSchedule {
 
     if (type == 'none') {
       return DateTime(1970); // Never resets automatically
+    }
+
+    if (type == 'daily') {
+      return normalizedDate;
     }
 
     if (type == 'weekly') {

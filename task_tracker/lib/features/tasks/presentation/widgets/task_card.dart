@@ -66,6 +66,9 @@ class _TaskCardState extends State<TaskCard> {
   }
 
   String _formatSchedule(dynamic schedule) {
+    if (schedule.type == 'daily') {
+      return 'Daily';
+    }
     if (schedule.type == 'weekly') {
       final days = (schedule.daysOfWeek as List<int>)
           .map((d) => _daysOfWeekNames[d - 1])
