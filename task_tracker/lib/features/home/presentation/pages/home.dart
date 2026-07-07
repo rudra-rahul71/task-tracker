@@ -125,6 +125,9 @@ class _HomePageState extends State<HomePage> {
     // 1. Task has its own schedule
     if (task.schedule != null) {
       if (task.schedule!.type != 'none' || task.schedule!.startDate != null) {
+        if (task.status == 'completed' && task.schedule!.type == 'none') {
+          return false; // Only show completed one-off tasks on the day they were completed
+        }
         return task.schedule!.isDueOnDate(date);
       }
     } else {
@@ -133,6 +136,9 @@ class _HomePageState extends State<HomePage> {
         final group = groupMap[task.groupId];
         if (group != null && group.schedule != null) {
           if (group.schedule!.type != 'none' || group.schedule!.startDate != null) {
+            if (task.status == 'completed' && group.schedule!.type == 'none') {
+              return false; // Only show completed one-off tasks on the day they were completed
+            }
             return group.schedule!.isDueOnDate(date);
           }
         }

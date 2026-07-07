@@ -81,6 +81,50 @@ class _TasksPageState extends State<TasksPage> {
     return task.status == 'pending' || completedToday;
   }
 
+  bool _isTaskRecurring(TaskModel task, List<TaskGroupModel> groups) {
+    if (task.schedule != null) {
+      return task.schedule!.type != 'none';
+    }
+    if (task.groupId != null) {
+      final group = groups.firstWhere(
+        (g) => g.id == task.groupId,
+        orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()),
+      );
+      if (group.id.isNotEmpty && group.schedule != null) {
+        return group.schedule!.type != 'none';
+      }
+    }
+    return false;
+  }
+
+  bool _isTaskOverdueOneOff(TaskModel task, List<TaskGroupModel> groups) {
+    if (task.status != 'pending') return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    if (task.schedule != null) {
+      if (task.schedule!.type == 'none' && task.schedule!.startDate != null) {
+        final sDate = task.schedule!.startDate!;
+        return DateTime(sDate.year, sDate.month, sDate.day).isBefore(today);
+      }
+      return false;
+    }
+    
+    if (task.groupId != null) {
+      final g = groups.firstWhere(
+        (g) => g.id == task.groupId,
+        orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()),
+      );
+      if (g.id.isNotEmpty && g.schedule != null) {
+        if (g.schedule!.type == 'none' && g.schedule!.startDate != null) {
+          final sDate = g.schedule!.startDate!;
+          return DateTime(sDate.year, sDate.month, sDate.day).isBefore(today);
+        }
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
@@ -188,6 +232,20 @@ class _TasksPageState extends State<TasksPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                ChoiceChip(
+                  label: const Text('Completed'),
+                  selected: _activeFilter == 'completed',
+                  onSelected: (selected) {
+                    if (selected) setState(() => _activeFilter = 'completed');
+                  },
+                  selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                  labelStyle: TextStyle(
+                    color: _activeFilter == 'completed'
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.grey[400],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -232,20 +290,63 @@ class _TasksPageState extends State<TasksPage> {
                         });
                       }
 
-                      // Apply filtering
+                      // Apply filtering and sorting
+                      
+                      // Sort helper
+                      int sortTasks(TaskModel a, TaskModel b) {
+                        bool aIsScheduled = false;
+                        DateTime? aStartDate;
+                        if (a.schedule != null) {
+                          aIsScheduled = a.schedule!.type != 'none';
+                          aStartDate = a.schedule!.startDate;
+                        } else if (a.groupId != null) {
+                          final g = groups.firstWhere((g) => g.id == a.groupId, orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()));
+                          if (g.id.isNotEmpty && g.schedule != null) {
+                            aIsScheduled = g.schedule!.type != 'none';
+                            aStartDate = g.schedule!.startDate;
+                          }
+                        }
+
+                        bool bIsScheduled = false;
+                        DateTime? bStartDate;
+                        if (b.schedule != null) {
+                          bIsScheduled = b.schedule!.type != 'none';
+                          bStartDate = b.schedule!.startDate;
+                        } else if (b.groupId != null) {
+                          final g = groups.firstWhere((g) => g.id == b.groupId, orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()));
+                          if (g.id.isNotEmpty && g.schedule != null) {
+                            bIsScheduled = g.schedule!.type != 'none';
+                            bStartDate = g.schedule!.startDate;
+                          }
+                        }
+
+                        if (aIsScheduled && !bIsScheduled) return -1;
+                        if (!aIsScheduled && bIsScheduled) return 1;
+
+                        if (!aIsScheduled && !bIsScheduled) {
+                          if (aStartDate != null && bStartDate != null) {
+                            return aStartDate.compareTo(bStartDate);
+                          }
+                          if (aStartDate != null) return -1;
+                          if (bStartDate != null) return 1;
+                        }
+                        
+                        return a.createdAt.compareTo(b.createdAt);
+                      }
+
+                      bool isCompletedToday(TaskModel t) {
+                        if (t.status != 'completed' || t.lastCompletedAt == null) return false;
+                        final now = DateTime.now();
+                        return t.lastCompletedAt!.year == now.year &&
+                               t.lastCompletedAt!.month == now.month &&
+                               t.lastCompletedAt!.day == now.day;
+                      }
+
                       if (_activeFilter == 'due') {
                         final dueTasks = tasks
                             .where((t) {
                               final isDue = _isTaskDueToday(t, groups);
-                              if (t.status == 'completed') {
-                                final now = DateTime.now();
-                                final completedToday = t.lastCompletedAt != null &&
-                                    t.lastCompletedAt!.year == now.year &&
-                                    t.lastCompletedAt!.month == now.month &&
-                                    t.lastCompletedAt!.day == now.day;
-                                return isDue && completedToday;
-                              }
-                              return isDue;
+                              return isDue && (t.status == 'pending' || isCompletedToday(t));
                             })
                             .toList();
 
@@ -256,17 +357,46 @@ class _TasksPageState extends State<TasksPage> {
                           isInteractive: true,
                           showCompletionStatus: true,
                         );
-                      } else if (_activeFilter == 'all') {
+                      } else if (_activeFilter == 'completed') {
+                        final completedTasks = tasks
+                            .where((t) => t.status == 'completed' && !_isTaskRecurring(t, groups))
+                            .toList();
+                        
+                        completedTasks.sort((a, b) {
+                          if (a.lastCompletedAt != null && b.lastCompletedAt != null) {
+                            return b.lastCompletedAt!.compareTo(a.lastCompletedAt!); // Descending
+                          }
+                          return 0;
+                        });
+
                         return _buildTaskList(
-                          tasks,
+                          completedTasks,
                           groups,
-                          'No tasks created yet!',
-                          isInteractive: false,
-                          showCompletionStatus: false,
+                          'No completed tasks yet!',
+                          isInteractive: true,
+                          showCompletionStatus: true,
                         );
                       } else {
-                        // Group sorting/categorizing
-                        return _buildGroupedTasksView(tasks, groups);
+                        // Filter out all completed one-off tasks for 'all' and 'group' views (they move to Completed tab)
+                        final allOrGroupTasks = tasks.where((t) {
+                          if (_isTaskRecurring(t, groups)) return true;
+                          return t.status == 'pending';
+                        }).toList();
+                        
+                        allOrGroupTasks.sort(sortTasks);
+
+                        if (_activeFilter == 'all') {
+                          return _buildTaskList(
+                            allOrGroupTasks,
+                            groups,
+                            'No tasks created yet!',
+                            isInteractive: false,
+                            showCompletionStatus: false,
+                          );
+                        } else {
+                          // Group sorting/categorizing
+                          return _buildGroupedTasksView(allOrGroupTasks, groups);
+                        }
                       }
                     },
                   );
@@ -277,6 +407,73 @@ class _TasksPageState extends State<TasksPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildTaskListLayout(List<TaskModel> tasks, List<TaskGroupModel> groups, bool isInteractive, bool showCompletionStatus) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 850) {
+      final leftList = <TaskModel>[];
+      final rightList = <TaskModel>[];
+      for (int i = 0; i < tasks.length; i++) {
+        if (i % 2 == 0) {
+          leftList.add(tasks[i]);
+        } else {
+          rightList.add(tasks[i]);
+        }
+      }
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              children: leftList
+                  .map((task) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: TaskCard(
+                          task: task,
+                          groups: groups,
+                          repository: _repository,
+                          isInteractive: isInteractive,
+                          showCompletionStatus: showCompletionStatus,
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              children: rightList
+                  .map((task) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: TaskCard(
+                          task: task,
+                          groups: groups,
+                          repository: _repository,
+                          isInteractive: isInteractive,
+                          showCompletionStatus: showCompletionStatus,
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return Column(
+        children: tasks.map((task) => Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: TaskCard(
+                task: task,
+                groups: groups,
+                repository: _repository,
+                isInteractive: isInteractive,
+                showCompletionStatus: showCompletionStatus,
+              ),
+            )).toList(),
+      );
+    }
   }
 
   Widget _buildTaskList(
@@ -315,75 +512,43 @@ class _TasksPageState extends State<TasksPage> {
       );
     }
 
-    final width = MediaQuery.of(context).size.width;
-    if (width >= 850) {
-      final leftList = <TaskModel>[];
-      final rightList = <TaskModel>[];
-      for (int i = 0; i < taskList.length; i++) {
-        if (i % 2 == 0) {
-          leftList.add(taskList[i]);
-        } else {
-          rightList.add(taskList[i]);
-        }
-      }
+    final upcoming = <TaskModel>[];
+    final overdue = <TaskModel>[];
 
-      return SingleChildScrollView(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                children: leftList
-                    .map((task) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: TaskCard(
-                            task: task,
-                            groups: groups,
-                            repository: _repository,
-                            isInteractive: isInteractive,
-                            showCompletionStatus: showCompletionStatus,
-                          ),
-                        ))
-                    .toList(),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                children: rightList
-                    .map((task) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: TaskCard(
-                            task: task,
-                            groups: groups,
-                            repository: _repository,
-                            isInteractive: isInteractive,
-                            showCompletionStatus: showCompletionStatus,
-                          ),
-                        ))
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      return ListView.builder(
-        itemCount: taskList.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: TaskCard(
-              task: taskList[index],
-              groups: groups,
-              repository: _repository,
-              isInteractive: isInteractive,
-              showCompletionStatus: showCompletionStatus,
-            ),
-          );
-        },
-      );
+    for (var t in taskList) {
+      if (_isTaskOverdueOneOff(t, groups)) {
+        overdue.add(t);
+      } else {
+        upcoming.add(t);
+      }
     }
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (overdue.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16.0),
+              child: Text(
+                'Overdue Tasks',
+                style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            _buildTaskListLayout(overdue, groups, true, true),
+          ],
+          
+          if (upcoming.isNotEmpty) ...[
+            if (overdue.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Divider(color: Colors.grey),
+              const SizedBox(height: 16),
+            ],
+            _buildTaskListLayout(upcoming, groups, isInteractive, showCompletionStatus),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildGroupedTasksView(List<TaskModel> allTasks, List<TaskGroupModel> groups) {
@@ -409,6 +574,17 @@ class _TasksPageState extends State<TasksPage> {
         ...groups.map((group) {
           final groupTasks = groupedMap[group.id] ?? [];
           final color = Color(group.colorValue);
+
+          final upcomingTasks = <TaskModel>[];
+          final overdueTasks = <TaskModel>[];
+
+          for (var t in groupTasks) {
+            if (_isTaskOverdueOneOff(t, groups)) {
+              overdueTasks.add(t);
+            } else {
+              upcomingTasks.add(t);
+            }
+          }
 
           return Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -440,20 +616,23 @@ class _TasksPageState extends State<TasksPage> {
                   )
                 else
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                     child: Column(
-                      children: groupTasks.map((task) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: TaskCard(
-                            task: task,
-                            groups: groups,
-                            repository: _repository,
-                            isInteractive: false,
-                            showCompletionStatus: false,
-                          ),
-                        );
-                      }).toList(),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ...upcomingTasks.map((task) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: TaskCard(
+                              task: task,
+                              groups: groups,
+                              repository: _repository,
+                              isInteractive: false,
+                              showCompletionStatus: false,
+                            ),
+                          );
+                        }).toList(),
+                      ],
                     ),
                   ),
               ],
@@ -463,45 +642,64 @@ class _TasksPageState extends State<TasksPage> {
 
         // 3. Print tasks without a group
         if (groupedMap.containsKey(null) && groupedMap[null]!.isNotEmpty) ...[
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              initiallyExpanded: true,
-              title: Row(
-                children: [
-                  const CircleAvatar(backgroundColor: Colors.grey, radius: 8),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Unassigned / General Tasks',
-                    style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16),
+          Builder(
+            builder: (context) {
+              final unassignedTasks = groupedMap[null]!;
+              final upcomingTasks = <TaskModel>[];
+              final overdueTasks = <TaskModel>[];
+
+              for (var t in unassignedTasks) {
+                if (_isTaskOverdueOneOff(t, groups)) {
+                  overdueTasks.add(t);
+                } else {
+                  upcomingTasks.add(t);
+                }
+              }
+
+              return Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  initiallyExpanded: true,
+                  title: Row(
+                    children: [
+                      const CircleAvatar(backgroundColor: Colors.grey, radius: 8),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Unassigned / General Tasks',
+                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '(${unassignedTasks.length})',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '(${groupedMap[null]!.length})',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                  ),
-                ],
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Column(
-                    children: groupedMap[null]!.map((task) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: TaskCard(
-                          task: task,
-                          groups: groups,
-                          repository: _repository,
-                          isInteractive: false,
-                          showCompletionStatus: false,
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ...upcomingTasks.map((task) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0),
+                              child: TaskCard(
+                                task: task,
+                                groups: groups,
+                                repository: _repository,
+                                isInteractive: false,
+                                showCompletionStatus: false,
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            }
           ),
         ],
       ],
