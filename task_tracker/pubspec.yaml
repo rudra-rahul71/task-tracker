@@ -32,11 +32,8 @@ dependencies:
     sdk: flutter
 
   go_router: ^16.3.0
-  firebase_core: ^4.2.1
-  firebase_auth: ^6.1.2
-  cloud_firestore: ^6.4.1
   get_it: ^9.0.5
-  dynamic_backend_bridge: ^0.0.2
+  dynamic_backend_bridge: ^0.0.3
 
 dev_dependencies:
   flutter_test:

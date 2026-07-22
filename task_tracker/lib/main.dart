@@ -1,4 +1,3 @@
-import 'package:task_tracker/firebase_options.dart';
 import 'package:task_tracker/features/account/presentation/pages/account.dart';
 import 'package:task_tracker/features/auth/presentation/pages/sign_in.dart';
 import 'package:task_tracker/features/auth/presentation/pages/hosting_wizard_page.dart';
@@ -12,6 +11,7 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
+import 'package:task_tracker/core/config/app_environment.dart';
 import 'features/splash/presentation/pages/splash.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 
@@ -39,6 +39,16 @@ void setupAuthListener() {
   }
 }
 
+Future<void> initializeBackend(AppConfig config) async {
+  await DynamicBackendBridge.initialize(
+    config: config,
+    getIt: getIt,
+    defaultSupabaseUrl: AppEnvironment.defaultSupabaseUrl,
+    defaultSupabaseAnonKey: AppEnvironment.defaultSupabaseAnonKey,
+  );
+  setupLocator();
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -49,12 +59,7 @@ Future<void> main() async {
 
   if (savedConfig != null) {
     try {
-      await DynamicBackendBridge.initialize(
-        config: savedConfig,
-        getIt: getIt,
-        defaultFirebaseOptions: DefaultFirebaseOptions.currentPlatform,
-      );
-      setupLocator(); // Refresh repository instances to bind to the newly initialized backend
+      await initializeBackend(savedConfig);
       configNotifier.value = savedConfig;
       setupAuthListener();
     } catch (e) {

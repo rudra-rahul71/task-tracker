@@ -64,8 +64,8 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         } else {
           _scheduleSetting = 'custom';
           _scheduleType = widget.task!.schedule!.type;
-          _selectedDays = List<int>.from(widget.task!.schedule!.daysOfWeek ?? []);
-          _dayOfMonth = widget.task!.schedule!.dayOfMonth ?? 1;
+          _selectedDays = List<int>.from(widget.task!.schedule!.daysOfWeek);
+          _dayOfMonth = widget.task!.schedule!.dayOfMonth;
           _startDate = widget.task!.schedule!.startDate ?? DateTime.now();
         }
       } else if (widget.task!.groupId != null) {
