@@ -33,12 +33,16 @@ class TaskRepository {
   // --- GROUPS ---
 
   Stream<List<TaskGroupModel>> getGroups(String userId) {
-    return _groupCollection.watch(
-      filters: [QueryFilter.eq('userId', userId)],
-    ).map((groups) {
-      groups.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-      return groups;
-    });
+    return _groupCollection
+        .watch(filters: [QueryFilter.eq('userId', userId)])
+        .map((groups) {
+          groups.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          return groups;
+        })
+        .handleError((error, stackTrace) {
+          debugPrint('Error loading task groups stream: $error');
+          return <TaskGroupModel>[];
+        });
   }
 
   Future<void> addGroup(TaskGroupModel group) async {
@@ -84,12 +88,16 @@ class TaskRepository {
   // --- TASKS ---
 
   Stream<List<TaskModel>> getTasks(String userId) {
-    return _taskCollection.watch(
-      filters: [QueryFilter.eq('userId', userId)],
-    ).map((tasks) {
-      tasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return tasks;
-    });
+    return _taskCollection
+        .watch(filters: [QueryFilter.eq('userId', userId)])
+        .map((tasks) {
+          tasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return tasks;
+        })
+        .handleError((error, stackTrace) {
+          debugPrint('Error loading tasks stream: $error');
+          return <TaskModel>[];
+        });
   }
 
   Future<void> addTask(TaskModel task) async {
@@ -172,13 +180,18 @@ class TaskRepository {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 1).subtract(const Duration(microseconds: 1));
 
-    return _historyCollection.watch(
-      filters: [QueryFilter.eq('userId', userId)],
-    ).map((history) {
-      // Filter date range client side for simplicity across database drivers
-      return history.where((h) => h.date.isAfter(start.subtract(const Duration(microseconds: 1))) && h.date.isBefore(end.add(const Duration(microseconds: 1)))).toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
-    });
+    return _historyCollection
+        .watch(filters: [QueryFilter.eq('userId', userId)])
+        .map((history) {
+          return history
+              .where((h) => h.date.isAfter(start.subtract(const Duration(microseconds: 1))) && h.date.isBefore(end.add(const Duration(microseconds: 1))))
+              .toList()
+            ..sort((a, b) => b.date.compareTo(a.date));
+        })
+        .handleError((error, stackTrace) {
+          debugPrint('Error loading task history stream: $error');
+          return <TaskHistoryModel>[];
+        });
   }
 
   // Scan and reset tasks if they have crossed into a new scheduling cycle
