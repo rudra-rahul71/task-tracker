@@ -7,28 +7,28 @@ import 'package:task_tracker/features/tasks/data/models/task_history.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 
 class TaskRepository {
-  final DatabaseRepository _repo = GetIt.instance<DatabaseRepository>();
+  DatabaseRepository get _repo => GetIt.instance<DatabaseRepository>();
 
-  late final _groupCollection = TypedCollection<TaskGroupModel>(
-    repo: _repo,
-    collectionName: 'task_groups',
-    toMap: (group) => group.toMap(),
-    fromMap: (map, id) => TaskGroupModel.fromMap(map, id),
-  );
+  TypedCollection<TaskGroupModel> get _groupCollection => TypedCollection<TaskGroupModel>(
+        repo: _repo,
+        collectionName: 'task_groups',
+        toMap: (group) => group.toMap(),
+        fromMap: (map, id) => TaskGroupModel.fromMap(map, id),
+      );
 
-  late final _taskCollection = TypedCollection<TaskModel>(
-    repo: _repo,
-    collectionName: 'tasks',
-    toMap: (task) => task.toMap(),
-    fromMap: (map, id) => TaskModel.fromMap(map, id),
-  );
+  TypedCollection<TaskModel> get _taskCollection => TypedCollection<TaskModel>(
+        repo: _repo,
+        collectionName: 'tasks',
+        toMap: (task) => task.toMap(),
+        fromMap: (map, id) => TaskModel.fromMap(map, id),
+      );
 
-  late final _historyCollection = TypedCollection<TaskHistoryModel>(
-    repo: _repo,
-    collectionName: 'task_history',
-    toMap: (history) => history.toMap(),
-    fromMap: (map, id) => TaskHistoryModel.fromMap(map, id),
-  );
+  TypedCollection<TaskHistoryModel> get _historyCollection => TypedCollection<TaskHistoryModel>(
+        repo: _repo,
+        collectionName: 'task_history',
+        toMap: (history) => history.toMap(),
+        fromMap: (map, id) => TaskHistoryModel.fromMap(map, id),
+      );
 
   // --- GROUPS ---
 
@@ -59,9 +59,9 @@ class TaskRepository {
 
     // Also clear the groupId reference for all tasks in this group
     try {
-      final tasks = await _taskCollection.watch(
+      final tasks = await _taskCollection.fetch(
         filters: [QueryFilter.eq('userId', userId)],
-      ).first;
+      );
 
       final tasksToUpdate = tasks.where((t) => t.groupId == groupId).toList();
       for (var task in tasksToUpdate) {
@@ -108,9 +108,9 @@ class TaskRepository {
     // To fetch the old status, we query for this task by ID if not provided
     if (oldStatus == null) {
       try {
-        final existingTasks = await _taskCollection.watch(
+        final existingTasks = await _taskCollection.fetch(
           filters: [QueryFilter.eq('id', task.id)],
-        ).first;
+        );
         if (existingTasks.isNotEmpty) {
           oldStatus = existingTasks.first.status;
         }
@@ -139,9 +139,9 @@ class TaskRepository {
     } else if (task.status == 'pending' && oldStatus == 'completed') {
       // 2. Task went from completed to pending (reset/uncompleted). Delete history for today
       try {
-        final history = await _historyCollection.watch(
+        final history = await _historyCollection.fetch(
           filters: [QueryFilter.eq('taskId', task.id)],
-        ).first;
+        );
 
         final todayHistory = history.where((h) {
           final hDate = DateTime(h.date.year, h.date.month, h.date.day);
@@ -163,9 +163,9 @@ class TaskRepository {
 
     // 2. Delete history docs
     try {
-      final history = await _historyCollection.watch(
+      final history = await _historyCollection.fetch(
         filters: [QueryFilter.eq('taskId', taskId)],
-      ).first;
+      );
 
       for (var doc in history) {
         await _historyCollection.delete(doc.id);

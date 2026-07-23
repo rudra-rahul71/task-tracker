@@ -30,9 +30,9 @@ CREATE TABLE IF NOT EXISTS public.tasks (
 CREATE TABLE IF NOT EXISTS public.task_history (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     "userId" TEXT NOT NULL DEFAULT (auth.uid()::text),
-    "taskId" TEXT NOT NULL,
+    "taskId" TEXT NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
     "taskName" TEXT NOT NULL,
-    "groupId" TEXT,
+    "groupId" TEXT REFERENCES public.task_groups(id) ON DELETE SET NULL,
     date TIMESTAMPTZ NOT NULL,
     type TEXT NOT NULL DEFAULT 'completion',
     "completedSteps" JSONB NOT NULL DEFAULT '[]'::jsonb
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.trackers (
 CREATE TABLE IF NOT EXISTS public.tracker_history (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     "userId" TEXT NOT NULL DEFAULT (auth.uid()::text),
-    "trackerId" TEXT NOT NULL,
+    "trackerId" TEXT NOT NULL REFERENCES public.trackers(id) ON DELETE CASCADE,
     "trackerName" TEXT NOT NULL,
     "trackerType" TEXT NOT NULL DEFAULT 'maintain',
     date TIMESTAMPTZ NOT NULL,

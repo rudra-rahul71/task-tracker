@@ -5,21 +5,21 @@ import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker_history.dart';
 
 class TrackerRepository {
-  final DatabaseRepository _repo = GetIt.instance<DatabaseRepository>();
+  DatabaseRepository get _repo => GetIt.instance<DatabaseRepository>();
 
-  late final _trackerCollection = TypedCollection<TrackerModel>(
-    repo: _repo,
-    collectionName: 'trackers',
-    toMap: (tracker) => tracker.toMap(),
-    fromMap: (map, id) => TrackerModel.fromMap(map, id),
-  );
+  TypedCollection<TrackerModel> get _trackerCollection => TypedCollection<TrackerModel>(
+        repo: _repo,
+        collectionName: 'trackers',
+        toMap: (tracker) => tracker.toMap(),
+        fromMap: (map, id) => TrackerModel.fromMap(map, id),
+      );
 
-  late final _historyCollection = TypedCollection<TrackerHistoryModel>(
-    repo: _repo,
-    collectionName: 'tracker_history',
-    toMap: (history) => history.toMap(),
-    fromMap: (map, id) => TrackerHistoryModel.fromMap(map, id),
-  );
+  TypedCollection<TrackerHistoryModel> get _historyCollection => TypedCollection<TrackerHistoryModel>(
+        repo: _repo,
+        collectionName: 'tracker_history',
+        toMap: (history) => history.toMap(),
+        fromMap: (map, id) => TrackerHistoryModel.fromMap(map, id),
+      );
 
   // Stream of trackers for a specific user, sorted by creation date
   Stream<List<TrackerModel>> getTrackers(String userId) {
@@ -93,9 +93,9 @@ class TrackerRepository {
 
     // 2. Fetch and delete history records for this tracker
     try {
-      final history = await _historyCollection.watch(
+      final history = await _historyCollection.fetch(
         filters: [QueryFilter.eq('trackerId', trackerId)],
-      ).first;
+      );
 
       for (final doc in history) {
         await _historyCollection.delete(doc.id);
