@@ -44,6 +44,7 @@ class TrackerRepository {
     final today = DateTime(now.year, now.month, now.day);
     
     final completedDates = List<DateTime>.from(tracker.completedDates);
+    final List<TrackerHistoryModel> backfilledHistory = [];
     
     // If it is a maintain habit and was started in the past, backfill completion entries
     if (tracker.type == 'maintain' && start.isBefore(today)) {
@@ -53,16 +54,17 @@ class TrackerRepository {
           completedDates.add(current);
         }
         
-        final historyRecord = TrackerHistoryModel(
-          id: '',
-          userId: tracker.userId,
-          trackerId: trackerId,
-          trackerName: tracker.name,
-          trackerType: tracker.type,
-          date: current,
-          type: 'completion',
+        backfilledHistory.add(
+          TrackerHistoryModel(
+            id: '',
+            userId: tracker.userId,
+            trackerId: trackerId,
+            trackerName: tracker.name,
+            trackerType: tracker.type,
+            date: current,
+            type: 'completion',
+          ),
         );
-        await _historyCollection.save(historyRecord, '');
         
         current = current.add(const Duration(days: 1));
       }
@@ -83,7 +85,13 @@ class TrackerRepository {
       originalStartDate: originalStart,
     );
     
+    // Save tracker first so foreign key constraint in tracker_history (trackerId -> trackers.id) is satisfied
     await _trackerCollection.save(updatedTracker, trackerId);
+
+    // Save backfilled history records after the tracker exists in the database
+    for (final historyRecord in backfilledHistory) {
+      await _historyCollection.save(historyRecord, '');
+    }
   }
 
   // Delete an existing tracker and its associated history records

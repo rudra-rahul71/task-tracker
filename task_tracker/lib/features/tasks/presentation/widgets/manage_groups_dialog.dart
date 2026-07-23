@@ -1,4 +1,4 @@
-import 'package:get_it/get_it.dart';
+import 'dart:async';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
@@ -7,6 +7,21 @@ import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
+
+enum GroupPresetColor {
+  gold(0xFFD4AF37),
+  coral(0xFFEF5350),
+  emerald(0xFF26A69A),
+  blue(0xFF42A5F5),
+  purple(0xFFAB47BC),
+  rose(0xFFEC407A),
+  orange(0xFFFF7043);
+
+  final int value;
+  const GroupPresetColor(this.value);
+
+  Color get color => Color(value);
+}
 
 class ManageGroupsDialog extends StatefulWidget {
   const ManageGroupsDialog({super.key});
@@ -19,8 +34,10 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
   final _repository = getIt<TaskRepository>();
   final _formKey = GlobalKey<FormState>();
 
+  String? get _userId => getIt<AuthRepository>().currentUser?.uid;
+
   String _name = '';
-  int _selectedColor = 0xFFD4AF37; // Default gold
+  int _selectedColor = GroupPresetColor.gold.value; // Default gold
 
   // Schedule fields
   bool _hasSchedule = false;
@@ -30,16 +47,30 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
   DateTime _startDate = DateTime.now();
 
   bool _isLoading = false;
+  List<TaskGroupModel>? _groups;
+  StreamSubscription<List<TaskGroupModel>>? _groupsSubscription;
 
-  final List<int> _presetColors = const [
-    0xFFD4AF37, // Gold
-    0xFFEF5350, // Coral/Red
-    0xFF26A69A, // Emerald/Green
-    0xFF42A5F5, // Blue
-    0xFFAB47BC, // Purple
-    0xFFEC407A, // Rose/Pink
-    0xFFFF7043, // Orange
-  ];
+  @override
+  void initState() {
+    super.initState();
+    final userId = _userId;
+    if (userId != null) {
+      _groupsSubscription = _repository.getGroups(userId).listen((groups) {
+        if (mounted) {
+          setState(() {
+            _groups = groups;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _groupsSubscription?.cancel();
+    super.dispose();
+  }
+
 
   final List<String> _daysOfWeekNames = const [
     'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
@@ -49,7 +80,7 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
+    final userId = _userId;
     if (userId == null) return;
 
     setState(() {
@@ -80,7 +111,7 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
       _formKey.currentState!.reset();
       setState(() {
         _name = '';
-        _selectedColor = 0xFFD4AF37;
+        _selectedColor = GroupPresetColor.gold.value;
         _hasSchedule = false;
         _selectedDays = [];
         _dayOfMonth = 1;
@@ -101,7 +132,7 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
   }
 
   void _deleteGroup(String groupId) async {
-    final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
+    final userId = _userId;
     if (userId == null) return;
 
     final confirm = await showDialog<bool>(
@@ -152,7 +183,7 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
+    final userId = _userId;
     if (userId == null) return const SizedBox.shrink();
 
     return Dialog(
@@ -195,13 +226,12 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                 // Existing groups list
                 Expanded(
                   flex: 3,
-                  child: StreamBuilder<List<TaskGroupModel>>(
-                    stream: _repository.getGroups(userId),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                  child: Builder(
+                    builder: (context) {
+                      if (_groups == null) {
                         return const Center(child: CircularProgressIndicator());
                       }
-                      final groups = snapshot.data ?? [];
+                      final groups = _groups!;
                       if (groups.isEmpty) {
                         return Center(
                           child: Text(
@@ -278,12 +308,12 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: _presetColors.map((colorVal) {
-                              final isSelected = _selectedColor == colorVal;
+                            children: GroupPresetColor.values.map((preset) {
+                              final isSelected = _selectedColor == preset.value;
                               return GestureDetector(
-                                onTap: () => setState(() => _selectedColor = colorVal),
+                                onTap: () => setState(() => _selectedColor = preset.value),
                                 child: CircleAvatar(
-                                  backgroundColor: Color(colorVal),
+                                  backgroundColor: preset.color,
                                   radius: 16,
                                   child: isSelected
                                       ? const Icon(Icons.check, color: Colors.black, size: 20)

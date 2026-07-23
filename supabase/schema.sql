@@ -122,6 +122,3 @@ alter table public.tasks replica identity full;
 alter table public.task_history replica identity full;
 alter table public.trackers replica identity full;
 alter table public.tracker_history replica identity full;
-
-
-
