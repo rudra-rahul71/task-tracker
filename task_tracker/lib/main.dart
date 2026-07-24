@@ -51,10 +51,10 @@ Future<void> initializeBackend(AppConfig config) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   final configService = ConfigService();
   final savedConfig = await configService.getSavedConfig();
-  
+
   setupLocator();
 
   if (savedConfig != null) {
@@ -157,9 +157,7 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/hosting-wizard',
       builder: (BuildContext context, GoRouterState state) {
-        return HostingWizardPage(
-          configService: getIt<ConfigService>(),
-        );
+        return HostingWizardPage(configService: getIt<ConfigService>());
       },
     ),
     GoRoute(
@@ -169,11 +167,14 @@ final GoRouter _router = GoRouter(
       },
     ),
     StatefulShellRoute.indexedStack(
-      builder: (BuildContext context, GoRouterState state, StatefulNavigationShell navigationShell) {
-        return NavigatorScafold(
-          navigationShell: navigationShell,
-        );
-      },
+      builder:
+          (
+            BuildContext context,
+            GoRouterState state,
+            StatefulNavigationShell navigationShell,
+          ) {
+            return NavigatorScafold(navigationShell: navigationShell);
+          },
       branches: [
         StatefulShellBranch(
           routes: [
