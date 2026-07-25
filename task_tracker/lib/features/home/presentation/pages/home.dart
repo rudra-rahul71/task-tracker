@@ -722,9 +722,6 @@ class _HomePageState extends State<HomePage> {
                                               ? Colors.black
                                               : Colors.white)
                                         : textColor,
-                                    decoration: isCompleted
-                                        ? TextDecoration.lineThrough
-                                        : null,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
