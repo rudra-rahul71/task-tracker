@@ -79,17 +79,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFD4AF37), // Gold seed color
-        brightness: Brightness.dark,
-        primary: const Color(0xFFD4AF37), // Darker yellow / Gold accent
-        onPrimary: Colors.black,
-        secondary: const Color(0xFFE5A93C),
-        surface: const Color(0xFF1E1E1E),
-        onSurface: Colors.white,
-      ),
+    final theme = AppTheme.build(
+      primarySeed: const Color(0xFFD4AF37),
+      primary: const Color(0xFFD4AF37),
+      onPrimary: Colors.black,
+      secondary: const Color(0xFFE5A93C),
+      surface: const Color(0xFF1E1E1E),
+      onSurface: Colors.white,
       scaffoldBackgroundColor: const Color(0xFF121212),
     );
 

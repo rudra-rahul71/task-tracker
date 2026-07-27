@@ -24,7 +24,6 @@ class SignInPage extends StatelessWidget {
           );
         },
       ),
-      themeColor: theme.colorScheme.primary,
       onSignInSuccess: () {
         context.go('/home');
       },

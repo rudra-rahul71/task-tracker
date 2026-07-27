@@ -19,7 +19,6 @@ class HostingWizardPage extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: HostingWizard(
-          themeColor: Theme.of(context).colorScheme.primary,
           configService: configService,
           onValidate: (AppConfig config) async {
             try {

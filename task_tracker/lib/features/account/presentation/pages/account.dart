@@ -7,10 +7,7 @@ class AccountPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return DynamicProfilePage(
-      themeColor: theme.colorScheme.primary,
       onSignOutSuccess: () {
         context.go('/auth/sign-in');
       },
