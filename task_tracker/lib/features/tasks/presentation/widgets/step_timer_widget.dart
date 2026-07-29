@@ -74,8 +74,9 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
   void _triggerExpirationInFirestore() async {
     // Avoid double updates
     if (widget.step.timerPausedAt == null &&
-        widget.step.timerSecondsRemaining == 0)
+        widget.step.timerSecondsRemaining == 0) {
       return;
+    }
 
     final updatedSteps = List<TaskStep>.from(widget.task.steps);
     final currentStep = updatedSteps[widget.stepIndex];

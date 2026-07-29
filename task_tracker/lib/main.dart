@@ -45,6 +45,7 @@ Future<void> initializeBackend(AppConfig config) async {
     getIt: getIt,
     defaultSupabaseUrl: AppEnvironment.defaultSupabaseUrl,
     defaultSupabaseAnonKey: AppEnvironment.defaultSupabaseAnonKey,
+    dbSchema: 'task_tracker',
   );
   setupLocator();
 }

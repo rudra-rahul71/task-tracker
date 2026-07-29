@@ -402,8 +402,9 @@ class _TasksPageState extends State<TasksPage> {
 
                       bool isCompletedToday(TaskModel t) {
                         if (t.status != 'completed' ||
-                            t.lastCompletedAt == null)
+                            t.lastCompletedAt == null) {
                           return false;
+                        }
                         final now = DateTime.now();
                         return t.lastCompletedAt!.year == now.year &&
                             t.lastCompletedAt!.month == now.month &&

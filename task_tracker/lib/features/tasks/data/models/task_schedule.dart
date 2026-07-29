@@ -69,8 +69,9 @@ class TaskSchedule {
       final anchor = startDate!;
       if (normalizedDate.isBefore(
         DateTime(anchor.year, anchor.month, anchor.day),
-      ))
+      )) {
         return false;
+      }
 
       // Calculate difference in weeks between date and anchor
       final diffWeeks =
