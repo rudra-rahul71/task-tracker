@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
+import 'package:task_tracker/features/trackers/presentation/widgets/add_tracker_dialog.dart';
 
 class TrackerCard extends StatelessWidget {
   final TrackerModel tracker;
@@ -162,6 +163,21 @@ class TrackerCard extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        color: Colors.grey,
+                        size: 22,
+                      ),
+                      tooltip: 'Edit tracker',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) =>
+                              AddTrackerDialog(trackerToEdit: tracker),
+                        );
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(
                         Icons.delete_outline,

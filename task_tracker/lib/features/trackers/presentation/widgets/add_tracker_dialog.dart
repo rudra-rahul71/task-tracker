@@ -7,7 +7,8 @@ import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
 
 class AddTrackerDialog extends StatefulWidget {
-  const AddTrackerDialog({super.key});
+  final TrackerModel? trackerToEdit;
+  const AddTrackerDialog({super.key, this.trackerToEdit});
 
   @override
   State<AddTrackerDialog> createState() => _AddTrackerDialogState();
@@ -20,7 +21,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
   String _name = '';
   String _type = 'maintain'; // 'maintain' or 'quit'
   String _durationType = 'indefinite'; // 'indefinite' or 'set_time'
-  final String _measurementUnit = 'days'; // 'days' only
+  String _measurementUnit = 'days'; // 'days' only
   int? _durationValue;
   bool _isLoading = false;
   DateTime _startDate = DateTime(
@@ -28,6 +29,19 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
     DateTime.now().month,
     DateTime.now().day,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.trackerToEdit != null) {
+      _name = widget.trackerToEdit!.name;
+      _type = widget.trackerToEdit!.type;
+      _durationType = widget.trackerToEdit!.durationType;
+      _measurementUnit = widget.trackerToEdit!.measurementUnit;
+      _durationValue = widget.trackerToEdit!.durationValue;
+      _startDate = widget.trackerToEdit!.startDate;
+    }
+  }
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -57,8 +71,9 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
       endDate = start.add(Duration(days: _durationValue!));
     }
 
+    final isEditing = widget.trackerToEdit != null;
     final tracker = TrackerModel(
-      id: '',
+      id: isEditing ? widget.trackerToEdit!.id : '',
       userId: user.uid,
       name: _name,
       type: _type,
@@ -67,21 +82,33 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
       durationValue: _durationValue,
       startDate: start,
       endDate: endDate,
-      createdAt: now,
-      originalStartDate: start,
+      createdAt: isEditing ? widget.trackerToEdit!.createdAt : now,
+      originalStartDate: isEditing
+          ? (start.isBefore(widget.trackerToEdit!.originalStartDate) ||
+                  widget.trackerToEdit!.startDate.isAtSameMomentAs(widget.trackerToEdit!.originalStartDate)
+              ? start
+              : widget.trackerToEdit!.originalStartDate)
+          : start,
+      completedDates: isEditing
+          ? widget.trackerToEdit!.completedDates
+          : const [],
     );
 
     try {
-      await _repository.addTracker(tracker);
+      if (isEditing) {
+        await _repository.updateTracker(tracker);
+      } else {
+        await _repository.addTracker(tracker);
+      }
       navigator.pop();
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
       if (mounted) {
-        SnackbarService(
-          context,
-        ).showErrorSnackbar(message: 'Failed to create tracker: $e');
+        SnackbarService(context).showErrorSnackbar(
+          message: 'Failed to ${isEditing ? "update" : "create"} tracker: $e',
+        );
       }
     }
   }
@@ -114,7 +141,9 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Create Habit Tracker',
+                          widget.trackerToEdit != null
+                              ? 'Edit Tracker'
+                              : 'Create Habit Tracker',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -132,6 +161,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
 
                   // Habit Name Field
                   TextFormField(
+                    initialValue: _name,
                     decoration: InputDecoration(
                       labelText: 'Habit Name',
                       hintText: 'e.g., Gym, Sleep Early, No Sweets',
@@ -260,6 +290,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                   if (_durationType == 'set_time') ...[
                     const SizedBox(height: 24),
                     TextFormField(
+                      initialValue: _durationValue?.toString() ?? '',
                       decoration: InputDecoration(
                         labelText: 'Duration Value ($_measurementUnit)',
                         hintText: 'e.g., 30',
@@ -386,8 +417,10 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                           ),
                         ),
                         onPressed: _isLoading ? null : _submit,
-                        child: const Text(
-                          'Create Tracker',
+                        child: Text(
+                          widget.trackerToEdit != null
+                              ? 'Save Changes'
+                              : 'Create Tracker',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,

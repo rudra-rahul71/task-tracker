@@ -69,19 +69,19 @@ class TrackerRepository {
               d.day == current.day,
         )) {
           completedDates.add(current);
-        }
 
-        backfilledHistory.add(
-          TrackerHistoryModel(
-            id: '',
-            userId: tracker.userId,
-            trackerId: trackerId,
-            trackerName: tracker.name,
-            trackerType: tracker.type,
-            date: current,
-            type: 'completion',
-          ),
-        );
+          backfilledHistory.add(
+            TrackerHistoryModel(
+              id: '',
+              userId: tracker.userId,
+              trackerId: trackerId,
+              trackerName: tracker.name,
+              trackerType: tracker.type,
+              date: current,
+              type: 'completion',
+            ),
+          );
+        }
 
         current = current.add(const Duration(days: 1));
       }
@@ -106,6 +106,69 @@ class TrackerRepository {
     await _trackerCollection.save(updatedTracker, trackerId);
 
     // Save backfilled history records after the tracker exists in the database
+    for (final historyRecord in backfilledHistory) {
+      await _historyCollection.save(historyRecord, '');
+    }
+  }
+
+  // Update an existing tracker
+  Future<void> updateTracker(TrackerModel tracker) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final completedDates = List<DateTime>.from(tracker.completedDates);
+    final List<TrackerHistoryModel> backfilledHistory = [];
+
+    // If it is a maintain habit and was started in the past, backfill completion entries
+    if (tracker.type == 'maintain' && tracker.startDate.isBefore(today)) {
+      DateTime current = DateTime(
+        tracker.startDate.year,
+        tracker.startDate.month,
+        tracker.startDate.day,
+      );
+      while (current.isBefore(today)) {
+        if (!completedDates.any(
+          (d) =>
+              d.year == current.year &&
+              d.month == current.month &&
+              d.day == current.day,
+        )) {
+          completedDates.add(current);
+
+          backfilledHistory.add(
+            TrackerHistoryModel(
+              id: '',
+              userId: tracker.userId,
+              trackerId: tracker.id,
+              trackerName: tracker.name,
+              trackerType: tracker.type,
+              date: current,
+              type: 'completion',
+            ),
+          );
+        }
+        current = current.add(const Duration(days: 1));
+      }
+    }
+
+    final updatedTracker = TrackerModel(
+      id: tracker.id,
+      userId: tracker.userId,
+      name: tracker.name,
+      type: tracker.type,
+      durationType: tracker.durationType,
+      measurementUnit: tracker.measurementUnit,
+      durationValue: tracker.durationValue,
+      startDate: tracker.startDate,
+      endDate: tracker.endDate,
+      createdAt: tracker.createdAt,
+      completedDates: completedDates,
+      originalStartDate: tracker.originalStartDate,
+    );
+
+    await _trackerCollection.save(updatedTracker, updatedTracker.id);
+
+    // Save backfilled history records
     for (final historyRecord in backfilledHistory) {
       await _historyCollection.save(historyRecord, '');
     }
