@@ -19,20 +19,23 @@ class TasksPage extends StatefulWidget {
 
 class _TasksPageState extends State<TasksPage> {
   final TaskRepository _repository = getIt<TaskRepository>();
-  String _activeFilter = 'due'; // 'due' (Due Today), 'all' (All Tasks), 'group' (By Group)
+  String _activeFilter =
+      'due'; // 'due' (Due Today), 'all' (All Tasks), 'group' (By Group)
   String? _currentUserId;
   Stream<List<TaskGroupModel>>? _groupsStream;
   Stream<List<TaskModel>>? _tasksStream;
 
   void _initStreamsForUser(String userId) {
-    if (_currentUserId == userId && _groupsStream != null && _tasksStream != null) {
+    if (_currentUserId == userId &&
+        _groupsStream != null &&
+        _tasksStream != null) {
       return;
     }
     _currentUserId = userId;
     _groupsStream = _repository.getGroups(userId);
     _tasksStream = _repository.getTasks(userId);
   }
-  
+
   void _showAddTaskDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -61,10 +64,17 @@ class _TasksPageState extends State<TasksPage> {
       if (task.groupId != null) {
         final group = groups.firstWhere(
           (g) => g.id == task.groupId,
-          orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()),
+          orElse: () => TaskGroupModel(
+            id: '',
+            userId: '',
+            name: '',
+            colorValue: 0,
+            createdAt: DateTime.now(),
+          ),
         );
         if (group.id.isNotEmpty && group.schedule != null) {
-          if (group.schedule!.type != 'none' || group.schedule!.startDate != null) {
+          if (group.schedule!.type != 'none' ||
+              group.schedule!.startDate != null) {
             return group.schedule!.isDueOnDate(now);
           }
         }
@@ -73,7 +83,8 @@ class _TasksPageState extends State<TasksPage> {
 
     // 3. Unscheduled tasks: show under "Due Today" if they are pending (so they don't get lost)
     // or if they were completed today.
-    final completedToday = task.status == 'completed' &&
+    final completedToday =
+        task.status == 'completed' &&
         task.lastCompletedAt != null &&
         task.lastCompletedAt!.year == now.year &&
         task.lastCompletedAt!.month == now.month &&
@@ -88,7 +99,13 @@ class _TasksPageState extends State<TasksPage> {
     if (task.groupId != null) {
       final group = groups.firstWhere(
         (g) => g.id == task.groupId,
-        orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()),
+        orElse: () => TaskGroupModel(
+          id: '',
+          userId: '',
+          name: '',
+          colorValue: 0,
+          createdAt: DateTime.now(),
+        ),
       );
       if (group.id.isNotEmpty && group.schedule != null) {
         return group.schedule!.type != 'none';
@@ -101,7 +118,7 @@ class _TasksPageState extends State<TasksPage> {
     if (task.status != 'pending') return false;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     if (task.schedule != null) {
       if (task.schedule!.type == 'none' && task.schedule!.startDate != null) {
         final sDate = task.schedule!.startDate!;
@@ -109,11 +126,17 @@ class _TasksPageState extends State<TasksPage> {
       }
       return false;
     }
-    
+
     if (task.groupId != null) {
       final g = groups.firstWhere(
         (g) => g.id == task.groupId,
-        orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()),
+        orElse: () => TaskGroupModel(
+          id: '',
+          userId: '',
+          name: '',
+          colorValue: 0,
+          createdAt: DateTime.now(),
+        ),
       );
       if (g.id.isNotEmpty && g.schedule != null) {
         if (g.schedule!.type == 'none' && g.schedule!.startDate != null) {
@@ -132,9 +155,7 @@ class _TasksPageState extends State<TasksPage> {
     if (userId == null) {
       return const Scaffold(
         backgroundColor: Color(0xFF121212),
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -156,28 +177,42 @@ class _TasksPageState extends State<TasksPage> {
                   OutlinedButton.icon(
                     onPressed: () => _showManageGroupsDialog(context),
                     icon: const Icon(Icons.folder_open_outlined, size: 20),
-                    label: const Text('Groups', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      'Groups',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Theme.of(context).colorScheme.primary,
-                      side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: () => _showAddTaskDialog(context),
                     icon: const Icon(Icons.add, size: 20),
-                    label: const Text('Add Task', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      'Add Task',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.black,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -196,7 +231,9 @@ class _TasksPageState extends State<TasksPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'due');
                   },
-                  selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'due'
                         ? Theme.of(context).colorScheme.primary
@@ -210,7 +247,9 @@ class _TasksPageState extends State<TasksPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'all');
                   },
-                  selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'all'
                         ? Theme.of(context).colorScheme.primary
@@ -224,7 +263,9 @@ class _TasksPageState extends State<TasksPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'group');
                   },
-                  selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'group'
                         ? Theme.of(context).colorScheme.primary
@@ -238,7 +279,9 @@ class _TasksPageState extends State<TasksPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'completed');
                   },
-                  selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'completed'
                         ? Theme.of(context).colorScheme.primary
@@ -255,16 +298,18 @@ class _TasksPageState extends State<TasksPage> {
               child: StreamBuilder<List<TaskGroupModel>>(
                 stream: _groupsStream!,
                 builder: (context, groupsSnapshot) {
-                  if (groupsSnapshot.connectionState == ConnectionState.waiting) {
+                  if (groupsSnapshot.connectionState ==
+                      ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  
+
                   final groups = groupsSnapshot.data ?? [];
 
                   return StreamBuilder<List<TaskModel>>(
                     stream: _tasksStream!,
                     builder: (context, tasksSnapshot) {
-                      if (tasksSnapshot.connectionState == ConnectionState.waiting) {
+                      if (tasksSnapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
 
@@ -272,7 +317,10 @@ class _TasksPageState extends State<TasksPage> {
                         return Center(
                           child: Text(
                             'Error loading tasks: ${tasksSnapshot.error}',
-                            style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 16,
+                            ),
                           ),
                         );
                       }
@@ -291,7 +339,7 @@ class _TasksPageState extends State<TasksPage> {
                       }
 
                       // Apply filtering and sorting
-                      
+
                       // Sort helper
                       int sortTasks(TaskModel a, TaskModel b) {
                         bool aIsScheduled = false;
@@ -300,7 +348,16 @@ class _TasksPageState extends State<TasksPage> {
                           aIsScheduled = a.schedule!.type != 'none';
                           aStartDate = a.schedule!.startDate;
                         } else if (a.groupId != null) {
-                          final g = groups.firstWhere((g) => g.id == a.groupId, orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()));
+                          final g = groups.firstWhere(
+                            (g) => g.id == a.groupId,
+                            orElse: () => TaskGroupModel(
+                              id: '',
+                              userId: '',
+                              name: '',
+                              colorValue: 0,
+                              createdAt: DateTime.now(),
+                            ),
+                          );
                           if (g.id.isNotEmpty && g.schedule != null) {
                             aIsScheduled = g.schedule!.type != 'none';
                             aStartDate = g.schedule!.startDate;
@@ -313,7 +370,16 @@ class _TasksPageState extends State<TasksPage> {
                           bIsScheduled = b.schedule!.type != 'none';
                           bStartDate = b.schedule!.startDate;
                         } else if (b.groupId != null) {
-                          final g = groups.firstWhere((g) => g.id == b.groupId, orElse: () => TaskGroupModel(id: '', userId: '', name: '', colorValue: 0, createdAt: DateTime.now()));
+                          final g = groups.firstWhere(
+                            (g) => g.id == b.groupId,
+                            orElse: () => TaskGroupModel(
+                              id: '',
+                              userId: '',
+                              name: '',
+                              colorValue: 0,
+                              createdAt: DateTime.now(),
+                            ),
+                          );
                           if (g.id.isNotEmpty && g.schedule != null) {
                             bIsScheduled = g.schedule!.type != 'none';
                             bStartDate = g.schedule!.startDate;
@@ -330,25 +396,26 @@ class _TasksPageState extends State<TasksPage> {
                           if (aStartDate != null) return -1;
                           if (bStartDate != null) return 1;
                         }
-                        
+
                         return a.createdAt.compareTo(b.createdAt);
                       }
 
                       bool isCompletedToday(TaskModel t) {
-                        if (t.status != 'completed' || t.lastCompletedAt == null) return false;
+                        if (t.status != 'completed' ||
+                            t.lastCompletedAt == null)
+                          return false;
                         final now = DateTime.now();
                         return t.lastCompletedAt!.year == now.year &&
-                               t.lastCompletedAt!.month == now.month &&
-                               t.lastCompletedAt!.day == now.day;
+                            t.lastCompletedAt!.month == now.month &&
+                            t.lastCompletedAt!.day == now.day;
                       }
 
                       if (_activeFilter == 'due') {
-                        final dueTasks = tasks
-                            .where((t) {
-                              final isDue = _isTaskDueToday(t, groups);
-                              return isDue && (t.status == 'pending' || isCompletedToday(t));
-                            })
-                            .toList();
+                        final dueTasks = tasks.where((t) {
+                          final isDue = _isTaskDueToday(t, groups);
+                          return isDue &&
+                              (t.status == 'pending' || isCompletedToday(t));
+                        }).toList();
 
                         return _buildTaskList(
                           dueTasks,
@@ -359,12 +426,19 @@ class _TasksPageState extends State<TasksPage> {
                         );
                       } else if (_activeFilter == 'completed') {
                         final completedTasks = tasks
-                            .where((t) => t.status == 'completed' && !_isTaskRecurring(t, groups))
+                            .where(
+                              (t) =>
+                                  t.status == 'completed' &&
+                                  !_isTaskRecurring(t, groups),
+                            )
                             .toList();
-                        
+
                         completedTasks.sort((a, b) {
-                          if (a.lastCompletedAt != null && b.lastCompletedAt != null) {
-                            return b.lastCompletedAt!.compareTo(a.lastCompletedAt!); // Descending
+                          if (a.lastCompletedAt != null &&
+                              b.lastCompletedAt != null) {
+                            return b.lastCompletedAt!.compareTo(
+                              a.lastCompletedAt!,
+                            ); // Descending
                           }
                           return 0;
                         });
@@ -382,7 +456,7 @@ class _TasksPageState extends State<TasksPage> {
                           if (_isTaskRecurring(t, groups)) return true;
                           return t.status == 'pending';
                         }).toList();
-                        
+
                         allOrGroupTasks.sort(sortTasks);
 
                         if (_activeFilter == 'all') {
@@ -395,7 +469,10 @@ class _TasksPageState extends State<TasksPage> {
                           );
                         } else {
                           // Group sorting/categorizing
-                          return _buildGroupedTasksView(allOrGroupTasks, groups);
+                          return _buildGroupedTasksView(
+                            allOrGroupTasks,
+                            groups,
+                          );
                         }
                       }
                     },
@@ -409,7 +486,12 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  Widget _buildTaskListLayout(List<TaskModel> tasks, List<TaskGroupModel> groups, bool isInteractive, bool showCompletionStatus) {
+  Widget _buildTaskListLayout(
+    List<TaskModel> tasks,
+    List<TaskGroupModel> groups,
+    bool isInteractive,
+    bool showCompletionStatus,
+  ) {
     final width = MediaQuery.of(context).size.width;
     if (width >= 850) {
       final leftList = <TaskModel>[];
@@ -428,16 +510,18 @@ class _TasksPageState extends State<TasksPage> {
           Expanded(
             child: Column(
               children: leftList
-                  .map((task) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: TaskCard(
-                          task: task,
-                          groups: groups,
-                          repository: _repository,
-                          isInteractive: isInteractive,
-                          showCompletionStatus: showCompletionStatus,
-                        ),
-                      ))
+                  .map(
+                    (task) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: TaskCard(
+                        task: task,
+                        groups: groups,
+                        repository: _repository,
+                        isInteractive: isInteractive,
+                        showCompletionStatus: showCompletionStatus,
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -445,16 +529,18 @@ class _TasksPageState extends State<TasksPage> {
           Expanded(
             child: Column(
               children: rightList
-                  .map((task) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: TaskCard(
-                          task: task,
-                          groups: groups,
-                          repository: _repository,
-                          isInteractive: isInteractive,
-                          showCompletionStatus: showCompletionStatus,
-                        ),
-                      ))
+                  .map(
+                    (task) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: TaskCard(
+                        task: task,
+                        groups: groups,
+                        repository: _repository,
+                        isInteractive: isInteractive,
+                        showCompletionStatus: showCompletionStatus,
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -462,16 +548,20 @@ class _TasksPageState extends State<TasksPage> {
       );
     } else {
       return Column(
-        children: tasks.map((task) => Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: TaskCard(
-                task: task,
-                groups: groups,
-                repository: _repository,
-                isInteractive: isInteractive,
-                showCompletionStatus: showCompletionStatus,
+        children: tasks
+            .map(
+              (task) => Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: TaskCard(
+                  task: task,
+                  groups: groups,
+                  repository: _repository,
+                  isInteractive: isInteractive,
+                  showCompletionStatus: showCompletionStatus,
+                ),
               ),
-            )).toList(),
+            )
+            .toList(),
       );
     }
   }
@@ -532,26 +622,38 @@ class _TasksPageState extends State<TasksPage> {
               padding: EdgeInsets.only(bottom: 16.0),
               child: Text(
                 'Overdue Tasks',
-                style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             _buildTaskListLayout(overdue, groups, true, true),
           ],
-          
+
           if (upcoming.isNotEmpty) ...[
             if (overdue.isNotEmpty) ...[
               const SizedBox(height: 16),
               const Divider(color: Colors.grey),
               const SizedBox(height: 16),
             ],
-            _buildTaskListLayout(upcoming, groups, isInteractive, showCompletionStatus),
+            _buildTaskListLayout(
+              upcoming,
+              groups,
+              isInteractive,
+              showCompletionStatus,
+            ),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildGroupedTasksView(List<TaskModel> allTasks, List<TaskGroupModel> groups) {
+  Widget _buildGroupedTasksView(
+    List<TaskModel> allTasks,
+    List<TaskGroupModel> groups,
+  ) {
     // 1. Group tasks by groupId
     final Map<String?, List<TaskModel>> groupedMap = {};
     for (var task in allTasks) {
@@ -562,11 +664,14 @@ class _TasksPageState extends State<TasksPage> {
       return Center(
         child: Text(
           'No tasks to group yet!',
-          style: TextStyle(color: Colors.grey[500], fontSize: 16, fontStyle: FontStyle.italic),
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 16,
+            fontStyle: FontStyle.italic,
+          ),
         ),
       );
     }
-
 
     return ListView(
       children: [
@@ -596,7 +701,11 @@ class _TasksPageState extends State<TasksPage> {
                   const SizedBox(width: 10),
                   Text(
                     group.name,
-                    style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -611,12 +720,18 @@ class _TasksPageState extends State<TasksPage> {
                     padding: const EdgeInsets.only(left: 28.0, bottom: 12.0),
                     child: Text(
                       'No tasks in this group.',
-                      style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic),
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   )
                 else
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 16.0,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -631,7 +746,7 @@ class _TasksPageState extends State<TasksPage> {
                               showCompletionStatus: false,
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   ),
@@ -657,16 +772,25 @@ class _TasksPageState extends State<TasksPage> {
               }
 
               return Theme(
-                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   initiallyExpanded: true,
                   title: Row(
                     children: [
-                      const CircleAvatar(backgroundColor: Colors.grey, radius: 8),
+                      const CircleAvatar(
+                        backgroundColor: Colors.grey,
+                        radius: 8,
+                      ),
                       const SizedBox(width: 10),
                       const Text(
                         'Unassigned / General Tasks',
-                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -677,7 +801,10 @@ class _TasksPageState extends State<TasksPage> {
                   ),
                   children: [
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8.0,
+                        horizontal: 16.0,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -692,14 +819,14 @@ class _TasksPageState extends State<TasksPage> {
                                 showCompletionStatus: false,
                               ),
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     ),
                   ],
                 ),
               );
-            }
+            },
           ),
         ],
       ],

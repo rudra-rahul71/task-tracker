@@ -89,7 +89,9 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.15)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -97,7 +99,9 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isSelected ? destination.selectedIcon : destination.icon,
+                        isSelected
+                            ? destination.selectedIcon
+                            : destination.icon,
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
                             : Colors.grey,
@@ -128,9 +132,7 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: widget.navigationShell,
-      ),
+      body: SafeArea(child: widget.navigationShell),
       bottomNavigationBar: SafeArea(
         top: false,
         child: _buildBottomIsland(context),

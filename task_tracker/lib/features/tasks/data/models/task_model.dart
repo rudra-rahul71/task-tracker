@@ -36,9 +36,16 @@ class TaskModel {
       groupId: map['groupId'],
       name: map['name'] ?? '',
       description: map['description'] ?? '',
-      schedule: map['schedule'] != null ? TaskSchedule.fromMap(map['schedule']) : null,
+      schedule: map['schedule'] != null
+          ? TaskSchedule.fromMap(map['schedule'])
+          : null,
       steps: map['steps'] != null
-          ? (map['steps'] as List).map((stepMap) => TaskStep.fromMap(Map<String, dynamic>.from(stepMap))).toList()
+          ? (map['steps'] as List)
+                .map(
+                  (stepMap) =>
+                      TaskStep.fromMap(Map<String, dynamic>.from(stepMap)),
+                )
+                .toList()
           : [],
       status: map['status'] ?? 'pending',
       lastCompletedAt: parseDateTime(map['lastCompletedAt']),
@@ -90,7 +97,10 @@ class TaskModel {
     );
   }
 
-  bool get isAllStepsCompleted => steps.isNotEmpty && steps.every((s) => s.isCompleted);
+  bool get isAllStepsCompleted =>
+      steps.isNotEmpty && steps.every((s) => s.isCompleted);
 
-  double get progress => steps.isEmpty ? 0.0 : steps.where((s) => s.isCompleted).length / steps.length;
+  double get progress => steps.isEmpty
+      ? 0.0
+      : steps.where((s) => s.isCompleted).length / steps.length;
 }

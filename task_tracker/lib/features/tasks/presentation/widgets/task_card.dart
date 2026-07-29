@@ -35,7 +35,13 @@ class _TaskCardState extends State<TaskCard> {
   bool _isExpanded = false;
 
   final List<String> _daysOfWeekNames = const [
-    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
   ];
 
   TaskGroupModel? _getGroup() {
@@ -59,7 +65,9 @@ class _TaskCardState extends State<TaskCard> {
     }
     // Else, check inherited group schedule
     final group = _getGroup();
-    if (group != null && group.schedule != null && group.schedule!.type != 'none') {
+    if (group != null &&
+        group.schedule != null &&
+        group.schedule!.type != 'none') {
       return '${group.schedule!.type.replaceAll('_', ' ').toUpperCase()} (Inherited)';
     }
     return 'One-off Task';
@@ -107,7 +115,10 @@ class _TaskCardState extends State<TaskCard> {
       steps: updatedSteps,
       status: newStatus,
     );
-    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
+    await widget.repository.updateTask(
+      updatedTask,
+      oldStatus: widget.task.status,
+    );
   }
 
   void _resetTask() async {
@@ -127,7 +138,10 @@ class _TaskCardState extends State<TaskCard> {
     );
 
     try {
-      await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
+      await widget.repository.updateTask(
+        updatedTask,
+        oldStatus: widget.task.status,
+      );
       if (mounted) {
         SnackbarService(context).showSuccessSnackbar(
           message: 'Task "${widget.task.name}" checklist reset.',
@@ -135,9 +149,9 @@ class _TaskCardState extends State<TaskCard> {
       }
     } catch (e) {
       if (mounted) {
-        SnackbarService(context).showErrorSnackbar(
-          message: 'Failed to reset task: $e',
-        );
+        SnackbarService(
+          context,
+        ).showErrorSnackbar(message: 'Failed to reset task: $e');
       }
     }
   }
@@ -151,7 +165,10 @@ class _TaskCardState extends State<TaskCard> {
     );
 
     try {
-      await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
+      await widget.repository.updateTask(
+        updatedTask,
+        oldStatus: widget.task.status,
+      );
       if (mounted) {
         SnackbarService(context).showSuccessSnackbar(
           message: '🏆 Task "${widget.task.name}" completed!',
@@ -162,9 +179,9 @@ class _TaskCardState extends State<TaskCard> {
       });
     } catch (e) {
       if (mounted) {
-        SnackbarService(context).showErrorSnackbar(
-          message: 'Failed to complete task: $e',
-        );
+        SnackbarService(
+          context,
+        ).showErrorSnackbar(message: 'Failed to complete task: $e');
       }
     }
   }
@@ -174,15 +191,24 @@ class _TaskCardState extends State<TaskCard> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Delete Task?', style: TextStyle(color: Colors.white)),
-        content: Text('Are you sure you want to delete "${widget.task.name}"?', style: const TextStyle(color: Colors.grey)),
+        title: const Text(
+          'Delete Task?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${widget.task.name}"?',
+          style: const TextStyle(color: Colors.grey),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
           ),
@@ -198,7 +224,9 @@ class _TaskCardState extends State<TaskCard> {
         }
       } catch (e) {
         if (mounted) {
-          SnackbarService(context).showErrorSnackbar(message: 'Failed to delete task: $e');
+          SnackbarService(
+            context,
+          ).showErrorSnackbar(message: 'Failed to delete task: $e');
         }
       }
     }
@@ -207,8 +235,11 @@ class _TaskCardState extends State<TaskCard> {
   @override
   Widget build(BuildContext context) {
     final group = _getGroup();
-    final color = group != null ? Color(group.colorValue) : Theme.of(context).colorScheme.primary;
-    final isCompleted = widget.showCompletionStatus && (widget.task.status == 'completed');
+    final color = group != null
+        ? Color(group.colorValue)
+        : Theme.of(context).colorScheme.primary;
+    final isCompleted =
+        widget.showCompletionStatus && (widget.task.status == 'completed');
 
     return Card(
       color: const Color(0xFF1E1E1E),
@@ -249,24 +280,32 @@ class _TaskCardState extends State<TaskCard> {
                     builder: (context, constraints) {
                       final double nameWidth = widget.task.name.length * 11.0;
                       double actionsWidth = 32.0; // chevron (with padding)
-                      
-                      final bool hasAnyProgress = isCompleted || widget.task.steps.any((s) => s.isCompleted);
-                      final bool showResetAction = widget.isInteractive && hasAnyProgress;
+
+                      final bool hasAnyProgress =
+                          isCompleted ||
+                          widget.task.steps.any((s) => s.isCompleted);
+                      final bool showResetAction =
+                          widget.isInteractive && hasAnyProgress;
 
                       if (showResetAction) {
                         actionsWidth += 32.0; // refresh button
                       }
-                      
-                      if (widget.showEditAction && !widget.showCompletionStatus && !isCompleted) {
+
+                      if (widget.showEditAction &&
+                          !widget.showCompletionStatus &&
+                          !isCompleted) {
                         actionsWidth += 32.0; // edit button
                       }
-                      
-                      if (widget.showDeleteAction && (!widget.isInteractive || !isCompleted)) {
+
+                      if (widget.showDeleteAction &&
+                          (!widget.isInteractive || !isCompleted)) {
                         actionsWidth += 32.0; // delete button
                       }
 
-                      final totalEstimatedWidth = nameWidth + actionsWidth + 32.0;
-                      final bool fitsOnOneLine = totalEstimatedWidth <= constraints.maxWidth;
+                      final totalEstimatedWidth =
+                          nameWidth + actionsWidth + 32.0;
+                      final bool fitsOnOneLine =
+                          totalEstimatedWidth <= constraints.maxWidth;
 
                       final Widget titleText = Text(
                         widget.task.name,
@@ -274,11 +313,14 @@ class _TaskCardState extends State<TaskCard> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: isCompleted ? Colors.grey : Colors.white,
-                          decoration: isCompleted ? TextDecoration.lineThrough : null,
+                          decoration: isCompleted
+                              ? TextDecoration.lineThrough
+                              : null,
                         ),
                       );
 
-                      final Widget descriptionText = widget.task.description.isNotEmpty
+                      final Widget descriptionText =
+                          widget.task.description.isNotEmpty
                           ? Padding(
                               padding: const EdgeInsets.only(top: 4.0),
                               child: Text(
@@ -299,20 +341,29 @@ class _TaskCardState extends State<TaskCard> {
                               onTap: _resetTask,
                               behavior: HitTestBehavior.opaque,
                               child: Tooltip(
-                                message: isCompleted ? 'Reset Task' : 'Reset Checklist',
+                                message: isCompleted
+                                    ? 'Reset Task'
+                                    : 'Reset Checklist',
                                 child: Padding(
                                   padding: const EdgeInsets.all(6.0),
-                                  child: Icon(Icons.refresh, color: Colors.grey, size: isCompleted ? 20 : 18),
+                                  child: Icon(
+                                    Icons.refresh,
+                                    color: Colors.grey,
+                                    size: isCompleted ? 20 : 18,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
-                          if (widget.showEditAction && !widget.showCompletionStatus && !isCompleted)
+                          if (widget.showEditAction &&
+                              !widget.showCompletionStatus &&
+                              !isCompleted)
                             GestureDetector(
                               onTap: () {
                                 showDialog(
                                   context: context,
-                                  builder: (context) => AddTaskDialog(task: widget.task),
+                                  builder: (context) =>
+                                      AddTaskDialog(task: widget.task),
                                 );
                               },
                               behavior: HitTestBehavior.opaque,
@@ -320,11 +371,16 @@ class _TaskCardState extends State<TaskCard> {
                                 message: 'Edit Task',
                                 child: Padding(
                                   padding: EdgeInsets.all(6.0),
-                                  child: Icon(Icons.edit_outlined, color: Colors.grey, size: 20),
+                                  child: Icon(
+                                    Icons.edit_outlined,
+                                    color: Colors.grey,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
-                          if (widget.showDeleteAction && (!widget.isInteractive || !isCompleted))
+                          if (widget.showDeleteAction &&
+                              (!widget.isInteractive || !isCompleted))
                             GestureDetector(
                               onTap: _deleteTask,
                               behavior: HitTestBehavior.opaque,
@@ -332,14 +388,20 @@ class _TaskCardState extends State<TaskCard> {
                                 message: 'Delete Task',
                                 child: Padding(
                                   padding: EdgeInsets.all(6.0),
-                                  child: Icon(Icons.delete_outline, color: Colors.grey, size: 20),
+                                  child: Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.grey,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
                           Padding(
                             padding: const EdgeInsets.all(6.0),
                             child: Icon(
-                              _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                              _isExpanded
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
                               color: Colors.grey,
                               size: 20,
                             ),
@@ -353,10 +415,7 @@ class _TaskCardState extends State<TaskCard> {
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  titleText,
-                                  descriptionText,
-                                ],
+                                children: [titleText, descriptionText],
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -372,9 +431,7 @@ class _TaskCardState extends State<TaskCard> {
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                actionsAndChevron,
-                              ],
+                              children: [actionsAndChevron],
                             ),
                           ],
                         );
@@ -393,27 +450,40 @@ class _TaskCardState extends State<TaskCard> {
                             // Group Tag
                             if (group != null)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: color.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   group.name,
-                                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    color: color,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
 
                             // Schedule Tag
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.grey.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 _getScheduleText(),
-                                style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                           ],
@@ -427,7 +497,10 @@ class _TaskCardState extends State<TaskCard> {
                               Expanded(
                                 child: Text(
                                   '${widget.task.steps.where((s) => s.isCompleted).length}/${widget.task.steps.length} steps completed',
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 12,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                   maxLines: 1,
                                 ),
@@ -435,7 +508,11 @@ class _TaskCardState extends State<TaskCard> {
                               const SizedBox(width: 8),
                               Text(
                                 '${(widget.task.progress * 100).toInt()}%',
-                                style: TextStyle(color: isCompleted ? Colors.grey : color, fontSize: 12, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color: isCompleted ? Colors.grey : color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
@@ -443,7 +520,9 @@ class _TaskCardState extends State<TaskCard> {
                           LinearProgressIndicator(
                             value: widget.task.progress,
                             backgroundColor: Colors.grey[800],
-                            valueColor: AlwaysStoppedAnimation<Color>(isCompleted ? Colors.grey : color),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isCompleted ? Colors.grey : color,
+                            ),
                             borderRadius: BorderRadius.circular(4),
                             minHeight: 6,
                           ),
@@ -463,32 +542,48 @@ class _TaskCardState extends State<TaskCard> {
                     children: [
                       const Text(
                         'Checklist Steps',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 12),
-                      
+
                       // Checklist items list
                       ...List.generate(widget.task.steps.length, (index) {
                         final step = widget.task.steps[index];
-                        final isStepCompleted = widget.showCompletionStatus && step.isCompleted;
+                        final isStepCompleted =
+                            widget.showCompletionStatus && step.isCompleted;
 
                         return LayoutBuilder(
                           builder: (context, constraints) {
-                            final hasTimer = widget.isInteractive && step.timerDuration != null && !isStepCompleted;
+                            final hasTimer =
+                                widget.isInteractive &&
+                                step.timerDuration != null &&
+                                !isStepCompleted;
 
                             bool fitsOnOneLine = true;
                             if (hasTimer) {
-                              final isTimerExpired = step.isTimerExpired() || step.getSecondsRemaining() <= 0;
+                              final isTimerExpired =
+                                  step.isTimerExpired() ||
+                                  step.getSecondsRemaining() <= 0;
                               final timerWidth = isTimerExpired ? 250.0 : 134.0;
-                              final checkboxWidth = widget.showCompletionStatus ? 36.0 : 44.0;
+                              final checkboxWidth = widget.showCompletionStatus
+                                  ? 36.0
+                                  : 44.0;
                               final textWidth = step.name.length * 8.5;
-                              final totalEstimatedWidth = checkboxWidth + textWidth + timerWidth + 16.0;
-                              fitsOnOneLine = totalEstimatedWidth <= constraints.maxWidth;
+                              final totalEstimatedWidth =
+                                  checkboxWidth + textWidth + timerWidth + 16.0;
+                              fitsOnOneLine =
+                                  totalEstimatedWidth <= constraints.maxWidth;
                             }
 
                             if (fitsOnOneLine) {
                               return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6.0,
+                                ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
@@ -498,23 +593,38 @@ class _TaskCardState extends State<TaskCard> {
                                         activeColor: color,
                                         checkColor: Colors.black,
                                         onChanged: widget.isInteractive
-                                            ? (val) => _toggleStepCompletion(index, val!)
+                                            ? (val) => _toggleStepCompletion(
+                                                index,
+                                                val!,
+                                              )
                                             : null,
                                         visualDensity: VisualDensity.compact,
-                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
                                       )
                                     else
                                       Padding(
-                                        padding: const EdgeInsets.only(left: 12.0, right: 16.0),
-                                        child: Icon(Icons.fiber_manual_record, size: 8, color: color),
+                                        padding: const EdgeInsets.only(
+                                          left: 12.0,
+                                          right: 16.0,
+                                        ),
+                                        child: Icon(
+                                          Icons.fiber_manual_record,
+                                          size: 8,
+                                          color: color,
+                                        ),
                                       ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         step.name,
                                         style: TextStyle(
-                                          color: isStepCompleted ? Colors.grey : Colors.white,
-                                          decoration: isStepCompleted ? TextDecoration.lineThrough : null,
+                                          color: isStepCompleted
+                                              ? Colors.grey
+                                              : Colors.white,
+                                          decoration: isStepCompleted
+                                              ? TextDecoration.lineThrough
+                                              : null,
                                           fontSize: 14,
                                         ),
                                       ),
@@ -533,12 +643,15 @@ class _TaskCardState extends State<TaskCard> {
                               );
                             } else {
                               return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6.0,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
                                       children: [
                                         if (widget.showCompletionStatus)
                                           Checkbox(
@@ -546,23 +659,41 @@ class _TaskCardState extends State<TaskCard> {
                                             activeColor: color,
                                             checkColor: Colors.black,
                                             onChanged: widget.isInteractive
-                                                ? (val) => _toggleStepCompletion(index, val!)
+                                                ? (val) =>
+                                                      _toggleStepCompletion(
+                                                        index,
+                                                        val!,
+                                                      )
                                                 : null,
-                                            visualDensity: VisualDensity.compact,
-                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            materialTapTargetSize:
+                                                MaterialTapTargetSize
+                                                    .shrinkWrap,
                                           )
                                         else
                                           Padding(
-                                            padding: const EdgeInsets.only(left: 12.0, right: 16.0),
-                                            child: Icon(Icons.fiber_manual_record, size: 8, color: color),
+                                            padding: const EdgeInsets.only(
+                                              left: 12.0,
+                                              right: 16.0,
+                                            ),
+                                            child: Icon(
+                                              Icons.fiber_manual_record,
+                                              size: 8,
+                                              color: color,
+                                            ),
                                           ),
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
                                             step.name,
                                             style: TextStyle(
-                                              color: isStepCompleted ? Colors.grey : Colors.white,
-                                              decoration: isStepCompleted ? TextDecoration.lineThrough : null,
+                                              color: isStepCompleted
+                                                  ? Colors.grey
+                                                  : Colors.white,
+                                              decoration: isStepCompleted
+                                                  ? TextDecoration.lineThrough
+                                                  : null,
                                               fontSize: 14,
                                             ),
                                           ),
@@ -573,7 +704,9 @@ class _TaskCardState extends State<TaskCard> {
                                       const SizedBox(height: 6),
                                       Padding(
                                         padding: EdgeInsets.only(
-                                          left: widget.showCompletionStatus ? 36.0 : 44.0,
+                                          left: widget.showCompletionStatus
+                                              ? 36.0
+                                              : 44.0,
                                         ),
                                         child: StepTimerWidget(
                                           task: widget.task,
@@ -590,7 +723,7 @@ class _TaskCardState extends State<TaskCard> {
                           },
                         );
                       }),
-                      
+
                       // Action buttons
                       if (widget.isInteractive) ...[
                         if (!isCompleted) ...[
@@ -608,7 +741,9 @@ class _TaskCardState extends State<TaskCard> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                               onPressed: widget.task.isAllStepsCompleted
                                   ? _completeTask
@@ -628,11 +763,15 @@ class _TaskCardState extends State<TaskCard> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: color.withValues(alpha: 0.15),
                                 foregroundColor: color,
-                                side: BorderSide(color: color.withValues(alpha: 0.3)),
+                                side: BorderSide(
+                                  color: color.withValues(alpha: 0.3),
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                               onPressed: _resetTask,
                               icon: const Icon(Icons.refresh, size: 20),

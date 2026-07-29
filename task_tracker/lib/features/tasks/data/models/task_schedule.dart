@@ -15,7 +15,11 @@ class TaskSchedule {
 
   // Start of the week (Monday) helper
   static DateTime startOfWeek(DateTime d) {
-    return DateTime(d.year, d.month, d.day).subtract(Duration(days: d.weekday - 1));
+    return DateTime(
+      d.year,
+      d.month,
+      d.day,
+    ).subtract(Duration(days: d.weekday - 1));
   }
 
   factory TaskSchedule.fromMap(Map<String, dynamic> map) {
@@ -42,7 +46,11 @@ class TaskSchedule {
 
     if (type == 'none') {
       if (startDate != null) {
-        final normalizedStart = DateTime(startDate!.year, startDate!.month, startDate!.day);
+        final normalizedStart = DateTime(
+          startDate!.year,
+          startDate!.month,
+          startDate!.day,
+        );
         return normalizedDate == normalizedStart;
       }
       return false;
@@ -59,10 +67,16 @@ class TaskSchedule {
     if (type == 'bi_weekly') {
       if (startDate == null) return false;
       final anchor = startDate!;
-      if (normalizedDate.isBefore(DateTime(anchor.year, anchor.month, anchor.day))) return false;
+      if (normalizedDate.isBefore(
+        DateTime(anchor.year, anchor.month, anchor.day),
+      ))
+        return false;
 
       // Calculate difference in weeks between date and anchor
-      final diffWeeks = (startOfWeek(normalizedDate).difference(startOfWeek(anchor)).inDays / 7).round();
+      final diffWeeks =
+          (startOfWeek(normalizedDate).difference(startOfWeek(anchor)).inDays /
+                  7)
+              .round();
       final isDueWeek = diffWeeks.abs() % 2 == 0;
       final isDueDay = daysOfWeek.contains(normalizedDate.weekday);
 
@@ -70,8 +84,14 @@ class TaskSchedule {
     }
 
     if (type == 'monthly') {
-      final lastDayOfThisMonth = DateTime(normalizedDate.year, normalizedDate.month + 1, 0).day;
-      final targetDay = dayOfMonth > lastDayOfThisMonth ? lastDayOfThisMonth : dayOfMonth;
+      final lastDayOfThisMonth = DateTime(
+        normalizedDate.year,
+        normalizedDate.month + 1,
+        0,
+      ).day;
+      final targetDay = dayOfMonth > lastDayOfThisMonth
+          ? lastDayOfThisMonth
+          : dayOfMonth;
       return normalizedDate.day == targetDay;
     }
 
@@ -111,15 +131,35 @@ class TaskSchedule {
     }
 
     if (type == 'monthly') {
-      final lastDayOfThisMonth = DateTime(normalizedDate.year, normalizedDate.month + 1, 0).day;
-      final targetDay = dayOfMonth > lastDayOfThisMonth ? lastDayOfThisMonth : dayOfMonth;
-      DateTime cycleStart = DateTime(normalizedDate.year, normalizedDate.month, targetDay);
+      final lastDayOfThisMonth = DateTime(
+        normalizedDate.year,
+        normalizedDate.month + 1,
+        0,
+      ).day;
+      final targetDay = dayOfMonth > lastDayOfThisMonth
+          ? lastDayOfThisMonth
+          : dayOfMonth;
+      DateTime cycleStart = DateTime(
+        normalizedDate.year,
+        normalizedDate.month,
+        targetDay,
+      );
 
       if (normalizedDate.isBefore(cycleStart)) {
         // Today is before the target day, so we are still in the cycle that started last month
-        final lastDayOfPrevMonth = DateTime(normalizedDate.year, normalizedDate.month, 0).day;
-        final prevTargetDay = dayOfMonth > lastDayOfPrevMonth ? lastDayOfPrevMonth : dayOfMonth;
-        cycleStart = DateTime(normalizedDate.year, normalizedDate.month - 1, prevTargetDay);
+        final lastDayOfPrevMonth = DateTime(
+          normalizedDate.year,
+          normalizedDate.month,
+          0,
+        ).day;
+        final prevTargetDay = dayOfMonth > lastDayOfPrevMonth
+            ? lastDayOfPrevMonth
+            : dayOfMonth;
+        cycleStart = DateTime(
+          normalizedDate.year,
+          normalizedDate.month - 1,
+          prevTargetDay,
+        );
       }
       return cycleStart;
     }

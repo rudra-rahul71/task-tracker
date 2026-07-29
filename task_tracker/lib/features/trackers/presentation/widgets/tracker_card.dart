@@ -43,9 +43,9 @@ class TrackerCard extends StatelessWidget {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  SnackbarService(context).showErrorSnackbar(
-                    message: 'Error deleting tracker: $e',
-                  );
+                  SnackbarService(
+                    context,
+                  ).showErrorSnackbar(message: 'Error deleting tracker: $e');
                 }
               }
             },
@@ -71,10 +71,10 @@ class TrackerCard extends StatelessWidget {
     final singularUnit = tracker.measurementUnit == 'days'
         ? 'day'
         : tracker.measurementUnit == 'weeks'
-            ? 'week'
-            : tracker.measurementUnit == 'months'
-                ? 'month'
-                : 'period';
+        ? 'week'
+        : tracker.measurementUnit == 'months'
+        ? 'month'
+        : 'period';
 
     final showTimeLeft = !isQuit && !isSetTime;
     final displayProgress = showTimeLeft ? (1.0 - progress) : progress;
@@ -90,10 +90,7 @@ class TrackerCard extends StatelessWidget {
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: accentColor.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
+        side: BorderSide(color: accentColor.withValues(alpha: 0.3), width: 1.5),
       ),
       color: const Color(0xFF1E1E1E),
       child: Padding(
@@ -115,7 +112,9 @@ class TrackerCard extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          isQuit ? Icons.block_flipped : Icons.check_circle_outline_rounded,
+                          isQuit
+                              ? Icons.block_flipped
+                              : Icons.check_circle_outline_rounded,
                           color: accentColor,
                           size: 24,
                         ),
@@ -164,7 +163,11 @@ class TrackerCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF5350), size: 22),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Color(0xFFEF5350),
+                        size: 22,
+                      ),
                       tooltip: 'Delete tracker',
                       onPressed: () => _showDeleteDialog(context),
                     ),
@@ -210,20 +213,14 @@ class TrackerCard extends StatelessWidget {
                   isSetTime
                       ? '${(displayProgress * 100).toStringAsFixed(0)}% completed'
                       : showTimeLeft
-                          ? '${(displayProgress * 100).toStringAsFixed(0)}% of current $singularUnit left'
-                          : '${(displayProgress * 100).toStringAsFixed(0)}% of current $singularUnit completed',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
+                      ? '${(displayProgress * 100).toStringAsFixed(0)}% of current $singularUnit left'
+                      : '${(displayProgress * 100).toStringAsFixed(0)}% of current $singularUnit completed',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                 ),
                 if (isSetTime)
                   Text(
                     'Target: ${tracker.durationValue} ${tracker.measurementUnit}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
               ],
             ),
@@ -243,7 +240,10 @@ class TrackerCard extends StatelessWidget {
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF26A69A), width: 1.5),
+                          side: const BorderSide(
+                            color: Color(0xFF26A69A),
+                            width: 1.5,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -267,7 +267,10 @@ class TrackerCard extends StatelessWidget {
                             }
                           }
                         },
-                        icon: const Icon(Icons.check_circle_outline, color: Colors.black),
+                        icon: const Icon(
+                          Icons.check_circle_outline,
+                          color: Colors.black,
+                        ),
                         label: Text(
                           'Mark Completed for $periodName',
                           style: const TextStyle(
@@ -295,7 +298,8 @@ class TrackerCard extends StatelessWidget {
                       await _repository.reportSlipUp(tracker);
                       if (context.mounted) {
                         SnackbarService(context).showSuccessSnackbar(
-                          message: 'Streak reset. Stay strong, you can do this!',
+                          message:
+                              'Streak reset. Stay strong, you can do this!',
                         );
                       }
                     } catch (e) {
@@ -306,7 +310,10 @@ class TrackerCard extends StatelessWidget {
                       }
                     }
                   },
-                  icon: const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                  icon: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.white,
+                  ),
                   label: const Text(
                     'Report Slip-Up (Reset Streak)',
                     style: TextStyle(

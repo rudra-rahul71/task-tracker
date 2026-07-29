@@ -24,7 +24,9 @@ class TaskGroupModel {
       userId: map['userId'] ?? '',
       name: map['name'] ?? '',
       colorValue: map['colorValue'] ?? 0xFF4CAF50, // default green
-      schedule: map['schedule'] != null ? TaskSchedule.fromMap(map['schedule']) : null,
+      schedule: map['schedule'] != null
+          ? TaskSchedule.fromMap(map['schedule'])
+          : null,
       createdAt: parseDateTime(map['createdAt']) ?? DateTime.now(),
     );
   }

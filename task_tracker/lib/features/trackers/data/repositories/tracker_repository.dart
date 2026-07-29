@@ -7,14 +7,16 @@ import 'package:task_tracker/features/trackers/data/models/tracker_history.dart'
 class TrackerRepository {
   DatabaseRepository get _repo => GetIt.instance<DatabaseRepository>();
 
-  TypedCollection<TrackerModel> get _trackerCollection => TypedCollection<TrackerModel>(
+  TypedCollection<TrackerModel> get _trackerCollection =>
+      TypedCollection<TrackerModel>(
         repo: _repo,
         collectionName: 'trackers',
         toMap: (tracker) => tracker.toMap(),
         fromMap: (map, id) => TrackerModel.fromMap(map, id),
       );
 
-  TypedCollection<TrackerHistoryModel> get _historyCollection => TypedCollection<TrackerHistoryModel>(
+  TypedCollection<TrackerHistoryModel> get _historyCollection =>
+      TypedCollection<TrackerHistoryModel>(
         repo: _repo,
         collectionName: 'tracker_history',
         toMap: (history) => history.toMap(),
@@ -23,37 +25,52 @@ class TrackerRepository {
 
   // Stream of trackers for a specific user, sorted by creation date
   Stream<List<TrackerModel>> getTrackers(String userId) {
-    return _trackerCollection.watch(
-      filters: [QueryFilter.eq('userId', userId)],
-    ).map((trackers) {
-      trackers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return trackers;
-    });
+    return _trackerCollection
+        .watch(filters: [QueryFilter.eq('userId', userId)])
+        .map((trackers) {
+          trackers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return trackers;
+        });
   }
 
   // Add a new tracker and backfill completion entries if started in the past
   Future<void> addTracker(TrackerModel tracker) async {
     // Generate a temporary / fallback ID for tracker if empty, but library saveMap handles empty ID by adding.
     // However, to link history records, we need a tracker ID. Let's generate a unique string using DateTime.
-    final trackerId = tracker.id.isNotEmpty ? tracker.id : 'tr_${DateTime.now().millisecondsSinceEpoch}';
+    final trackerId = tracker.id.isNotEmpty
+        ? tracker.id
+        : 'tr_${DateTime.now().millisecondsSinceEpoch}';
 
-    final start = DateTime(tracker.startDate.year, tracker.startDate.month, tracker.startDate.day);
-    final originalStart = DateTime(tracker.originalStartDate.year, tracker.originalStartDate.month, tracker.originalStartDate.day);
-    
+    final start = DateTime(
+      tracker.startDate.year,
+      tracker.startDate.month,
+      tracker.startDate.day,
+    );
+    final originalStart = DateTime(
+      tracker.originalStartDate.year,
+      tracker.originalStartDate.month,
+      tracker.originalStartDate.day,
+    );
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     final completedDates = List<DateTime>.from(tracker.completedDates);
     final List<TrackerHistoryModel> backfilledHistory = [];
-    
+
     // If it is a maintain habit and was started in the past, backfill completion entries
     if (tracker.type == 'maintain' && start.isBefore(today)) {
       DateTime current = start;
       while (current.isBefore(today)) {
-        if (!completedDates.any((d) => d.year == current.year && d.month == current.month && d.day == current.day)) {
+        if (!completedDates.any(
+          (d) =>
+              d.year == current.year &&
+              d.month == current.month &&
+              d.day == current.day,
+        )) {
           completedDates.add(current);
         }
-        
+
         backfilledHistory.add(
           TrackerHistoryModel(
             id: '',
@@ -65,11 +82,11 @@ class TrackerRepository {
             type: 'completion',
           ),
         );
-        
+
         current = current.add(const Duration(days: 1));
       }
     }
-    
+
     final updatedTracker = TrackerModel(
       id: trackerId,
       userId: tracker.userId,
@@ -84,7 +101,7 @@ class TrackerRepository {
       completedDates: completedDates,
       originalStartDate: originalStart,
     );
-    
+
     // Save tracker first so foreign key constraint in tracker_history (trackerId -> trackers.id) is satisfied
     await _trackerCollection.save(updatedTracker, trackerId);
 
@@ -125,7 +142,11 @@ class TrackerRepository {
           newEndDate = today.add(Duration(days: tracker.durationValue! * 7));
           break;
         case 'months':
-          newEndDate = DateTime(today.year, today.month + tracker.durationValue!, today.day);
+          newEndDate = DateTime(
+            today.year,
+            today.month + tracker.durationValue!,
+            today.day,
+          );
           break;
         case 'days':
         default:
@@ -156,7 +177,8 @@ class TrackerRepository {
   Future<void> markTrackerCompleted(TrackerModel tracker) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final updatedDates = List<DateTime>.from(tracker.completedDates)..add(today);
+    final updatedDates = List<DateTime>.from(tracker.completedDates)
+      ..add(today);
 
     final updatedTracker = TrackerModel(
       id: tracker.id,
@@ -188,8 +210,15 @@ class TrackerRepository {
   }
 
   // Auto-reset a tracker to a specific startDate when a period has been missed
-  Future<void> autoResetTracker(TrackerModel tracker, DateTime newStartDate) async {
-    final start = DateTime(newStartDate.year, newStartDate.month, newStartDate.day);
+  Future<void> autoResetTracker(
+    TrackerModel tracker,
+    DateTime newStartDate,
+  ) async {
+    final start = DateTime(
+      newStartDate.year,
+      newStartDate.month,
+      newStartDate.day,
+    );
     DateTime? newEndDate;
 
     if (tracker.durationType == 'set_time' && tracker.durationValue != null) {
@@ -198,7 +227,11 @@ class TrackerRepository {
           newEndDate = start.add(Duration(days: tracker.durationValue! * 7));
           break;
         case 'months':
-          newEndDate = DateTime(start.year, start.month + tracker.durationValue!, start.day);
+          newEndDate = DateTime(
+            start.year,
+            start.month + tracker.durationValue!,
+            start.day,
+          );
           break;
         case 'days':
         default:
@@ -230,7 +263,8 @@ class TrackerRepository {
   Future<void> reportSlipUp(TrackerModel tracker) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final updatedCompleted = List<DateTime>.from(tracker.completedDates)..add(today);
+    final updatedCompleted = List<DateTime>.from(tracker.completedDates)
+      ..add(today);
 
     DateTime? newEndDate;
     if (tracker.durationType == 'set_time' && tracker.durationValue != null) {
@@ -239,7 +273,11 @@ class TrackerRepository {
           newEndDate = today.add(Duration(days: tracker.durationValue! * 7));
           break;
         case 'months':
-          newEndDate = DateTime(today.year, today.month + tracker.durationValue!, today.day);
+          newEndDate = DateTime(
+            today.year,
+            today.month + tracker.durationValue!,
+            today.day,
+          );
           break;
         case 'days':
         default:
@@ -278,16 +316,31 @@ class TrackerRepository {
   }
 
   // Get completions/slip-ups stream for a specific month
-  Stream<List<TrackerHistoryModel>> getMonthlyHistory(String userId, DateTime month) {
+  Stream<List<TrackerHistoryModel>> getMonthlyHistory(
+    String userId,
+    DateTime month,
+  ) {
     final start = DateTime(month.year, month.month, 1);
-    final end = DateTime(month.year, month.month + 1, 1).subtract(const Duration(microseconds: 1));
+    final end = DateTime(
+      month.year,
+      month.month + 1,
+      1,
+    ).subtract(const Duration(microseconds: 1));
 
-    return _historyCollection.watch(
-      filters: [QueryFilter.eq('userId', userId)],
-    ).map((history) {
-      // Filter date range client side for simplicity across database drivers
-      return history.where((h) => h.date.isAfter(start.subtract(const Duration(microseconds: 1))) && h.date.isBefore(end.add(const Duration(microseconds: 1)))).toList()
-        ..sort((a, b) => b.date.compareTo(a.date));
-    });
+    return _historyCollection
+        .watch(filters: [QueryFilter.eq('userId', userId)])
+        .map((history) {
+          // Filter date range client side for simplicity across database drivers
+          return history
+              .where(
+                (h) =>
+                    h.date.isAfter(
+                      start.subtract(const Duration(microseconds: 1)),
+                    ) &&
+                    h.date.isBefore(end.add(const Duration(microseconds: 1))),
+              )
+              .toList()
+            ..sort((a, b) => b.date.compareTo(a.date));
+        });
   }
 }

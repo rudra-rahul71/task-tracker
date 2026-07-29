@@ -16,16 +16,15 @@ class LoadingOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        AbsorbPointer(
-          absorbing: isLoading,
-          child: child,
-        ),
+        AbsorbPointer(absorbing: isLoading, child: child),
         if (isLoading)
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(20), // Matches dialog border radius
+                borderRadius: BorderRadius.circular(
+                  20,
+                ), // Matches dialog border radius
               ),
               child: Center(
                 child: Column(

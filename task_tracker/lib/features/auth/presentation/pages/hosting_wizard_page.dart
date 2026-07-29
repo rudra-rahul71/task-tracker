@@ -7,10 +7,7 @@ import 'package:task_tracker/main.dart';
 class HostingWizardPage extends StatelessWidget {
   final ConfigService configService;
 
-  const HostingWizardPage({
-    super.key,
-    required this.configService,
-  });
+  const HostingWizardPage({super.key, required this.configService});
 
   @override
   Widget build(BuildContext context) {

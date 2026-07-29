@@ -3,7 +3,7 @@ import 'package:task_tracker/core/utils/date_parser.dart';
 class TaskStep {
   final String name;
   final bool isCompleted;
-  
+
   // Timer fields
   final int? timerDuration; // In seconds. Null means no timer.
   final DateTime? timerStartedAt; // Null if not running
@@ -36,9 +36,14 @@ class TaskStep {
       name: name ?? this.name,
       isCompleted: isCompleted ?? this.isCompleted,
       timerDuration: timerDuration ?? this.timerDuration,
-      timerStartedAt: clearTimerStartedAt ? null : (timerStartedAt ?? this.timerStartedAt),
-      timerPausedAt: clearTimerPausedAt ? null : (timerPausedAt ?? this.timerPausedAt),
-      timerSecondsRemaining: timerSecondsRemaining ?? this.timerSecondsRemaining,
+      timerStartedAt: clearTimerStartedAt
+          ? null
+          : (timerStartedAt ?? this.timerStartedAt),
+      timerPausedAt: clearTimerPausedAt
+          ? null
+          : (timerPausedAt ?? this.timerPausedAt),
+      timerSecondsRemaining:
+          timerSecondsRemaining ?? this.timerSecondsRemaining,
       isTimerConfirmed: isTimerConfirmed ?? this.isTimerConfirmed,
     );
   }

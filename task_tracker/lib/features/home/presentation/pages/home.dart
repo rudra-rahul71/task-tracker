@@ -83,26 +83,28 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (streamsChanged || _combinedStream == null) {
-      _combinedStream = Rx.combineLatest5<
-          List<TrackerModel>,
-          List<TrackerHistoryModel>,
-          List<TaskHistoryModel>,
-          List<TaskGroupModel>,
-          List<TaskModel>,
-          _HomeData>(
-        _trackersStream!,
-        _historyStream!,
-        _taskHistoryStream!,
-        _groupsStream!,
-        _tasksStream!,
-        (trackers, history, taskHistory, groups, tasks) => _HomeData(
-          trackers: trackers,
-          history: history,
-          taskHistory: taskHistory,
-          groups: groups,
-          tasks: tasks,
-        ),
-      );
+      _combinedStream =
+          Rx.combineLatest5<
+            List<TrackerModel>,
+            List<TrackerHistoryModel>,
+            List<TaskHistoryModel>,
+            List<TaskGroupModel>,
+            List<TaskModel>,
+            _HomeData
+          >(
+            _trackersStream!,
+            _historyStream!,
+            _taskHistoryStream!,
+            _groupsStream!,
+            _tasksStream!,
+            (trackers, history, taskHistory, groups, tasks) => _HomeData(
+              trackers: trackers,
+              history: history,
+              taskHistory: taskHistory,
+              groups: groups,
+              tasks: tasks,
+            ),
+          );
     }
   }
 
@@ -135,7 +137,8 @@ class _HomePageState extends State<HomePage> {
       if (task.groupId != null) {
         final group = groupMap[task.groupId];
         if (group != null && group.schedule != null) {
-          if (group.schedule!.type != 'none' || group.schedule!.startDate != null) {
+          if (group.schedule!.type != 'none' ||
+              group.schedule!.startDate != null) {
             if (task.status == 'completed' && group.schedule!.type == 'none') {
               return false; // Only show completed one-off tasks on the day they were completed
             }
@@ -195,7 +198,12 @@ class _HomePageState extends State<HomePage> {
       if (dayZero.isBefore(todayZero) &&
           !dayZero.isBefore(originalStartZero) &&
           (endZero == null || !dayZero.isAfter(endZero))) {
-        return !_isTrackerCompletedOnDay(tracker, dayDate, dateKey, trackerHistoryMap);
+        return !_isTrackerCompletedOnDay(
+          tracker,
+          dayDate,
+          dateKey,
+          trackerHistoryMap,
+        );
       }
       return false;
     }
@@ -225,7 +233,8 @@ class _HomePageState extends State<HomePage> {
 
     if (tracker.type == 'maintain') {
       final lookupKey = "${tracker.id}_$dateKey";
-      final hasManualCompletion = trackerHistoryMap[lookupKey]?.contains('completion') ?? false;
+      final hasManualCompletion =
+          trackerHistoryMap[lookupKey]?.contains('completion') ?? false;
       if (hasManualCompletion) return true;
 
       // Assume completed properly if it is in the past before the tracker was created
@@ -251,7 +260,12 @@ class _HomePageState extends State<HomePage> {
 
       return false;
     } else {
-      return !_hasTrackerSlipUpOnDay(tracker, dayDate, dateKey, trackerHistoryMap);
+      return !_hasTrackerSlipUpOnDay(
+        tracker,
+        dayDate,
+        dateKey,
+        trackerHistoryMap,
+      );
     }
   }
 
@@ -315,7 +329,7 @@ class _HomePageState extends State<HomePage> {
 
           // Pre-index task groups
           final Map<String, TaskGroupModel> groupMap = {
-            for (var g in groups) g.id: g
+            for (var g in groups) g.id: g,
           };
 
           // Check if any maintain trackers missed their period and require an auto-reset
@@ -346,12 +360,12 @@ class _HomePageState extends State<HomePage> {
           final year = _focusedMonth.year;
           final month = _focusedMonth.month;
           final firstDay = DateTime(year, month, 1);
-          final emptySlots =
-              firstDay.weekday % 7; // Sunday is index 0
+          final emptySlots = firstDay.weekday % 7; // Sunday is index 0
           final daysInMonth = DateTime(year, month + 1, 0).day;
           final totalCells = emptySlots + daysInMonth;
 
-          final selectedDayKey = "${_selectedDay.year}-${_selectedDay.month}-${_selectedDay.day}";
+          final selectedDayKey =
+              "${_selectedDay.year}-${_selectedDay.month}-${_selectedDay.day}";
 
           // Look up completions and slip-ups for the currently selected day
           final completedOnSelected = trackers.where((tracker) {
@@ -374,19 +388,11 @@ class _HomePageState extends State<HomePage> {
 
           // Look up tasks completed or pending on the currently selected day using history
           final completedTasksOnSelected = tasks.where((task) {
-            return _isTaskCompletedOnDate(
-              task,
-              taskHistoryMap,
-              selectedDayKey,
-            );
+            return _isTaskCompletedOnDate(task, taskHistoryMap, selectedDayKey);
           }).toList();
 
           final pendingTasksOnSelected = tasks.where((task) {
-            final isDue = _isTaskDueOnDate(
-              task,
-              groupMap,
-              _selectedDay,
-            );
+            final isDue = _isTaskDueOnDate(task, groupMap, _selectedDay);
             final isCompleted = _isTaskCompletedOnDate(
               task,
               taskHistoryMap,
@@ -395,100 +401,89 @@ class _HomePageState extends State<HomePage> {
             return isDue && !isCompleted;
           }).toList();
 
-                          final width = MediaQuery.of(context).size.width;
-                          final isLargeScreen = width >= 850;
+          final width = MediaQuery.of(context).size.width;
+          final isLargeScreen = width >= 850;
 
-                          // Main Layout
-                          final mainContent = Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                const PageHeader(
-                                  header: 'Dashboard',
-                                  sub:
-                                      'Visualize your habits and tasks history',
-                                ),
-                                const SizedBox(height: 24),
-                                Expanded(
-                                  child: isLargeScreen
-                                      ? Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              flex: 3,
-                                              child: _buildDetailPanel(
-                                                completedTrackers:
-                                                    completedOnSelected,
-                                                slippedTrackers:
-                                                    slippedOnSelected,
-                                                completedTasks:
-                                                    completedTasksOnSelected,
-                                                pendingTasks:
-                                                    pendingTasksOnSelected,
-                                                groups: groups,
-                                                isScrollable: true,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 24),
-                                            Expanded(
-                                              flex: 4,
-                                              child: _buildCalendarCard(
-                                                emptySlots: emptySlots,
-                                                daysInMonth: daysInMonth,
-                                                totalCells: totalCells,
-                                                trackers: trackers,
-                                                trackerHistoryMap: trackerHistoryMap,
-                                                tasks: tasks,
-                                                groupMap: groupMap,
-                                                taskHistoryMap: taskHistoryMap,
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : SingleChildScrollView(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              _buildDetailPanel(
-                                                completedTrackers:
-                                                    completedOnSelected,
-                                                slippedTrackers:
-                                                    slippedOnSelected,
-                                                completedTasks:
-                                                    completedTasksOnSelected,
-                                                pendingTasks:
-                                                    pendingTasksOnSelected,
-                                                groups: groups,
-                                                isScrollable: false,
-                                              ),
-                                              const SizedBox(height: 24),
-                                              _buildCalendarCard(
-                                                emptySlots: emptySlots,
-                                                daysInMonth: daysInMonth,
-                                                totalCells: totalCells,
-                                                trackers: trackers,
-                                                trackerHistoryMap: trackerHistoryMap,
-                                                tasks: tasks,
-                                                groupMap: groupMap,
-                                                taskHistoryMap: taskHistoryMap,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                ),
-                              ],
+          // Main Layout
+          final mainContent = Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const PageHeader(
+                  header: 'Dashboard',
+                  sub: 'Visualize your habits and tasks history',
+                ),
+                const SizedBox(height: 24),
+                Expanded(
+                  child: isLargeScreen
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: _buildDetailPanel(
+                                completedTrackers: completedOnSelected,
+                                slippedTrackers: slippedOnSelected,
+                                completedTasks: completedTasksOnSelected,
+                                pendingTasks: pendingTasksOnSelected,
+                                groups: groups,
+                                isScrollable: true,
+                              ),
                             ),
-                          );
+                            const SizedBox(width: 24),
+                            Expanded(
+                              flex: 4,
+                              child: _buildCalendarCard(
+                                emptySlots: emptySlots,
+                                daysInMonth: daysInMonth,
+                                totalCells: totalCells,
+                                trackers: trackers,
+                                trackerHistoryMap: trackerHistoryMap,
+                                tasks: tasks,
+                                groupMap: groupMap,
+                                taskHistoryMap: taskHistoryMap,
+                              ),
+                            ),
+                          ],
+                        )
+                      : SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildDetailPanel(
+                                completedTrackers: completedOnSelected,
+                                slippedTrackers: slippedOnSelected,
+                                completedTasks: completedTasksOnSelected,
+                                pendingTasks: pendingTasksOnSelected,
+                                groups: groups,
+                                isScrollable: false,
+                              ),
+                              const SizedBox(height: 24),
+                              _buildCalendarCard(
+                                emptySlots: emptySlots,
+                                daysInMonth: daysInMonth,
+                                totalCells: totalCells,
+                                trackers: trackers,
+                                trackerHistoryMap: trackerHistoryMap,
+                                tasks: tasks,
+                                groupMap: groupMap,
+                                taskHistoryMap: taskHistoryMap,
+                              ),
+                            ],
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          );
 
-                          return isLargeScreen
-                              ? mainContent
-                              : Scaffold(
-                                  backgroundColor: Colors.transparent,
-                                  body: mainContent,
-                                );
+          return isLargeScreen
+              ? mainContent
+              : Scaffold(
+                  backgroundColor: Colors.transparent,
+                  body: mainContent,
+                );
         },
       ),
     );
@@ -626,12 +621,17 @@ class _HomePageState extends State<HomePage> {
                           today.month == dayDate.month &&
                           today.day == dayDate.day;
 
-                      final dayDateKey = "${dayDate.year}-${dayDate.month}-${dayDate.day}";
+                      final dayDateKey =
+                          "${dayDate.year}-${dayDate.month}-${dayDate.day}";
 
                       final completedForDay = trackers
                           .where(
-                            (t) =>
-                                _isTrackerCompletedOnDay(t, dayDate, dayDateKey, trackerHistoryMap),
+                            (t) => _isTrackerCompletedOnDay(
+                              t,
+                              dayDate,
+                              dayDateKey,
+                              trackerHistoryMap,
+                            ),
                           )
                           .toList();
 
@@ -650,7 +650,11 @@ class _HomePageState extends State<HomePage> {
                       // Look up tasks completed or pending on this day using history
                       final tasksOnDay = tasks.where((t) {
                         return _isTaskDueOnDate(t, groupMap, dayDate) ||
-                            _isTaskCompletedOnDate(t, taskHistoryMap, dayDateKey);
+                            _isTaskCompletedOnDate(
+                              t,
+                              taskHistoryMap,
+                              dayDateKey,
+                            );
                       }).toList();
 
                       final List<Widget> taskBanners = [];

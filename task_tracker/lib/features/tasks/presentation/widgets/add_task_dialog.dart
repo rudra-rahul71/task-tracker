@@ -12,7 +12,7 @@ import 'package:task_tracker/features/tasks/data/repositories/task_repository.da
 
 class AddTaskDialog extends StatefulWidget {
   final TaskModel? task;
-  
+
   const AddTaskDialog({super.key, this.task});
 
   @override
@@ -26,7 +26,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   String _name = '';
   String _description = '';
   String? _selectedGroupId;
-  
+
   // Schedule settings
   String _scheduleSetting = 'none'; // 'none', 'inherit', 'custom'
   String _scheduleType = 'weekly'; // 'weekly', 'bi_weekly', 'monthly'
@@ -37,26 +37,32 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
   // Checklist steps
   final List<Map<String, dynamic>> _stepsList = [
-    {'name': '', 'hasTimer': false, 'minutes': 10}
+    {'name': '', 'hasTimer': false, 'minutes': 10},
   ];
 
   bool _isLoading = false;
   List<TaskGroupModel> _groups = [];
 
   final List<String> _daysOfWeekNames = const [
-    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
   ];
 
   @override
   void initState() {
     super.initState();
     _loadGroups();
-    
+
     if (widget.task != null) {
       _name = widget.task!.name;
       _description = widget.task!.description;
       _selectedGroupId = widget.task!.groupId;
-      
+
       if (widget.task!.schedule != null) {
         if (widget.task!.schedule!.type == 'none') {
           _scheduleSetting = 'none';
@@ -71,14 +77,16 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
       } else if (widget.task!.groupId != null) {
         _scheduleSetting = 'inherit';
       }
-      
+
       if (widget.task!.steps.isNotEmpty) {
         _stepsList.clear();
         for (var step in widget.task!.steps) {
           _stepsList.add({
             'name': step.name,
             'hasTimer': step.timerDuration != null,
-            'minutes': step.timerDuration != null ? step.timerDuration! ~/ 60 : 10,
+            'minutes': step.timerDuration != null
+                ? step.timerDuration! ~/ 60
+                : 10,
           });
         }
       }
@@ -88,7 +96,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   void _loadGroups() {
     final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
     if (userId == null) return;
-    
+
     _repository.getGroups(userId).first.then((groupsList) {
       if (mounted) {
         setState(() {
@@ -120,7 +128,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
     if (userId == null) {
       if (mounted) {
-        SnackbarService(context).showErrorSnackbar(message: 'Error: User not authenticated');
+        SnackbarService(
+          context,
+        ).showErrorSnackbar(message: 'Error: User not authenticated');
       }
       return;
     }
@@ -134,7 +144,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     if (_scheduleSetting == 'custom') {
       taskSchedule = TaskSchedule(
         type: _scheduleType,
-        daysOfWeek: (_scheduleType == 'monthly' || _scheduleType == 'daily') ? [] : _selectedDays,
+        daysOfWeek: (_scheduleType == 'monthly' || _scheduleType == 'daily')
+            ? []
+            : _selectedDays,
         dayOfMonth: _scheduleType == 'monthly' ? _dayOfMonth : 1,
         startDate: _scheduleType == 'bi_weekly' ? _startDate : null,
       );
@@ -152,12 +164,15 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
       if (widget.task != null) {
         // Find existing step by name to preserve completion status if possible
-        final existingStep = widget.task!.steps.where((s) => s.name == stepName).firstOrNull;
+        final existingStep = widget.task!.steps
+            .where((s) => s.name == stepName)
+            .firstOrNull;
         if (existingStep != null) {
-           return existingStep.copyWith(
-             timerDuration: durationSeconds,
-             timerSecondsRemaining: existingStep.timerSecondsRemaining ?? durationSeconds,
-           );
+          return existingStep.copyWith(
+            timerDuration: durationSeconds,
+            timerSecondsRemaining:
+                existingStep.timerSecondsRemaining ?? durationSeconds,
+          );
         }
       }
 
@@ -171,16 +186,27 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
     try {
       if (widget.task != null) {
-        final updatedTask = widget.task!.copyWith(
+        final updatedTask = TaskModel(
+          id: widget.task!.id,
+          userId: widget.task!.userId,
           groupId: _selectedGroupId,
           name: _name,
           description: _description,
           schedule: taskSchedule,
           steps: taskSteps,
+          status: widget.task!.status,
+          lastCompletedAt: widget.task!.lastCompletedAt,
+          lastResetAt: widget.task!.lastResetAt,
+          createdAt: widget.task!.createdAt,
         );
-        await _repository.updateTask(updatedTask, oldStatus: widget.task!.status);
+        await _repository.updateTask(
+          updatedTask,
+          oldStatus: widget.task!.status,
+        );
         if (mounted) {
-          SnackbarService(context).showSuccessSnackbar(message: 'Task updated successfully');
+          SnackbarService(
+            context,
+          ).showSuccessSnackbar(message: 'Task updated successfully');
         }
       } else {
         final newTask = TaskModel(
@@ -196,7 +222,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         );
         await _repository.addTask(newTask);
         if (mounted) {
-          SnackbarService(context).showSuccessSnackbar(message: 'Task created successfully');
+          SnackbarService(
+            context,
+          ).showSuccessSnackbar(message: 'Task created successfully');
         }
       }
       navigator.pop();
@@ -205,7 +233,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         _isLoading = false;
       });
       if (mounted) {
-        SnackbarService(context).showErrorSnackbar(message: 'Failed to save task: $e');
+        SnackbarService(
+          context,
+        ).showErrorSnackbar(message: 'Failed to save task: $e');
       }
     }
   }
@@ -214,7 +244,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   Widget build(BuildContext context) {
     final groupOptions = _groups.map((g) {
       final hasGroupSched = g.schedule != null && g.schedule!.type != 'none';
-      final schedText = hasGroupSched ? ' (${g.schedule!.type})' : ' (no schedule)';
+      final schedText = hasGroupSched
+          ? ' (${g.schedule!.type})'
+          : ' (no schedule)';
       return DropdownMenuItem<String>(
         value: g.id,
         child: Text(
@@ -262,7 +294,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Form contents
                   Expanded(
                     child: SingleChildScrollView(
@@ -278,15 +310,22 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                               labelStyle: const TextStyle(color: Colors.grey),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Colors.grey),
+                                borderSide: const BorderSide(
+                                  color: Colors.grey,
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                               ),
                             ),
                             style: const TextStyle(color: Colors.white),
-                            validator: (val) => val == null || val.trim().isEmpty ? 'Enter task name' : null,
+                            validator: (val) =>
+                                val == null || val.trim().isEmpty
+                                ? 'Enter task name'
+                                : null,
                             onSaved: (val) => _name = val!.trim(),
                           ),
                           const SizedBox(height: 16),
@@ -300,11 +339,15 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                               labelStyle: const TextStyle(color: Colors.grey),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Colors.grey),
+                                borderSide: const BorderSide(
+                                  color: Colors.grey,
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                               ),
                             ),
                             style: const TextStyle(color: Colors.white),
@@ -315,13 +358,21 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
                           // Group Dropdown
                           DropdownButtonFormField<String>(
-                            value: (_selectedGroupId != null && _groups.any((g) => g.id == _selectedGroupId)) ? _selectedGroupId : null,
+                            initialValue:
+                                (_selectedGroupId != null &&
+                                    _groups.any(
+                                      (g) => g.id == _selectedGroupId,
+                                    ))
+                                ? _selectedGroupId
+                                : null,
                             decoration: InputDecoration(
                               labelText: 'Task Group (Optional)',
                               labelStyle: const TextStyle(color: Colors.grey),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Colors.grey),
+                                borderSide: const BorderSide(
+                                  color: Colors.grey,
+                                ),
                               ),
                             ),
                             dropdownColor: const Color(0xFF1E1E1E),
@@ -329,7 +380,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             items: [
                               const DropdownMenuItem<String>(
                                 value: null,
-                                child: Text('No Group', style: TextStyle(color: Colors.white)),
+                                child: Text(
+                                  'No Group',
+                                  style: TextStyle(color: Colors.white),
+                                ),
                               ),
                               ...groupOptions,
                             ],
@@ -338,8 +392,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 _selectedGroupId = val;
                                 // Automatically update schedule choices based on group selection
                                 if (_selectedGroupId != null) {
-                                  final group = _groups.firstWhere((g) => g.id == _selectedGroupId);
-                                  if (group.schedule != null && group.schedule!.type != 'none') {
+                                  final group = _groups.firstWhere(
+                                    (g) => g.id == _selectedGroupId,
+                                  );
+                                  if (group.schedule != null &&
+                                      group.schedule!.type != 'none') {
                                     _scheduleSetting = 'inherit';
                                   } else {
                                     _scheduleSetting = 'none';
@@ -355,7 +412,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                           // Scheduling Section
                           const Text(
                             'Task Schedule',
-                            style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           SizedBox(
@@ -368,7 +429,12 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                   icon: Icon(Icons.block),
                                 ),
                                 if (_selectedGroupId != null &&
-                                    _groups.any((g) => g.id == _selectedGroupId && g.schedule != null && g.schedule!.type != 'none'))
+                                    _groups.any(
+                                      (g) =>
+                                          g.id == _selectedGroupId &&
+                                          g.schedule != null &&
+                                          g.schedule!.type != 'none',
+                                    ))
                                   const ButtonSegment<String>(
                                     value: 'inherit',
                                     label: Text('Inherit Group'),
@@ -387,8 +453,12 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 });
                               },
                               style: SegmentedButton.styleFrom(
-                                selectedBackgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                                selectedForegroundColor: Theme.of(context).colorScheme.primary,
+                                selectedBackgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.15),
+                                selectedForegroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
                               ),
                             ),
                           ),
@@ -397,25 +467,48 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             const SizedBox(height: 8),
                             ListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Target Completion Date', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                              title: const Text(
+                                'Target Completion Date',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
                               subtitle: Text(
                                 '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-${_targetDate.day.toString().padLeft(2, '0')}',
-                                style: const TextStyle(color: Colors.white, fontSize: 15),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                ),
                               ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: Icon(Icons.calendar_month, color: Theme.of(context).colorScheme.primary),
+                                    icon: Icon(
+                                      Icons.calendar_month,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
                                     onPressed: () async {
                                       final now = DateTime.now();
-                                      final today = DateTime(now.year, now.month, now.day);
-                                      final initialDate = _targetDate.isBefore(today) ? today : _targetDate;
+                                      final today = DateTime(
+                                        now.year,
+                                        now.month,
+                                        now.day,
+                                      );
+                                      final initialDate =
+                                          _targetDate.isBefore(today)
+                                          ? today
+                                          : _targetDate;
                                       final picked = await showDatePicker(
                                         context: context,
                                         initialDate: initialDate,
                                         firstDate: today,
-                                        lastDate: today.add(const Duration(days: 365 * 5)),
+                                        lastDate: today.add(
+                                          const Duration(days: 365 * 5),
+                                        ),
                                       );
                                       if (picked != null) {
                                         setState(() => _targetDate = picked);
@@ -436,16 +529,42 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 labelStyle: const TextStyle(color: Colors.grey),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(color: Colors.grey),
+                                  borderSide: const BorderSide(
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
                               dropdownColor: const Color(0xFF1E1E1E),
                               style: const TextStyle(color: Colors.white),
                               items: const [
-                                DropdownMenuItem(value: 'daily', child: Text('Daily', style: TextStyle(color: Colors.white))),
-                                DropdownMenuItem(value: 'weekly', child: Text('Weekly', style: TextStyle(color: Colors.white))),
-                                DropdownMenuItem(value: 'bi_weekly', child: Text('Bi-Weekly', style: TextStyle(color: Colors.white))),
-                                DropdownMenuItem(value: 'monthly', child: Text('Monthly', style: TextStyle(color: Colors.white))),
+                                DropdownMenuItem(
+                                  value: 'daily',
+                                  child: Text(
+                                    'Daily',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'weekly',
+                                  child: Text(
+                                    'Weekly',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'bi_weekly',
+                                  child: Text(
+                                    'Bi-Weekly',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'monthly',
+                                  child: Text(
+                                    'Monthly',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
                               ],
                               onChanged: (val) => setState(() {
                                 _scheduleType = val!;
@@ -453,16 +572,25 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                               }),
                             ),
                             const SizedBox(height: 12),
-                            
+
                             // Weekly & Bi-Weekly Days Picker
-                            if (_scheduleType == 'weekly' || _scheduleType == 'bi_weekly') ...[
-                              const Text('Days of the Week', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                            if (_scheduleType == 'weekly' ||
+                                _scheduleType == 'bi_weekly') ...[
+                              const Text(
+                                'Days of the Week',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                              ),
                               const SizedBox(height: 8),
                               Wrap(
                                 spacing: 8,
                                 children: List.generate(7, (index) {
                                   final dayVal = index + 1; // 1-7
-                                  final isSelected = _selectedDays.contains(dayVal);
+                                  final isSelected = _selectedDays.contains(
+                                    dayVal,
+                                  );
                                   return ChoiceChip(
                                     label: Text(_daysOfWeekNames[index]),
                                     selected: isSelected,
@@ -475,10 +603,15 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                         }
                                       });
                                     },
-                                    selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                                    selectedColor: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.2),
                                     labelStyle: TextStyle(
                                       color: isSelected
-                                          ? Theme.of(context).colorScheme.primary
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
                                           : Colors.white,
                                       fontSize: 12,
                                     ),
@@ -486,28 +619,51 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 }),
                               ),
                             ],
-                            
+
                             // Bi-weekly Start Anchor date picker
                             if (_scheduleType == 'bi_weekly') ...[
                               const SizedBox(height: 12),
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                title: const Text('Start Date / Anchor Week', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                                title: const Text(
+                                  'Start Date / Anchor Week',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 subtitle: Text(
                                   '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                  ),
                                 ),
                                 trailing: IconButton(
-                                  icon: Icon(Icons.calendar_month, color: Theme.of(context).colorScheme.primary),
+                                  icon: Icon(
+                                    Icons.calendar_month,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  ),
                                   onPressed: () async {
                                     final now = DateTime.now();
-                                    final today = DateTime(now.year, now.month, now.day);
-                                    final initialDate = _startDate.isBefore(today) ? today : _startDate;
+                                    final today = DateTime(
+                                      now.year,
+                                      now.month,
+                                      now.day,
+                                    );
+                                    final initialDate =
+                                        _startDate.isBefore(today)
+                                        ? today
+                                        : _startDate;
                                     final picked = await showDatePicker(
                                       context: context,
                                       initialDate: initialDate,
                                       firstDate: today,
-                                      lastDate: today.add(const Duration(days: 365)),
+                                      lastDate: today.add(
+                                        const Duration(days: 365),
+                                      ),
                                     );
                                     if (picked != null) {
                                       setState(() => _startDate = picked);
@@ -516,7 +672,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 ),
                               ),
                             ],
-                            
+
                             // Monthly Day of Month picker
                             if (_scheduleType == 'monthly') ...[
                               const SizedBox(height: 12),
@@ -524,40 +680,70 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 initialValue: _dayOfMonth,
                                 decoration: InputDecoration(
                                   labelText: 'Day of Month',
-                                  labelStyle: const TextStyle(color: Colors.grey),
+                                  labelStyle: const TextStyle(
+                                    color: Colors.grey,
+                                  ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(color: Colors.grey),
+                                    borderSide: const BorderSide(
+                                      color: Colors.grey,
+                                    ),
                                   ),
                                 ),
                                 dropdownColor: const Color(0xFF1E1E1E),
                                 style: const TextStyle(color: Colors.white),
                                 items: List.generate(31, (index) => index + 1)
-                                    .map((day) => DropdownMenuItem(
-                                          value: day,
-                                          child: Text('Day $day', style: const TextStyle(color: Colors.white)),
-                                        ))
+                                    .map(
+                                      (day) => DropdownMenuItem(
+                                        value: day,
+                                        child: Text(
+                                          'Day $day',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    )
                                     .toList(),
-                                onChanged: (val) => setState(() => _dayOfMonth = val!),
+                                onChanged: (val) =>
+                                    setState(() => _dayOfMonth = val!),
                               ),
                             ],
                           ],
-                          
-                          const Divider(height: 32, thickness: 1.5, color: Colors.grey),
-                          
+
+                          const Divider(
+                            height: 32,
+                            thickness: 1.5,
+                            color: Colors.grey,
+                          ),
+
                           // Task Checklist Steps
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text(
                                 'Checklist Steps',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
                               ),
                               TextButton.icon(
-                                style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
+                                ),
                                 onPressed: _addStepField,
                                 icon: const Icon(Icons.add, size: 18),
-                                label: const Text('Add Step', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                label: const Text(
+                                  'Add Step',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -567,14 +753,20 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: _stepsList.length,
-                            separatorBuilder: (context, index) => const SizedBox(height: 12),
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final stepData = _stepsList[index];
                               return Card(
                                 color: const Color(0xFF262626),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
                                   child: Column(
                                     children: [
                                       Row(
@@ -582,31 +774,57 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                           Expanded(
                                             child: TextFormField(
                                               decoration: InputDecoration(
-                                                hintText: 'e.g. Wash clothes, Add Detergent',
-                                                hintStyle: const TextStyle(color: Colors.grey),
+                                                hintText:
+                                                    'e.g. Wash clothes, Add Detergent',
+                                                hintStyle: const TextStyle(
+                                                  color: Colors.grey,
+                                                ),
                                                 border: InputBorder.none,
                                                 labelText: 'Step ${index + 1}',
-                                                labelStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+                                                labelStyle: const TextStyle(
+                                                  color: Colors.grey,
+                                                  fontSize: 12,
+                                                ),
                                               ),
                                               initialValue: stepData['name'],
-                                              style: const TextStyle(color: Colors.white, fontSize: 14),
-                                              onChanged: (val) => stepData['name'] = val,
-                                              validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                              ),
+                                              onChanged: (val) =>
+                                                  stepData['name'] = val,
+                                              validator: (val) =>
+                                                  val == null ||
+                                                      val.trim().isEmpty
+                                                  ? 'Required'
+                                                  : null,
                                             ),
                                           ),
                                           if (_stepsList.length > 1)
                                             IconButton(
-                                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                                              onPressed: () => _removeStepField(index),
+                                              icon: const Icon(
+                                                Icons.delete_outline,
+                                                color: Colors.redAccent,
+                                                size: 20,
+                                              ),
+                                              onPressed: () =>
+                                                  _removeStepField(index),
                                             ),
                                         ],
                                       ),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Row(
                                             children: [
-                                              const Text('Has Timer?', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                                              const Text(
+                                                'Has Timer?',
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
                                               Checkbox(
                                                 value: stepData['hasTimer'],
                                                 onChanged: (val) {
@@ -614,7 +832,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                                     stepData['hasTimer'] = val!;
                                                   });
                                                 },
-                                                activeColor: Theme.of(context).colorScheme.primary,
+                                                activeColor: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
                                                 checkColor: Colors.black,
                                               ),
                                             ],
@@ -623,23 +843,45 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                             SizedBox(
                                               width: 140,
                                               child: TextFormField(
-                                                decoration: const InputDecoration(
-                                                  labelText: 'Duration (min)',
-                                                  labelStyle: TextStyle(color: Colors.grey, fontSize: 12),
-                                                  border: UnderlineInputBorder(),
+                                                decoration:
+                                                    const InputDecoration(
+                                                      labelText:
+                                                          'Duration (min)',
+                                                      labelStyle: TextStyle(
+                                                        color: Colors.grey,
+                                                        fontSize: 12,
+                                                      ),
+                                                      border:
+                                                          UnderlineInputBorder(),
+                                                    ),
+                                                initialValue:
+                                                    stepData['minutes']
+                                                        .toString(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
                                                 ),
-                                                initialValue: stepData['minutes'].toString(),
-                                                style: const TextStyle(color: Colors.white, fontSize: 14),
-                                                keyboardType: TextInputType.number,
+                                                keyboardType:
+                                                    TextInputType.number,
                                                 onChanged: (val) {
                                                   final num = int.tryParse(val);
-                                                  if (num != null) stepData['minutes'] = num;
+                                                  if (num != null) {
+                                                    stepData['minutes'] = num;
+                                                  }
                                                 },
                                                 validator: (val) {
                                                   if (stepData['hasTimer']) {
-                                                    if (val == null || val.trim().isEmpty) return 'Enter minutes';
-                                                    final num = int.tryParse(val);
-                                                    if (num == null || num <= 0) return 'Invalid';
+                                                    if (val == null ||
+                                                        val.trim().isEmpty) {
+                                                      return 'Enter minutes';
+                                                    }
+                                                    final num = int.tryParse(
+                                                      val,
+                                                    );
+                                                    if (num == null ||
+                                                        num <= 0) {
+                                                      return 'Invalid';
+                                                    }
                                                   }
                                                   return null;
                                                 },
@@ -665,18 +907,34 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 16),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                           foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
                         ),
                         onPressed: _submit,
-                        child: Text(widget.task != null ? 'Save Task' : 'Create Task', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text(
+                          widget.task != null ? 'Save Task' : 'Create Task',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
                   ),

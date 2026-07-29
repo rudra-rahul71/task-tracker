@@ -9,7 +9,8 @@ import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 class TaskRepository {
   DatabaseRepository get _repo => GetIt.instance<DatabaseRepository>();
 
-  TypedCollection<TaskGroupModel> get _groupCollection => TypedCollection<TaskGroupModel>(
+  TypedCollection<TaskGroupModel> get _groupCollection =>
+      TypedCollection<TaskGroupModel>(
         repo: _repo,
         collectionName: 'task_groups',
         toMap: (group) => group.toMap(),
@@ -17,13 +18,14 @@ class TaskRepository {
       );
 
   TypedCollection<TaskModel> get _taskCollection => TypedCollection<TaskModel>(
-        repo: _repo,
-        collectionName: 'tasks',
-        toMap: (task) => task.toMap(),
-        fromMap: (map, id) => TaskModel.fromMap(map, id),
-      );
+    repo: _repo,
+    collectionName: 'tasks',
+    toMap: (task) => task.toMap(),
+    fromMap: (map, id) => TaskModel.fromMap(map, id),
+  );
 
-  TypedCollection<TaskHistoryModel> get _historyCollection => TypedCollection<TaskHistoryModel>(
+  TypedCollection<TaskHistoryModel> get _historyCollection =>
+      TypedCollection<TaskHistoryModel>(
         repo: _repo,
         collectionName: 'task_history',
         toMap: (history) => history.toMap(),
@@ -133,7 +135,10 @@ class TaskRepository {
         taskName: task.name,
         groupId: task.groupId,
         date: todayZero,
-        completedSteps: task.steps.where((s) => s.isCompleted).map((s) => s.name).toList(),
+        completedSteps: task.steps
+            .where((s) => s.isCompleted)
+            .map((s) => s.name)
+            .toList(),
       );
       await _historyCollection.save(historyRecord, '');
     } else if (task.status == 'pending' && oldStatus == 'completed') {
@@ -176,15 +181,28 @@ class TaskRepository {
   }
 
   // Get completions stream for a specific month
-  Stream<List<TaskHistoryModel>> getMonthlyTaskHistory(String userId, DateTime month) {
+  Stream<List<TaskHistoryModel>> getMonthlyTaskHistory(
+    String userId,
+    DateTime month,
+  ) {
     final start = DateTime(month.year, month.month, 1);
-    final end = DateTime(month.year, month.month + 1, 1).subtract(const Duration(microseconds: 1));
+    final end = DateTime(
+      month.year,
+      month.month + 1,
+      1,
+    ).subtract(const Duration(microseconds: 1));
 
     return _historyCollection
         .watch(filters: [QueryFilter.eq('userId', userId)])
         .map((history) {
           return history
-              .where((h) => h.date.isAfter(start.subtract(const Duration(microseconds: 1))) && h.date.isBefore(end.add(const Duration(microseconds: 1))))
+              .where(
+                (h) =>
+                    h.date.isAfter(
+                      start.subtract(const Duration(microseconds: 1)),
+                    ) &&
+                    h.date.isBefore(end.add(const Duration(microseconds: 1))),
+              )
               .toList()
             ..sort((a, b) => b.date.compareTo(a.date));
         })
@@ -211,7 +229,9 @@ class TaskRepository {
         effectiveSchedule = task.schedule;
       } else if (task.groupId != null) {
         final group = groupMap[task.groupId];
-        if (group != null && group.schedule != null && group.schedule!.type != 'none') {
+        if (group != null &&
+            group.schedule != null &&
+            group.schedule!.type != 'none') {
           effectiveSchedule = group.schedule;
         }
       }

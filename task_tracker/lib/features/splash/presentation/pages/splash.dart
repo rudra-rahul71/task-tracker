@@ -51,7 +51,8 @@ class _SplashPageState extends State<SplashPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Sleek black backdrop for the premium splash
+      backgroundColor:
+          Colors.black, // Sleek black backdrop for the premium splash
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,

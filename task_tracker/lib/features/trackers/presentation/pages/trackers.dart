@@ -44,9 +44,7 @@ class _TrackersPageState extends State<TrackersPage> {
     if (userId == null) {
       return const Scaffold(
         backgroundColor: Color(0xFF121212),
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -65,14 +63,20 @@ class _TrackersPageState extends State<TrackersPage> {
               action: ElevatedButton.icon(
                 onPressed: () => _showAddTrackerDialog(context),
                 icon: const Icon(Icons.add, size: 20),
-                label: const Text('Add Tracker', style: TextStyle(fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'Add Tracker',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ),
@@ -89,7 +93,9 @@ class _TrackersPageState extends State<TrackersPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'all');
                   },
-                  selectedColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'all'
                         ? Theme.of(context).colorScheme.primary
@@ -142,7 +148,10 @@ class _TrackersPageState extends State<TrackersPage> {
                     return Center(
                       child: Text(
                         'Error loading trackers: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 16,
+                        ),
                       ),
                     );
                   }
@@ -154,7 +163,9 @@ class _TrackersPageState extends State<TrackersPage> {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       final now = DateTime.now();
                       for (final tracker in trackers) {
-                        final newStart = tracker.getNewStartDateIfResetNeeded(now);
+                        final newStart = tracker.getNewStartDateIfResetNeeded(
+                          now,
+                        );
                         if (newStart != null) {
                           _repository.autoResetTracker(tracker, newStart);
                         }
@@ -181,8 +192,8 @@ class _TrackersPageState extends State<TrackersPage> {
                             _activeFilter == 'all'
                                 ? 'No habit trackers created yet'
                                 : _activeFilter == 'maintain'
-                                    ? 'No habits to maintain yet'
-                                    : 'No habits to quit yet',
+                                ? 'No habits to maintain yet'
+                                : 'No habits to quit yet',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -192,7 +203,10 @@ class _TrackersPageState extends State<TrackersPage> {
                           const SizedBox(height: 8),
                           Text(
                             'Tap "Add Tracker" in the top right to start tracking!',
-                            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -204,12 +218,13 @@ class _TrackersPageState extends State<TrackersPage> {
                   final width = MediaQuery.of(context).size.width;
                   if (width >= 850) {
                     return GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 8,
-                        mainAxisExtent: 265,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 8,
+                            mainAxisExtent: 265,
+                          ),
                       itemCount: filteredTrackers.length,
                       itemBuilder: (context, index) {
                         return TrackerCard(tracker: filteredTrackers[index]);

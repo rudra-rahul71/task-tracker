@@ -39,7 +39,8 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
     // Re-initialize timer if the step properties from parent change
     if (widget.step.timerStartedAt != oldWidget.step.timerStartedAt ||
         widget.step.timerPausedAt != oldWidget.step.timerPausedAt ||
-        widget.step.timerSecondsRemaining != oldWidget.step.timerSecondsRemaining) {
+        widget.step.timerSecondsRemaining !=
+            oldWidget.step.timerSecondsRemaining) {
       _initTimerState();
     }
   }
@@ -72,18 +73,23 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
   void _triggerExpirationInFirestore() async {
     // Avoid double updates
-    if (widget.step.timerPausedAt == null && widget.step.timerSecondsRemaining == 0) return;
+    if (widget.step.timerPausedAt == null &&
+        widget.step.timerSecondsRemaining == 0)
+      return;
 
     final updatedSteps = List<TaskStep>.from(widget.task.steps);
     final currentStep = updatedSteps[widget.stepIndex];
-    
+
     updatedSteps[widget.stepIndex] = currentStep.copyWith(
       timerSecondsRemaining: 0,
       clearTimerPausedAt: true,
     );
 
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
+    await widget.repository.updateTask(
+      updatedTask,
+      oldStatus: widget.task.status,
+    );
   }
 
   void _toggleTimer() async {
@@ -103,7 +109,8 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
       );
     } else {
       // Resume/Start: Set startedAt to now, carry over previous remaining, clear pausedAt
-      final rem = currentStep.timerSecondsRemaining ?? currentStep.timerDuration ?? 600;
+      final rem =
+          currentStep.timerSecondsRemaining ?? currentStep.timerDuration ?? 600;
       newStep = currentStep.copyWith(
         timerStartedAt: now,
         clearTimerPausedAt: true,
@@ -113,13 +120,16 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
     updatedSteps[widget.stepIndex] = newStep;
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
+    await widget.repository.updateTask(
+      updatedTask,
+      oldStatus: widget.task.status,
+    );
   }
 
   void _extendTimer() async {
     final updatedSteps = List<TaskStep>.from(widget.task.steps);
     final currentStep = updatedSteps[widget.stepIndex];
-    
+
     // Add 5 minutes (300 seconds)
     const extendSec = 300;
     final currentRem = currentStep.getSecondsRemaining();
@@ -135,7 +145,10 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
     updatedSteps[widget.stepIndex] = newStep;
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
+    await widget.repository.updateTask(
+      updatedTask,
+      oldStatus: widget.task.status,
+    );
   }
 
   void _confirmComplete() async {
@@ -151,7 +164,10 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
     updatedSteps[widget.stepIndex] = newStep;
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
+    await widget.repository.updateTask(
+      updatedTask,
+      oldStatus: widget.task.status,
+    );
   }
 
   void _restartTimer() async {
@@ -168,8 +184,11 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
     updatedSteps[widget.stepIndex] = newStep;
     final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(updatedTask, oldStatus: widget.task.status);
-    
+    await widget.repository.updateTask(
+      updatedTask,
+      oldStatus: widget.task.status,
+    );
+
     if (mounted) {
       setState(() {
         _secondsRemaining = currentStep.timerDuration ?? 0;
@@ -177,7 +196,6 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
       });
     }
   }
-
 
   String _formatDuration(int totalSeconds) {
     if (totalSeconds <= 0) return '00:00';
@@ -203,7 +221,10 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
         decoration: BoxDecoration(
           color: Colors.redAccent.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4), width: 1.5),
+          border: Border.all(
+            color: Colors.redAccent.withValues(alpha: 0.4),
+            width: 1.5,
+          ),
         ),
         child: Wrap(
           alignment: WrapAlignment.spaceBetween,
@@ -214,11 +235,19 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.timer_off_outlined, color: Colors.redAccent, size: 20),
+                const Icon(
+                  Icons.timer_off_outlined,
+                  color: Colors.redAccent,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'Timer Done!',
-                  style: TextStyle(color: Colors.redAccent[100], fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(
+                    color: Colors.redAccent[100],
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -226,7 +255,11 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: Icon(Icons.replay, color: Colors.redAccent[100], size: 18),
+                  icon: Icon(
+                    Icons.replay,
+                    color: Colors.redAccent[100],
+                    size: 18,
+                  ),
                   tooltip: 'Restart Timer',
                   onPressed: _restartTimer,
                   padding: EdgeInsets.zero,
@@ -239,7 +272,10 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
                     foregroundColor: Colors.orangeAccent,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                   ),
-                  child: const Text('+5 min', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  child: const Text(
+                    '+5 min',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
                 ),
                 const SizedBox(width: 4),
                 ElevatedButton(
@@ -247,12 +283,20 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.redAccent,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  child: const Text('Confirm', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  child: const Text(
+                    'Confirm',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -265,8 +309,12 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          isRunning ? Icons.hourglass_top_rounded : Icons.hourglass_empty_rounded,
-          color: isRunning ? Theme.of(context).colorScheme.primary : Colors.grey,
+          isRunning
+              ? Icons.hourglass_top_rounded
+              : Icons.hourglass_empty_rounded,
+          color: isRunning
+              ? Theme.of(context).colorScheme.primary
+              : Colors.grey,
           size: 18,
         ),
         const SizedBox(width: 6),
@@ -288,7 +336,9 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
             radius: 14,
             child: Icon(
               isRunning ? Icons.pause : Icons.play_arrow,
-              color: isRunning ? Theme.of(context).colorScheme.primary : Colors.grey,
+              color: isRunning
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.grey,
               size: 16,
             ),
           ),
@@ -299,11 +349,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
           child: CircleAvatar(
             backgroundColor: Colors.grey.withValues(alpha: 0.1),
             radius: 14,
-            child: const Icon(
-              Icons.replay,
-              color: Colors.grey,
-              size: 14,
-            ),
+            child: const Icon(Icons.replay, color: Colors.grey, size: 14),
           ),
         ),
       ],
