@@ -10,8 +10,9 @@ import 'package:task_tracker/features/trackers/data/models/tracker_history.dart'
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
-import 'package:task_tracker/features/tasks/presentation/widgets/task_card.dart';
 import 'package:task_tracker/features/tasks/data/models/task_history.dart';
+import 'package:task_tracker/features/home/presentation/widgets/calendar_widget.dart';
+import 'package:task_tracker/features/home/presentation/widgets/daily_details_widget.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -34,23 +35,6 @@ class _HomePageState extends State<HomePage> {
   Stream<_HomeData>? _combinedStream;
   DateTime? _cachedFocusedMonth;
   String? _historyStreamUserId;
-
-  final List<String> _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
-  final List<String> _weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   void _initCombinedStream(String userId, DateTime focusedMonth) {
     bool streamsChanged = false;
@@ -287,7 +271,7 @@ class _HomePageState extends State<HomePage> {
       body: StreamBuilder<_HomeData>(
         stream: _combinedStream!,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -356,16 +340,54 @@ class _HomePageState extends State<HomePage> {
             });
           }
 
-          // Compute values for calendar grid
+          final selectedDayKey =
+              "${_selectedDay.year}-${_selectedDay.month}-${_selectedDay.day}";
+
+          // Pre-calculate all Calendar events
+          final Map<String, CalendarDayData> calendarEvents = {};
           final year = _focusedMonth.year;
           final month = _focusedMonth.month;
           final firstDay = DateTime(year, month, 1);
-          final emptySlots = firstDay.weekday % 7; // Sunday is index 0
+          final emptySlots = firstDay.weekday % 7;
           final daysInMonth = DateTime(year, month + 1, 0).day;
           final totalCells = emptySlots + daysInMonth;
 
-          final selectedDayKey =
-              "${_selectedDay.year}-${_selectedDay.month}-${_selectedDay.day}";
+          for (int index = emptySlots; index < totalCells; index++) {
+            final dayNum = index - emptySlots + 1;
+            final dayDate = DateTime(year, month, dayNum);
+            final dayDateKey = "${dayDate.year}-${dayDate.month}-${dayDate.day}";
+
+            final completedForDay = trackers
+                .where((t) => _isTrackerCompletedOnDay(t, dayDate, dayDateKey, trackerHistoryMap))
+                .toList();
+
+            final trackerIndicators = completedForDay.map((t) {
+              return t.type == 'quit' ? const Color(0xFFEF5350) : const Color(0xFF26A69A);
+            }).toList();
+
+            final tasksOnDay = tasks.where((t) {
+              return _isTaskDueOnDate(t, groupMap, dayDate) ||
+                  _isTaskCompletedOnDate(t, taskHistoryMap, dayDateKey);
+            }).toList();
+
+            final calendarTasks = tasksOnDay.map((t) {
+              final isCompleted = _isTaskCompletedOnDate(t, taskHistoryMap, dayDateKey);
+              final group = t.groupId != null ? groupMap[t.groupId] : null;
+              final color = group != null && group.id.isNotEmpty
+                  ? Color(group.colorValue)
+                  : Theme.of(context).colorScheme.primary;
+              return CalendarTaskData(
+                name: t.name,
+                color: color,
+                isCompleted: isCompleted,
+              );
+            }).toList();
+
+            calendarEvents[dayDateKey] = CalendarDayData(
+              trackerIndicators: trackerIndicators,
+              tasks: calendarTasks,
+            );
+          }
 
           // Look up completions and slip-ups for the currently selected day
           final completedOnSelected = trackers.where((tracker) {
@@ -418,31 +440,38 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: isLargeScreen
                       ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(
                               flex: 3,
-                              child: _buildDetailPanel(
+                              child: DailyDetailsWidget(
+                                selectedDay: _selectedDay,
                                 completedTrackers: completedOnSelected,
                                 slippedTrackers: slippedOnSelected,
                                 completedTasks: completedTasksOnSelected,
                                 pendingTasks: pendingTasksOnSelected,
                                 groups: groups,
                                 isScrollable: true,
+                                taskRepository: _taskRepository,
                               ),
                             ),
                             const SizedBox(width: 24),
                             Expanded(
                               flex: 4,
-                              child: _buildCalendarCard(
-                                emptySlots: emptySlots,
-                                daysInMonth: daysInMonth,
-                                totalCells: totalCells,
-                                trackers: trackers,
-                                trackerHistoryMap: trackerHistoryMap,
-                                tasks: tasks,
-                                groupMap: groupMap,
-                                taskHistoryMap: taskHistoryMap,
+                              child: CalendarWidget(
+                                focusedMonth: _focusedMonth,
+                                selectedDay: _selectedDay,
+                                eventsMap: calendarEvents,
+                                onMonthChanged: (month) {
+                                  setState(() {
+                                    _focusedMonth = month;
+                                  });
+                                },
+                                onDaySelected: (day) {
+                                  setState(() {
+                                    _selectedDay = day;
+                                  });
+                                },
                               ),
                             ),
                           ],
@@ -451,24 +480,31 @@ class _HomePageState extends State<HomePage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildDetailPanel(
+                              DailyDetailsWidget(
+                                selectedDay: _selectedDay,
                                 completedTrackers: completedOnSelected,
                                 slippedTrackers: slippedOnSelected,
                                 completedTasks: completedTasksOnSelected,
                                 pendingTasks: pendingTasksOnSelected,
                                 groups: groups,
                                 isScrollable: false,
+                                taskRepository: _taskRepository,
                               ),
                               const SizedBox(height: 24),
-                              _buildCalendarCard(
-                                emptySlots: emptySlots,
-                                daysInMonth: daysInMonth,
-                                totalCells: totalCells,
-                                trackers: trackers,
-                                trackerHistoryMap: trackerHistoryMap,
-                                tasks: tasks,
-                                groupMap: groupMap,
-                                taskHistoryMap: taskHistoryMap,
+                              CalendarWidget(
+                                focusedMonth: _focusedMonth,
+                                selectedDay: _selectedDay,
+                                eventsMap: calendarEvents,
+                                onMonthChanged: (month) {
+                                  setState(() {
+                                    _focusedMonth = month;
+                                  });
+                                },
+                                onDaySelected: (day) {
+                                  setState(() {
+                                    _selectedDay = day;
+                                  });
+                                },
                               ),
                             ],
                           ),
@@ -478,751 +514,28 @@ class _HomePageState extends State<HomePage> {
             ),
           );
 
-          return isLargeScreen
-              ? mainContent
-              : Scaffold(
-                  backgroundColor: Colors.transparent,
-                  body: mainContent,
-                );
+          final isWaiting = snapshot.connectionState == ConnectionState.waiting;
+
+          return Stack(
+            children: [
+              isLargeScreen
+                  ? mainContent
+                  : Scaffold(
+                      backgroundColor: Colors.transparent,
+                      body: mainContent,
+                    ),
+              if (isWaiting)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ),
+            ],
+          );
         },
-      ),
-    );
-  }
-
-  // Build Calendar UI Card
-  Widget _buildCalendarCard({
-    required int emptySlots,
-    required int daysInMonth,
-    required int totalCells,
-    required List<TrackerModel> trackers,
-    required Map<String, Set<String>> trackerHistoryMap,
-    required List<TaskModel> tasks,
-    required Map<String, TaskGroupModel> groupMap,
-    required Map<String, bool> taskHistoryMap,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = constraints.maxWidth;
-        final useTextBanners = cardWidth >= 520;
-        final cellAspectRatio = useTextBanners ? 0.95 : 0.72;
-
-        return Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.15),
-              width: 1.5,
-            ),
-          ),
-          color: const Color(0xFF1E1E1E),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Calendar Header Month / Year & Buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.chevron_left,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _focusedMonth = DateTime(
-                              _focusedMonth.year,
-                              _focusedMonth.month - 1,
-                            );
-                          });
-                        },
-                      ),
-                      Text(
-                        '${_months[_focusedMonth.month - 1]} ${_focusedMonth.year}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.chevron_right,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _focusedMonth = DateTime(
-                              _focusedMonth.year,
-                              _focusedMonth.month + 1,
-                            );
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Weekday Grid Labels
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: _weekdays.map((w) {
-                      return Expanded(
-                        child: Center(
-                          child: Text(
-                            w,
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Days Grid
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      childAspectRatio: cellAspectRatio,
-                    ),
-                    itemCount: totalCells,
-                    itemBuilder: (context, index) {
-                      if (index < emptySlots) {
-                        return const SizedBox.shrink();
-                      }
-
-                      final dayNum = index - emptySlots + 1;
-                      final dayDate = DateTime(
-                        _focusedMonth.year,
-                        _focusedMonth.month,
-                        dayNum,
-                      );
-
-                      final isSelected =
-                          _selectedDay.year == dayDate.year &&
-                          _selectedDay.month == dayDate.month &&
-                          _selectedDay.day == dayDate.day;
-
-                      final today = DateTime.now();
-                      final isToday =
-                          today.year == dayDate.year &&
-                          today.month == dayDate.month &&
-                          today.day == dayDate.day;
-
-                      final dayDateKey =
-                          "${dayDate.year}-${dayDate.month}-${dayDate.day}";
-
-                      final completedForDay = trackers
-                          .where(
-                            (t) => _isTrackerCompletedOnDay(
-                              t,
-                              dayDate,
-                              dayDateKey,
-                              trackerHistoryMap,
-                            ),
-                          )
-                          .toList();
-
-                      final allIndicators = [
-                        ...completedForDay.map((t) {
-                          return t.type == 'quit'
-                              ? const Color(
-                                  0xFFEF5350,
-                                ) // Red dot matching quit habits
-                              : const Color(
-                                  0xFF26A69A,
-                                ); // Teal dot matching maintain habits
-                        }),
-                      ];
-
-                      // Look up tasks completed or pending on this day using history
-                      final tasksOnDay = tasks.where((t) {
-                        return _isTaskDueOnDate(t, groupMap, dayDate) ||
-                            _isTaskCompletedOnDate(
-                              t,
-                              taskHistoryMap,
-                              dayDateKey,
-                            );
-                      }).toList();
-
-                      final List<Widget> taskBanners = [];
-                      final List<Widget> taskIndicators = [];
-
-                      if (tasksOnDay.isNotEmpty) {
-                        if (useTextBanners) {
-                          final displayLimit = 2;
-                          final showMore = tasksOnDay.length > displayLimit;
-                          final count = showMore
-                              ? displayLimit - 1
-                              : tasksOnDay.length;
-
-                          for (int i = 0; i < count; i++) {
-                            final t = tasksOnDay[i];
-                            final isCompleted = _isTaskCompletedOnDate(
-                              t,
-                              taskHistoryMap,
-                              dayDateKey,
-                            );
-                            final group = t.groupId != null
-                                ? groupMap[t.groupId]
-                                : null;
-                            final color = group != null && group.id.isNotEmpty
-                                ? Color(group.colorValue)
-                                : Theme.of(context).colorScheme.primary;
-
-                            final isLightColor =
-                                ThemeData.estimateBrightnessForColor(color) ==
-                                Brightness.light;
-                            final textColor = isCompleted
-                                ? (isLightColor
-                                      ? Colors.black87
-                                      : Colors.white70)
-                                : (isLightColor
-                                      ? color.withValues(alpha: 0.9)
-                                      : color);
-
-                            taskBanners.add(
-                              Container(
-                                width: double.infinity,
-                                margin: const EdgeInsets.symmetric(
-                                  vertical: 1.0,
-                                  horizontal: 2.0,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4.0,
-                                  vertical: 2.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isCompleted
-                                      ? color.withValues(alpha: 0.85)
-                                      : color.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: isCompleted
-                                      ? null
-                                      : Border.all(
-                                          color: color.withValues(alpha: 0.5),
-                                          width: 0.8,
-                                        ),
-                                ),
-                                child: Text(
-                                  t.name,
-                                  style: TextStyle(
-                                    fontSize: 8.0,
-                                    fontWeight: FontWeight.bold,
-                                    color: isCompleted
-                                        ? (isLightColor
-                                              ? Colors.black
-                                              : Colors.white)
-                                        : textColor,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            );
-                          }
-
-                          if (showMore) {
-                            final remainingCount = tasksOnDay.length - count;
-                            taskBanners.add(
-                              Container(
-                                width: double.infinity,
-                                margin: const EdgeInsets.symmetric(
-                                  vertical: 1.0,
-                                  horizontal: 2.0,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4.0,
-                                  vertical: 2.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.05),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  '+$remainingCount more',
-                                  style: const TextStyle(
-                                    fontSize: 7.5,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            );
-                          }
-                        } else {
-                          // Render mini banners for tasks on mobile layout
-                          for (final t in tasksOnDay) {
-                            final isCompleted = _isTaskCompletedOnDate(
-                              t,
-                              taskHistoryMap,
-                              dayDateKey,
-                            );
-                            final group = t.groupId != null
-                                ? groupMap[t.groupId]
-                                : null;
-                            final color = group != null && group.id.isNotEmpty
-                                ? Color(group.colorValue)
-                                : Theme.of(context).colorScheme.primary;
-
-                            taskIndicators.add(
-                              Container(
-                                margin: const EdgeInsets.symmetric(
-                                  vertical: 1.0,
-                                  horizontal: 3.0,
-                                ),
-                                height: 6,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: isCompleted
-                                      ? color
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(3),
-                                  border: Border.all(
-                                    color: color.withValues(
-                                      alpha: isCompleted ? 1.0 : 0.6,
-                                    ),
-                                    width: 1.0,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      }
-
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedDay = dayDate;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.25)
-                                : isToday
-                                ? Colors.white.withValues(alpha: 0.05)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : isToday
-                                  ? Colors.grey
-                                  : Colors.white.withValues(alpha: 0.05),
-                              width: isSelected || isToday ? 1.5 : 1,
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Stack(
-                              children: [
-                                Align(
-                                  alignment: Alignment.topCenter,
-                                  child: Text(
-                                    '$dayNum',
-                                    textScaler: TextScaler.noScaling,
-                                    style: TextStyle(
-                                      color: isSelected
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.primary
-                                          : Colors.white,
-                                      fontWeight: isSelected || isToday
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                if (useTextBanners)
-                                  Positioned.fill(
-                                    top: 18,
-                                    bottom: 10,
-                                    child: ListView(
-                                      padding: EdgeInsets.zero,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      children: taskBanners,
-                                    ),
-                                  ),
-                                Align(
-                                  alignment: Alignment.bottomCenter,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (!useTextBanners &&
-                                          taskIndicators.isNotEmpty) ...[
-                                        Column(
-                                          children: taskIndicators
-                                              .take(2)
-                                              .toList(),
-                                        ),
-                                        const SizedBox(height: 3),
-                                      ],
-                                      if (allIndicators.isNotEmpty)
-                                        FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: allIndicators.take(4).map((
-                                              color,
-                                            ) {
-                                              return Container(
-                                                margin:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 1.0,
-                                                    ),
-                                                width: 4,
-                                                height: 4,
-                                                decoration: BoxDecoration(
-                                                  color: color,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              );
-                                            }).toList(),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // Build Details Panel Card (Completed / Pending trackers for selected day)
-  Widget _buildDetailPanel({
-    required List<TrackerModel> completedTrackers,
-    required List<TrackerModel> slippedTrackers,
-    required List<TaskModel> completedTasks,
-    required List<TaskModel> pendingTasks,
-    required List<TaskGroupModel> groups,
-    required bool isScrollable,
-  }) {
-    final formattedDate =
-        '${_selectedDay.year}-${_selectedDay.month.toString().padLeft(2, '0')}-${_selectedDay.day.toString().padLeft(2, '0')}';
-
-    final today = DateTime.now();
-    final isSelectedDayToday =
-        _selectedDay.year == today.year &&
-        _selectedDay.month == today.month &&
-        _selectedDay.day == today.day;
-
-    final listWidget = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // --- TASKS SECTION ---
-        const Text(
-          'TODAY\'S TASKS',
-          style: TextStyle(
-            color: Colors.grey,
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
-            letterSpacing: 1.0,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (pendingTasks.isEmpty && completedTasks.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
-            child: Row(
-              children: [
-                Icon(Icons.assignment_outlined, color: Colors.grey, size: 20),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'No tasks scheduled or completed on this day.',
-                    style: TextStyle(color: Colors.grey, fontSize: 14),
-                  ),
-                ),
-              ],
-            ),
-          )
-        else ...[
-          if (pendingTasks.isNotEmpty) ...[
-            const Text(
-              'PENDING',
-              style: TextStyle(
-                color: Color(0xFFD4AF37),
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...pendingTasks.map((task) {
-              final taskForCard = isSelectedDayToday
-                  ? task
-                  : task.copyWith(
-                      status: 'pending',
-                      steps: task.steps
-                          .map(
-                            (s) => s.copyWith(
-                              isCompleted: false,
-                              clearTimerStartedAt: true,
-                              clearTimerPausedAt: true,
-                              timerSecondsRemaining: s.timerDuration,
-                              isTimerConfirmed: false,
-                            ),
-                          )
-                          .toList(),
-                    );
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: TaskCard(
-                  task: taskForCard,
-                  groups: groups,
-                  repository: _taskRepository,
-                  isInteractive: isSelectedDayToday,
-                  showCompletionStatus: isSelectedDayToday,
-                  showEditAction: false,
-                  showDeleteAction: false,
-                ),
-              );
-            }),
-            const SizedBox(height: 12),
-          ],
-          if (completedTasks.isNotEmpty) ...[
-            const Text(
-              'COMPLETED',
-              style: TextStyle(
-                color: Colors.grey,
-                fontWeight: FontWeight.bold,
-                fontSize: 10,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...completedTasks.map((task) {
-              final taskForCard = isSelectedDayToday
-                  ? task
-                  : task.copyWith(
-                      status: 'completed',
-                      steps: task.steps
-                          .map((s) => s.copyWith(isCompleted: true))
-                          .toList(),
-                    );
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: TaskCard(
-                  task: taskForCard,
-                  groups: groups,
-                  repository: _taskRepository,
-                  isInteractive: isSelectedDayToday,
-                  showCompletionStatus: isSelectedDayToday,
-                  showEditAction: false,
-                  showDeleteAction: false,
-                ),
-              );
-            }),
-          ],
-        ],
-
-        const Divider(height: 32, thickness: 1, color: Colors.white10),
-
-        // --- HABIT TRACKERS SECTION ---
-        const Text(
-          'SUCCESSFUL HABITS / CLEAN DAYS',
-          style: TextStyle(
-            color: Colors.grey,
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
-            letterSpacing: 1.0,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (completedTrackers.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline_rounded, color: Colors.grey, size: 20),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'No habits completed or clean on this day.',
-                    style: TextStyle(color: Colors.grey, fontSize: 14),
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          ...completedTrackers.map((t) => _buildDetailItem(t, true)),
-
-        if (slippedTrackers.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          const Text(
-            'SLIPPED UP / BROKEN HABITS',
-            style: TextStyle(
-              color: Colors.grey,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-              letterSpacing: 1.0,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...slippedTrackers.map(
-            (t) => _buildDetailItem(t, false, isSlip: true),
-          ),
-        ],
-      ],
-    );
-
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: Colors.white.withValues(alpha: 0.08),
-          width: 1.5,
-        ),
-      ),
-      color: const Color(0xFF1E1E1E),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              formattedDate,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Habits & tasks completion details',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-            const Divider(height: 32, thickness: 1, color: Colors.white10),
-
-            if (isScrollable)
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: listWidget,
-                ),
-              )
-            else
-              listWidget,
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailItem(
-    TrackerModel tracker,
-    bool isCompleted, {
-    bool isSlip = false,
-  }) {
-    final color = tracker.type == 'quit'
-        ? const Color(0xFFEF5350)
-        : const Color(0xFF26A69A);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSlip
-              ? const Color(0xFFEF5350).withValues(alpha: 0.3)
-              : isCompleted
-              ? color.withValues(alpha: 0.3)
-              : Colors.white.withValues(alpha: 0.05),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Icon(
-                  isSlip
-                      ? Icons.cancel_outlined
-                      : isCompleted
-                      ? Icons.check_circle
-                      : Icons.circle_outlined,
-                  color: isSlip
-                      ? const Color(0xFFEF5350)
-                      : isCompleted
-                      ? color
-                      : Colors.grey,
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    tracker.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: tracker.type == 'quit'
-                  ? const Color(0xFFEF5350).withValues(alpha: 0.1)
-                  : const Color(0xFF26A69A).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              tracker.type == 'quit' ? 'Quit' : 'Maintain',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
