@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:flutter/material.dart';
+import 'package:task_tracker/core/utils/date_parser.dart';
 import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
@@ -24,11 +25,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
   String _measurementUnit = 'days'; // 'days' only
   int? _durationValue;
   bool _isLoading = false;
-  DateTime _startDate = DateTime(
-    DateTime.now().year,
-    DateTime.now().month,
-    DateTime.now().day,
-  );
+  DateTime _startDate = DateTime.now().dateOnly;
 
   @override
   void initState() {
@@ -41,6 +38,35 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
       _durationValue = widget.trackerToEdit!.durationValue;
       _startDate = widget.trackerToEdit!.startDate;
     }
+  }
+
+  InputDecoration _buildInputDecoration(
+    ColorScheme colorScheme,
+    String labelText,
+    String hintText,
+  ) {
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.outline),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.error, width: 2),
+      ),
+    );
   }
 
   void _submit() async {
@@ -64,7 +90,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
     });
 
     final now = DateTime.now();
-    final start = DateTime(_startDate.year, _startDate.month, _startDate.day);
+    final start = _startDate.dateOnly;
     DateTime? endDate;
 
     if (_durationType == 'set_time' && _durationValue != null) {
@@ -156,7 +182,10 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+                        icon: Icon(
+                          Icons.close,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -166,33 +195,10 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                   // Habit Name Field
                   TextFormField(
                     initialValue: _name,
-                    decoration: InputDecoration(
-                      labelText: 'Habit Name',
-                      hintText: 'e.g., Gym, Sleep Early, No Sweets',
-                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-                      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: colorScheme.outline),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: colorScheme.primary,
-                          width: 2,
-                        ),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: colorScheme.error),
-                      ),
-                      focusedErrorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: colorScheme.error,
-                          width: 2,
-                        ),
-                      ),
+                    decoration: _buildInputDecoration(
+                      colorScheme,
+                      'Habit Name',
+                      'e.g., Gym, Sleep Early, No Sweets',
                     ),
                     style: TextStyle(color: colorScheme.onSurface),
                     validator: (value) {
@@ -280,7 +286,9 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                         });
                       },
                       style: SegmentedButton.styleFrom(
-                        selectedBackgroundColor: colorScheme.primary.withValues(alpha: 0.15),
+                        selectedBackgroundColor: colorScheme.primary.withValues(
+                          alpha: 0.15,
+                        ),
                         selectedForegroundColor: colorScheme.primary,
                       ),
                     ),
@@ -291,33 +299,10 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                     const SizedBox(height: 24),
                     TextFormField(
                       initialValue: _durationValue?.toString() ?? '',
-                      decoration: InputDecoration(
-                        labelText: 'Duration Value ($_measurementUnit)',
-                        hintText: 'e.g., 30',
-                        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-                        labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: colorScheme.outline),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                        errorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: colorScheme.error),
-                        ),
-                        focusedErrorBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: colorScheme.error,
-                            width: 2,
-                          ),
-                        ),
+                      decoration: _buildInputDecoration(
+                        colorScheme,
+                        'Duration Value ($_measurementUnit)',
+                        'e.g., 30',
                       ),
                       keyboardType: TextInputType.number,
                       style: TextStyle(color: colorScheme.onSurface),
@@ -351,7 +336,10 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                     ),
                     subtitle: Text(
                       '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-                      style: TextStyle(color: colorScheme.onSurface, fontSize: 15),
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 15,
+                      ),
                     ),
                     trailing: IconButton(
                       icon: Icon(

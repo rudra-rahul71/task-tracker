@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:task_tracker/core/utils/date_parser.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker_history.dart';
 
@@ -23,53 +24,20 @@ class TrackerRepository {
         fromMap: (map, id) => TrackerHistoryModel.fromMap(map, id),
       );
 
-  // Stream of trackers for a specific user, sorted by creation date
-  Stream<List<TrackerModel>> getTrackers(String userId) {
-    return _trackerCollection
-        .watch(filters: [QueryFilter.eq('userId', userId)])
-        .map((trackers) {
-          trackers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return trackers;
-        });
-  }
-
-  // Add a new tracker and backfill completion entries if started in the past
-  Future<void> addTracker(TrackerModel tracker) async {
-    // Generate a temporary / fallback ID for tracker if empty, but library saveMap handles empty ID by adding.
-    // However, to link history records, we need a tracker ID. Let's generate a unique string using DateTime.
-    final trackerId = tracker.id.isNotEmpty
-        ? tracker.id
-        : 'tr_${DateTime.now().millisecondsSinceEpoch}';
-
-    final start = DateTime(
-      tracker.startDate.year,
-      tracker.startDate.month,
-      tracker.startDate.day,
-    );
-    final originalStart = DateTime(
-      tracker.originalStartDate.year,
-      tracker.originalStartDate.month,
-      tracker.originalStartDate.day,
-    );
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
+  // Helper method to backfill completion entries for maintain habits started in the past
+  (List<DateTime>, List<TrackerHistoryModel>) _backfillMaintainCompletions(
+    TrackerModel tracker,
+    String trackerId,
+    DateTime today,
+  ) {
     final completedDates = List<DateTime>.from(tracker.completedDates);
     final List<TrackerHistoryModel> backfilledHistory = [];
 
-    // If it is a maintain habit and was started in the past, backfill completion entries
-    if (tracker.type == 'maintain' && start.isBefore(today)) {
-      DateTime current = start;
+    if (tracker.type == 'maintain' && tracker.startDate.isBefore(today)) {
+      DateTime current = tracker.startDate.dateOnly;
       while (current.isBefore(today)) {
-        if (!completedDates.any(
-          (d) =>
-              d.year == current.year &&
-              d.month == current.month &&
-              d.day == current.day,
-        )) {
+        if (!completedDates.any((d) => d.isSameDay(current))) {
           completedDates.add(current);
-
           backfilledHistory.add(
             TrackerHistoryModel(
               id: '',
@@ -82,24 +50,40 @@ class TrackerRepository {
             ),
           );
         }
-
         current = current.add(const Duration(days: 1));
       }
     }
+    return (completedDates, backfilledHistory);
+  }
 
-    final updatedTracker = TrackerModel(
+  // Stream of trackers for a specific user, sorted by creation date
+  Stream<List<TrackerModel>> getTrackers(String userId) {
+    return _trackerCollection
+        .watch(filters: [QueryFilter.eq('userId', userId)])
+        .map((trackers) {
+          trackers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return trackers;
+        });
+  }
+
+  // Add a new tracker and backfill completion entries if started in the past
+  Future<void> addTracker(TrackerModel tracker) async {
+    final trackerId = tracker.id.isNotEmpty
+        ? tracker.id
+        : 'tr_${DateTime.now().millisecondsSinceEpoch}';
+    final today = DateTime.now().dateOnly;
+
+    final (completedDates, backfilledHistory) = _backfillMaintainCompletions(
+      tracker,
+      trackerId,
+      today,
+    );
+
+    final updatedTracker = tracker.copyWith(
       id: trackerId,
-      userId: tracker.userId,
-      name: tracker.name,
-      type: tracker.type,
-      durationType: tracker.durationType,
-      measurementUnit: tracker.measurementUnit,
-      durationValue: tracker.durationValue,
-      startDate: start,
-      endDate: tracker.endDate,
-      createdAt: tracker.createdAt,
+      startDate: tracker.startDate.dateOnly,
+      originalStartDate: tracker.originalStartDate.dateOnly,
       completedDates: completedDates,
-      originalStartDate: originalStart,
     );
 
     // Save tracker first so foreign key constraint in tracker_history (trackerId -> trackers.id) is satisfied
@@ -113,58 +97,14 @@ class TrackerRepository {
 
   // Update an existing tracker
   Future<void> updateTracker(TrackerModel tracker) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    final completedDates = List<DateTime>.from(tracker.completedDates);
-    final List<TrackerHistoryModel> backfilledHistory = [];
-
-    // If it is a maintain habit and was started in the past, backfill completion entries
-    if (tracker.type == 'maintain' && tracker.startDate.isBefore(today)) {
-      DateTime current = DateTime(
-        tracker.startDate.year,
-        tracker.startDate.month,
-        tracker.startDate.day,
-      );
-      while (current.isBefore(today)) {
-        if (!completedDates.any(
-          (d) =>
-              d.year == current.year &&
-              d.month == current.month &&
-              d.day == current.day,
-        )) {
-          completedDates.add(current);
-
-          backfilledHistory.add(
-            TrackerHistoryModel(
-              id: '',
-              userId: tracker.userId,
-              trackerId: tracker.id,
-              trackerName: tracker.name,
-              trackerType: tracker.type,
-              date: current,
-              type: 'completion',
-            ),
-          );
-        }
-        current = current.add(const Duration(days: 1));
-      }
-    }
-
-    final updatedTracker = TrackerModel(
-      id: tracker.id,
-      userId: tracker.userId,
-      name: tracker.name,
-      type: tracker.type,
-      durationType: tracker.durationType,
-      measurementUnit: tracker.measurementUnit,
-      durationValue: tracker.durationValue,
-      startDate: tracker.startDate,
-      endDate: tracker.endDate,
-      createdAt: tracker.createdAt,
-      completedDates: completedDates,
-      originalStartDate: tracker.originalStartDate,
+    final today = DateTime.now().dateOnly;
+    final (completedDates, backfilledHistory) = _backfillMaintainCompletions(
+      tracker,
+      tracker.id,
+      today,
     );
+
+    final updatedTracker = tracker.copyWith(completedDates: completedDates);
 
     await _trackerCollection.save(updatedTracker, updatedTracker.id);
 
@@ -195,42 +135,10 @@ class TrackerRepository {
 
   // Reset a tracker's starting time to now (recalculating the end date if it is set_time)
   Future<void> resetTracker(TrackerModel tracker) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    DateTime? newEndDate;
-
-    if (tracker.durationType == 'set_time' && tracker.durationValue != null) {
-      switch (tracker.measurementUnit) {
-        case 'weeks':
-          newEndDate = today.add(Duration(days: tracker.durationValue! * 7));
-          break;
-        case 'months':
-          newEndDate = DateTime(
-            today.year,
-            today.month + tracker.durationValue!,
-            today.day,
-          );
-          break;
-        case 'days':
-        default:
-          newEndDate = today.add(Duration(days: tracker.durationValue!));
-          break;
-      }
-    }
-
-    final updated = TrackerModel(
-      id: tracker.id,
-      userId: tracker.userId,
-      name: tracker.name,
-      type: tracker.type,
-      durationType: tracker.durationType,
-      measurementUnit: tracker.measurementUnit,
-      durationValue: tracker.durationValue,
+    final today = DateTime.now().dateOnly;
+    final updated = tracker.copyWith(
       startDate: today,
-      endDate: newEndDate,
-      createdAt: tracker.createdAt,
-      completedDates: tracker.completedDates,
-      originalStartDate: tracker.originalStartDate,
+      endDate: tracker.calculateEndDate(today),
     );
 
     await _trackerCollection.save(updated, tracker.id);
@@ -238,24 +146,9 @@ class TrackerRepository {
 
   // Mark a tracker as completed by appending the current date/time to completedDates and writing history
   Future<void> markTrackerCompleted(TrackerModel tracker) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final updatedDates = List<DateTime>.from(tracker.completedDates)
-      ..add(today);
-
-    final updatedTracker = TrackerModel(
-      id: tracker.id,
-      userId: tracker.userId,
-      name: tracker.name,
-      type: tracker.type,
-      durationType: tracker.durationType,
-      measurementUnit: tracker.measurementUnit,
-      durationValue: tracker.durationValue,
-      startDate: tracker.startDate,
-      endDate: tracker.endDate,
-      createdAt: tracker.createdAt,
-      completedDates: updatedDates,
-      originalStartDate: tracker.originalStartDate,
+    final today = DateTime.now().dateOnly;
+    final updatedTracker = tracker.copyWith(
+      completedDates: [...tracker.completedDates, today],
     );
 
     await _trackerCollection.save(updatedTracker, tracker.id);
@@ -277,45 +170,10 @@ class TrackerRepository {
     TrackerModel tracker,
     DateTime newStartDate,
   ) async {
-    final start = DateTime(
-      newStartDate.year,
-      newStartDate.month,
-      newStartDate.day,
-    );
-    DateTime? newEndDate;
-
-    if (tracker.durationType == 'set_time' && tracker.durationValue != null) {
-      switch (tracker.measurementUnit) {
-        case 'weeks':
-          newEndDate = start.add(Duration(days: tracker.durationValue! * 7));
-          break;
-        case 'months':
-          newEndDate = DateTime(
-            start.year,
-            start.month + tracker.durationValue!,
-            start.day,
-          );
-          break;
-        case 'days':
-        default:
-          newEndDate = start.add(Duration(days: tracker.durationValue!));
-          break;
-      }
-    }
-
-    final updatedTracker = TrackerModel(
-      id: tracker.id,
-      userId: tracker.userId,
-      name: tracker.name,
-      type: tracker.type,
-      durationType: tracker.durationType,
-      measurementUnit: tracker.measurementUnit,
-      durationValue: tracker.durationValue,
+    final start = newStartDate.dateOnly;
+    final updatedTracker = tracker.copyWith(
       startDate: start,
-      endDate: newEndDate,
-      createdAt: tracker.createdAt,
-      completedDates: tracker.completedDates,
-      originalStartDate: tracker.originalStartDate,
+      endDate: tracker.calculateEndDate(start),
     );
 
     await _trackerCollection.save(updatedTracker, tracker.id);
@@ -324,44 +182,11 @@ class TrackerRepository {
   // Report a slip-up for a bad habit (type == 'quit')
   // This appends the current date/time to completedDates, resets the starting date/time to now, and logs to history
   Future<void> reportSlipUp(TrackerModel tracker) async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final updatedCompleted = List<DateTime>.from(tracker.completedDates)
-      ..add(today);
-
-    DateTime? newEndDate;
-    if (tracker.durationType == 'set_time' && tracker.durationValue != null) {
-      switch (tracker.measurementUnit) {
-        case 'weeks':
-          newEndDate = today.add(Duration(days: tracker.durationValue! * 7));
-          break;
-        case 'months':
-          newEndDate = DateTime(
-            today.year,
-            today.month + tracker.durationValue!,
-            today.day,
-          );
-          break;
-        case 'days':
-        default:
-          newEndDate = today.add(Duration(days: tracker.durationValue!));
-          break;
-      }
-    }
-
-    final updatedTracker = TrackerModel(
-      id: tracker.id,
-      userId: tracker.userId,
-      name: tracker.name,
-      type: tracker.type,
-      durationType: tracker.durationType,
-      measurementUnit: tracker.measurementUnit,
-      durationValue: tracker.durationValue,
+    final today = DateTime.now().dateOnly;
+    final updatedTracker = tracker.copyWith(
       startDate: today,
-      endDate: newEndDate,
-      createdAt: tracker.createdAt,
-      completedDates: updatedCompleted,
-      originalStartDate: tracker.originalStartDate,
+      endDate: tracker.calculateEndDate(today),
+      completedDates: [...tracker.completedDates, today],
     );
 
     await _trackerCollection.save(updatedTracker, tracker.id);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
@@ -6,7 +7,7 @@ import 'package:task_tracker/features/trackers/presentation/widgets/add_tracker_
 
 class TrackerCard extends StatelessWidget {
   final TrackerModel tracker;
-  final TrackerRepository _repository = TrackerRepository();
+  final TrackerRepository _repository = GetIt.instance<TrackerRepository>();
 
   TrackerCard({super.key, required this.tracker});
 
