@@ -700,12 +700,15 @@ class _TasksPageState extends State<TasksPage> {
                 children: [
                   CircleAvatar(backgroundColor: color, radius: 8),
                   const SizedBox(width: 10),
-                  Text(
-                    group.name,
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  Flexible(
+                    child: Text(
+                      group.name,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -733,22 +736,10 @@ class _TasksPageState extends State<TasksPage> {
                       vertical: 8.0,
                       horizontal: 16.0,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ...upcomingTasks.map((task) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12.0),
-                            child: TaskCard(
-                              task: task,
-                              groups: groups,
-                              repository: _repository,
-                              isInteractive: false,
-                              showCompletionStatus: false,
-                            ),
-                          );
-                        }),
-                      ],
+                    child: _buildGroupTaskCards(
+                      overdueTasks,
+                      upcomingTasks,
+                      groups,
                     ),
                   ),
               ],
@@ -785,12 +776,15 @@ class _TasksPageState extends State<TasksPage> {
                         radius: 8,
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        'Unassigned / General Tasks',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      const Flexible(
+                        child: Text(
+                          'Unassigned / General Tasks',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -806,22 +800,10 @@ class _TasksPageState extends State<TasksPage> {
                         vertical: 8.0,
                         horizontal: 16.0,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ...upcomingTasks.map((task) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12.0),
-                              child: TaskCard(
-                                task: task,
-                                groups: groups,
-                                repository: _repository,
-                                isInteractive: false,
-                                showCompletionStatus: false,
-                              ),
-                            );
-                          }),
-                        ],
+                      child: _buildGroupTaskCards(
+                        overdueTasks,
+                        upcomingTasks,
+                        groups,
                       ),
                     ),
                   ],
@@ -829,6 +811,61 @@ class _TasksPageState extends State<TasksPage> {
               );
             },
           ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildGroupTaskCards(
+    List<TaskModel> overdueTasks,
+    List<TaskModel> upcomingTasks,
+    List<TaskGroupModel> groups,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (overdueTasks.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              'Overdue Tasks',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ...overdueTasks.map((task) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: TaskCard(
+                task: task,
+                groups: groups,
+                repository: _repository,
+                isInteractive: false,
+                showCompletionStatus: false,
+              ),
+            );
+          }),
+        ],
+        if (upcomingTasks.isNotEmpty) ...[
+          if (overdueTasks.isNotEmpty) ...[
+            const Divider(color: Colors.grey),
+            const SizedBox(height: 8),
+          ],
+          ...upcomingTasks.map((task) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: TaskCard(
+                task: task,
+                groups: groups,
+                repository: _repository,
+                isInteractive: false,
+                showCompletionStatus: false,
+              ),
+            );
+          }),
         ],
       ],
     );
