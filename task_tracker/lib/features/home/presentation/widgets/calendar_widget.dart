@@ -133,7 +133,7 @@ class CalendarWidget extends StatelessWidget {
                         children: List.generate(7, (col) {
                           final index = row * 7 + col;
                           if (index < emptySlots || index >= totalCells) {
-                            return Expanded(child: const SizedBox.shrink());
+                            return const Expanded(child: SizedBox.shrink());
                           }
                           return Expanded(
                             child: Padding(
@@ -320,6 +320,7 @@ class CalendarWidget extends StatelessWidget {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
+        constraints: const BoxConstraints(minHeight: 56.0),
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)

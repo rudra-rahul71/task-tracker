@@ -52,7 +52,7 @@ class _TrackersPageState extends State<TrackersPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,110 +136,112 @@ class _TrackersPageState extends State<TrackersPage> {
             const SizedBox(height: 24),
 
             // Trackers StreamBuilder
-            Expanded(
-              child: StreamBuilder<List<TrackerModel>>(
-                stream: _trackersStream!,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+            StreamBuilder<List<TrackerModel>>(
+              stream: _trackersStream!,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error loading trackers: ${snapshot.error}',
-                        style: const TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 16,
-                        ),
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error loading trackers: ${snapshot.error}',
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 16,
                       ),
-                    );
-                  }
+                    ),
+                  );
+                }
 
-                  final trackers = snapshot.data ?? [];
+                final trackers = snapshot.data ?? [];
 
-                  // Check if any maintain trackers missed their period and require an auto-reset
-                  if (trackers.isNotEmpty) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      final now = DateTime.now();
-                      for (final tracker in trackers) {
-                        final newStart = tracker.getNewStartDateIfResetNeeded(
-                          now,
-                        );
-                        if (newStart != null) {
-                          _repository.autoResetTracker(tracker, newStart);
-                        }
+                // Check if any maintain trackers missed their period and require an auto-reset
+                if (trackers.isNotEmpty) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    final now = DateTime.now();
+                    for (final tracker in trackers) {
+                      final newStart = tracker.getNewStartDateIfResetNeeded(
+                        now,
+                      );
+                      if (newStart != null) {
+                        _repository.autoResetTracker(tracker, newStart);
                       }
-                    });
-                  }
-                  final filteredTrackers = trackers.where((t) {
-                    if (_activeFilter == 'all') return true;
-                    return t.type == _activeFilter;
-                  }).toList();
+                    }
+                  });
+                }
+                final filteredTrackers = trackers.where((t) {
+                  if (_activeFilter == 'all') return true;
+                  return t.type == _activeFilter;
+                }).toList();
 
-                  if (filteredTrackers.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.track_changes_outlined,
-                            size: 64,
-                            color: Colors.grey[700],
+                if (filteredTrackers.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.track_changes_outlined,
+                          size: 64,
+                          color: Colors.grey[700],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _activeFilter == 'all'
+                              ? 'No habit trackers created yet'
+                              : _activeFilter == 'maintain'
+                              ? 'No habits to maintain yet'
+                              : 'No habits to quit yet',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _activeFilter == 'all'
-                                ? 'No habit trackers created yet'
-                                : _activeFilter == 'maintain'
-                                ? 'No habits to maintain yet'
-                                : 'No habits to quit yet',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
-                            ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap "Add Tracker" in the top right to start tracking!',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Tap "Add Tracker" in the top right to start tracking!',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    );
-                  }
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                }
 
-                  // Responsive design layout
-                  final width = MediaQuery.of(context).size.width;
-                  if (width >= 850) {
-                    return GridView.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 8,
-                            mainAxisExtent: 265,
-                          ),
-                      itemCount: filteredTrackers.length,
-                      itemBuilder: (context, index) {
-                        return TrackerCard(tracker: filteredTrackers[index]);
-                      },
-                    );
-                  } else {
-                    return ListView.builder(
-                      itemCount: filteredTrackers.length,
-                      itemBuilder: (context, index) {
-                        return TrackerCard(tracker: filteredTrackers[index]);
-                      },
-                    );
-                  }
-                },
-              ),
+                // Responsive design layout
+                final width = MediaQuery.of(context).size.width;
+                if (width >= 850) {
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 8,
+                          mainAxisExtent: 265,
+                        ),
+                    itemCount: filteredTrackers.length,
+                    itemBuilder: (context, index) {
+                      return TrackerCard(tracker: filteredTrackers[index]);
+                    },
+                  );
+                } else {
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: filteredTrackers.length,
+                    itemBuilder: (context, index) {
+                      return TrackerCard(tracker: filteredTrackers[index]);
+                    },
+                  );
+                }
+              },
             ),
           ],
         ),

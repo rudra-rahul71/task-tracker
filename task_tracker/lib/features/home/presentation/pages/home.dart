@@ -271,7 +271,8 @@ class _HomePageState extends State<HomePage> {
       body: StreamBuilder<_HomeData>(
         stream: _combinedStream!,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting &&
+              !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -355,14 +356,24 @@ class _HomePageState extends State<HomePage> {
           for (int index = emptySlots; index < totalCells; index++) {
             final dayNum = index - emptySlots + 1;
             final dayDate = DateTime(year, month, dayNum);
-            final dayDateKey = "${dayDate.year}-${dayDate.month}-${dayDate.day}";
+            final dayDateKey =
+                "${dayDate.year}-${dayDate.month}-${dayDate.day}";
 
             final completedForDay = trackers
-                .where((t) => _isTrackerCompletedOnDay(t, dayDate, dayDateKey, trackerHistoryMap))
+                .where(
+                  (t) => _isTrackerCompletedOnDay(
+                    t,
+                    dayDate,
+                    dayDateKey,
+                    trackerHistoryMap,
+                  ),
+                )
                 .toList();
 
             final trackerIndicators = completedForDay.map((t) {
-              return t.type == 'quit' ? const Color(0xFFEF5350) : const Color(0xFF26A69A);
+              return t.type == 'quit'
+                  ? const Color(0xFFEF5350)
+                  : const Color(0xFF26A69A);
             }).toList();
 
             final tasksOnDay = tasks.where((t) {
@@ -371,7 +382,11 @@ class _HomePageState extends State<HomePage> {
             }).toList();
 
             final calendarTasks = tasksOnDay.map((t) {
-              final isCompleted = _isTaskCompletedOnDate(t, taskHistoryMap, dayDateKey);
+              final isCompleted = _isTaskCompletedOnDate(
+                t,
+                taskHistoryMap,
+                dayDateKey,
+              );
               final group = t.groupId != null ? groupMap[t.groupId] : null;
               final color = group != null && group.id.isNotEmpty
                   ? Color(group.colorValue)
@@ -427,91 +442,105 @@ class _HomePageState extends State<HomePage> {
           final isLargeScreen = width >= 850;
 
           // Main Layout
-          final mainContent = Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                const PageHeader(
-                  header: 'Dashboard',
-                  sub: 'Visualize your habits and tasks history',
-                ),
-                const SizedBox(height: 24),
-                Expanded(
-                  child: isLargeScreen
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: DailyDetailsWidget(
-                                selectedDay: _selectedDay,
-                                completedTrackers: completedOnSelected,
-                                slippedTrackers: slippedOnSelected,
-                                completedTasks: completedTasksOnSelected,
-                                pendingTasks: pendingTasksOnSelected,
-                                groups: groups,
-                                isScrollable: true,
-                                taskRepository: _taskRepository,
+          final mainContent = LayoutBuilder(
+            builder: (context, constraints) {
+              final viewportHeight = constraints.maxHeight;
+              final headerAndPadding = 128.0;
+              final availableCardHeight = viewportHeight - headerAndPadding;
+              const minCardHeight = 460.0;
+              final targetCardHeight = availableCardHeight.clamp(
+                minCardHeight,
+                double.infinity,
+              );
+
+              return SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const PageHeader(
+                        header: 'Dashboard',
+                        sub: 'Visualize your habits and tasks history',
+                      ),
+                      const SizedBox(height: 24),
+                      isLargeScreen
+                          ? SizedBox(
+                              height: targetCardHeight,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: DailyDetailsWidget(
+                                      selectedDay: _selectedDay,
+                                      completedTrackers: completedOnSelected,
+                                      slippedTrackers: slippedOnSelected,
+                                      completedTasks: completedTasksOnSelected,
+                                      pendingTasks: pendingTasksOnSelected,
+                                      groups: groups,
+                                      isScrollable: true,
+                                      taskRepository: _taskRepository,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 24),
+                                  Expanded(
+                                    flex: 4,
+                                    child: CalendarWidget(
+                                      focusedMonth: _focusedMonth,
+                                      selectedDay: _selectedDay,
+                                      eventsMap: calendarEvents,
+                                      onMonthChanged: (month) {
+                                        setState(() {
+                                          _focusedMonth = month;
+                                        });
+                                      },
+                                      onDaySelected: (day) {
+                                        setState(() {
+                                          _selectedDay = day;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
+                            )
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                DailyDetailsWidget(
+                                  selectedDay: _selectedDay,
+                                  completedTrackers: completedOnSelected,
+                                  slippedTrackers: slippedOnSelected,
+                                  completedTasks: completedTasksOnSelected,
+                                  pendingTasks: pendingTasksOnSelected,
+                                  groups: groups,
+                                  isScrollable: false,
+                                  taskRepository: _taskRepository,
+                                ),
+                                const SizedBox(height: 24),
+                                CalendarWidget(
+                                  focusedMonth: _focusedMonth,
+                                  selectedDay: _selectedDay,
+                                  eventsMap: calendarEvents,
+                                  onMonthChanged: (month) {
+                                    setState(() {
+                                      _focusedMonth = month;
+                                    });
+                                  },
+                                  onDaySelected: (day) {
+                                    setState(() {
+                                      _selectedDay = day;
+                                    });
+                                  },
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              flex: 4,
-                              child: CalendarWidget(
-                                focusedMonth: _focusedMonth,
-                                selectedDay: _selectedDay,
-                                eventsMap: calendarEvents,
-                                onMonthChanged: (month) {
-                                  setState(() {
-                                    _focusedMonth = month;
-                                  });
-                                },
-                                onDaySelected: (day) {
-                                  setState(() {
-                                    _selectedDay = day;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        )
-                      : SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              DailyDetailsWidget(
-                                selectedDay: _selectedDay,
-                                completedTrackers: completedOnSelected,
-                                slippedTrackers: slippedOnSelected,
-                                completedTasks: completedTasksOnSelected,
-                                pendingTasks: pendingTasksOnSelected,
-                                groups: groups,
-                                isScrollable: false,
-                                taskRepository: _taskRepository,
-                              ),
-                              const SizedBox(height: 24),
-                              CalendarWidget(
-                                focusedMonth: _focusedMonth,
-                                selectedDay: _selectedDay,
-                                eventsMap: calendarEvents,
-                                onMonthChanged: (month) {
-                                  setState(() {
-                                    _focusedMonth = month;
-                                  });
-                                },
-                                onDaySelected: (day) {
-                                  setState(() {
-                                    _selectedDay = day;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              );
+            },
           );
 
           final isWaiting = snapshot.connectionState == ConnectionState.waiting;
@@ -528,9 +557,7 @@ class _HomePageState extends State<HomePage> {
                 Positioned.fill(
                   child: Container(
                     color: Colors.black.withValues(alpha: 0.3),
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    child: const Center(child: CircularProgressIndicator()),
                   ),
                 ),
             ],

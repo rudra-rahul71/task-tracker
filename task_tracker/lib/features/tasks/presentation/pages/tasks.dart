@@ -163,7 +163,7 @@ class _TasksPageState extends State<TasksPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,192 +294,190 @@ class _TasksPageState extends State<TasksPage> {
             const SizedBox(height: 24),
 
             // Nested Streams for Tasks and Groups
-            Expanded(
-              child: StreamBuilder<List<TaskGroupModel>>(
-                stream: _groupsStream!,
-                builder: (context, groupsSnapshot) {
-                  if (groupsSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+            StreamBuilder<List<TaskGroupModel>>(
+              stream: _groupsStream!,
+              builder: (context, groupsSnapshot) {
+                if (groupsSnapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                  final groups = groupsSnapshot.data ?? [];
+                final groups = groupsSnapshot.data ?? [];
 
-                  return StreamBuilder<List<TaskModel>>(
-                    stream: _tasksStream!,
-                    builder: (context, tasksSnapshot) {
-                      if (tasksSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                return StreamBuilder<List<TaskModel>>(
+                  stream: _tasksStream!,
+                  builder: (context, tasksSnapshot) {
+                    if (tasksSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                      if (tasksSnapshot.hasError) {
-                        return Center(
-                          child: Text(
-                            'Error loading tasks: ${tasksSnapshot.error}',
-                            style: const TextStyle(
-                              color: Colors.redAccent,
-                              fontSize: 16,
-                            ),
+                    if (tasksSnapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error loading tasks: ${tasksSnapshot.error}',
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 16,
+                          ),
+                        ),
+                      );
+                    }
+
+                    final tasks = tasksSnapshot.data ?? [];
+
+                    // Dynamically run the check/reset scheduler logic
+                    if (tasks.isNotEmpty) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _repository.checkAndResetScheduledTasks(
+                          userId: userId,
+                          tasks: tasks,
+                          groups: groups,
+                        );
+                      });
+                    }
+
+                    // Apply filtering and sorting
+
+                    // Sort helper
+                    int sortTasks(TaskModel a, TaskModel b) {
+                      bool aIsScheduled = false;
+                      DateTime? aStartDate;
+                      if (a.schedule != null) {
+                        aIsScheduled = a.schedule!.type != 'none';
+                        aStartDate = a.schedule!.startDate;
+                      } else if (a.groupId != null) {
+                        final g = groups.firstWhere(
+                          (g) => g.id == a.groupId,
+                          orElse: () => TaskGroupModel(
+                            id: '',
+                            userId: '',
+                            name: '',
+                            colorValue: 0,
+                            createdAt: DateTime.now(),
                           ),
                         );
+                        if (g.id.isNotEmpty && g.schedule != null) {
+                          aIsScheduled = g.schedule!.type != 'none';
+                          aStartDate = g.schedule!.startDate;
+                        }
                       }
 
-                      final tasks = tasksSnapshot.data ?? [];
-
-                      // Dynamically run the check/reset scheduler logic
-                      if (tasks.isNotEmpty) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _repository.checkAndResetScheduledTasks(
-                            userId: userId,
-                            tasks: tasks,
-                            groups: groups,
-                          );
-                        });
-                      }
-
-                      // Apply filtering and sorting
-
-                      // Sort helper
-                      int sortTasks(TaskModel a, TaskModel b) {
-                        bool aIsScheduled = false;
-                        DateTime? aStartDate;
-                        if (a.schedule != null) {
-                          aIsScheduled = a.schedule!.type != 'none';
-                          aStartDate = a.schedule!.startDate;
-                        } else if (a.groupId != null) {
-                          final g = groups.firstWhere(
-                            (g) => g.id == a.groupId,
-                            orElse: () => TaskGroupModel(
-                              id: '',
-                              userId: '',
-                              name: '',
-                              colorValue: 0,
-                              createdAt: DateTime.now(),
-                            ),
-                          );
-                          if (g.id.isNotEmpty && g.schedule != null) {
-                            aIsScheduled = g.schedule!.type != 'none';
-                            aStartDate = g.schedule!.startDate;
-                          }
-                        }
-
-                        bool bIsScheduled = false;
-                        DateTime? bStartDate;
-                        if (b.schedule != null) {
-                          bIsScheduled = b.schedule!.type != 'none';
-                          bStartDate = b.schedule!.startDate;
-                        } else if (b.groupId != null) {
-                          final g = groups.firstWhere(
-                            (g) => g.id == b.groupId,
-                            orElse: () => TaskGroupModel(
-                              id: '',
-                              userId: '',
-                              name: '',
-                              colorValue: 0,
-                              createdAt: DateTime.now(),
-                            ),
-                          );
-                          if (g.id.isNotEmpty && g.schedule != null) {
-                            bIsScheduled = g.schedule!.type != 'none';
-                            bStartDate = g.schedule!.startDate;
-                          }
-                        }
-
-                        if (aIsScheduled && !bIsScheduled) return -1;
-                        if (!aIsScheduled && bIsScheduled) return 1;
-
-                        if (!aIsScheduled && !bIsScheduled) {
-                          if (aStartDate != null && bStartDate != null) {
-                            return aStartDate.compareTo(bStartDate);
-                          }
-                          if (aStartDate != null) return -1;
-                          if (bStartDate != null) return 1;
-                        }
-
-                        return a.createdAt.compareTo(b.createdAt);
-                      }
-
-                      bool isCompletedToday(TaskModel t) {
-                        if (t.status != 'completed' ||
-                            t.lastCompletedAt == null) {
-                          return false;
-                        }
-                        final now = DateTime.now();
-                        return t.lastCompletedAt!.year == now.year &&
-                            t.lastCompletedAt!.month == now.month &&
-                            t.lastCompletedAt!.day == now.day;
-                      }
-
-                      if (_activeFilter == 'due') {
-                        final dueTasks = tasks.where((t) {
-                          final isDue = _isTaskDueToday(t, groups);
-                          return isDue &&
-                              (t.status == 'pending' || isCompletedToday(t));
-                        }).toList();
-
-                        return _buildTaskList(
-                          dueTasks,
-                          groups,
-                          'No tasks due today!',
-                          isInteractive: true,
-                          showCompletionStatus: true,
+                      bool bIsScheduled = false;
+                      DateTime? bStartDate;
+                      if (b.schedule != null) {
+                        bIsScheduled = b.schedule!.type != 'none';
+                        bStartDate = b.schedule!.startDate;
+                      } else if (b.groupId != null) {
+                        final g = groups.firstWhere(
+                          (g) => g.id == b.groupId,
+                          orElse: () => TaskGroupModel(
+                            id: '',
+                            userId: '',
+                            name: '',
+                            colorValue: 0,
+                            createdAt: DateTime.now(),
+                          ),
                         );
-                      } else if (_activeFilter == 'completed') {
-                        final completedTasks = tasks
-                            .where(
-                              (t) =>
-                                  t.status == 'completed' &&
-                                  !_isTaskRecurring(t, groups),
-                            )
-                            .toList();
+                        if (g.id.isNotEmpty && g.schedule != null) {
+                          bIsScheduled = g.schedule!.type != 'none';
+                          bStartDate = g.schedule!.startDate;
+                        }
+                      }
 
-                        completedTasks.sort((a, b) {
-                          if (a.lastCompletedAt != null &&
-                              b.lastCompletedAt != null) {
-                            return b.lastCompletedAt!.compareTo(
-                              a.lastCompletedAt!,
-                            ); // Descending
-                          }
-                          return 0;
-                        });
+                      if (aIsScheduled && !bIsScheduled) return -1;
+                      if (!aIsScheduled && bIsScheduled) return 1;
 
+                      if (!aIsScheduled && !bIsScheduled) {
+                        if (aStartDate != null && bStartDate != null) {
+                          return aStartDate.compareTo(bStartDate);
+                        }
+                        if (aStartDate != null) return -1;
+                        if (bStartDate != null) return 1;
+                      }
+
+                      return a.createdAt.compareTo(b.createdAt);
+                    }
+
+                    bool isCompletedToday(TaskModel t) {
+                      if (t.status != 'completed' ||
+                          t.lastCompletedAt == null) {
+                        return false;
+                      }
+                      final now = DateTime.now();
+                      return t.lastCompletedAt!.year == now.year &&
+                          t.lastCompletedAt!.month == now.month &&
+                          t.lastCompletedAt!.day == now.day;
+                    }
+
+                    if (_activeFilter == 'due') {
+                      final dueTasks = tasks.where((t) {
+                        final isDue = _isTaskDueToday(t, groups);
+                        return isDue &&
+                            (t.status == 'pending' || isCompletedToday(t));
+                      }).toList();
+
+                      return _buildTaskList(
+                        dueTasks,
+                        groups,
+                        'No tasks due today!',
+                        isInteractive: true,
+                        showCompletionStatus: true,
+                      );
+                    } else if (_activeFilter == 'completed') {
+                      final completedTasks = tasks
+                          .where(
+                            (t) =>
+                                t.status == 'completed' &&
+                                !_isTaskRecurring(t, groups),
+                          )
+                          .toList();
+
+                      completedTasks.sort((a, b) {
+                        if (a.lastCompletedAt != null &&
+                            b.lastCompletedAt != null) {
+                          return b.lastCompletedAt!.compareTo(
+                            a.lastCompletedAt!,
+                          ); // Descending
+                        }
+                        return 0;
+                      });
+
+                      return _buildTaskList(
+                        completedTasks,
+                        groups,
+                        'No completed tasks yet!',
+                        isInteractive: true,
+                        showCompletionStatus: true,
+                      );
+                    } else {
+                      // Filter out all completed one-off tasks for 'all' and 'group' views (they move to Completed tab)
+                      final allOrGroupTasks = tasks.where((t) {
+                        if (_isTaskRecurring(t, groups)) return true;
+                        return t.status == 'pending';
+                      }).toList();
+
+                      allOrGroupTasks.sort(sortTasks);
+
+                      if (_activeFilter == 'all') {
                         return _buildTaskList(
-                          completedTasks,
+                          allOrGroupTasks,
                           groups,
-                          'No completed tasks yet!',
-                          isInteractive: true,
-                          showCompletionStatus: true,
+                          'No tasks created yet!',
+                          isInteractive: false,
+                          showCompletionStatus: false,
                         );
                       } else {
-                        // Filter out all completed one-off tasks for 'all' and 'group' views (they move to Completed tab)
-                        final allOrGroupTasks = tasks.where((t) {
-                          if (_isTaskRecurring(t, groups)) return true;
-                          return t.status == 'pending';
-                        }).toList();
-
-                        allOrGroupTasks.sort(sortTasks);
-
-                        if (_activeFilter == 'all') {
-                          return _buildTaskList(
-                            allOrGroupTasks,
-                            groups,
-                            'No tasks created yet!',
-                            isInteractive: false,
-                            showCompletionStatus: false,
-                          );
-                        } else {
-                          // Group sorting/categorizing
-                          return _buildGroupedTasksView(
-                            allOrGroupTasks,
-                            groups,
-                          );
-                        }
+                        // Group sorting/categorizing
+                        return _buildGroupedTasksView(
+                          allOrGroupTasks,
+                          groups,
+                        );
                       }
-                    },
-                  );
-                },
-              ),
+                    }
+                  },
+                );
+              },
             ),
           ],
         ),
@@ -614,40 +612,38 @@ class _TasksPageState extends State<TasksPage> {
       }
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (overdue.isNotEmpty) ...[
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16.0),
-              child: Text(
-                'Overdue Tasks',
-                style: TextStyle(
-                  color: Colors.redAccent,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (overdue.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.only(bottom: 16.0),
+            child: Text(
+              'Overdue Tasks',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            _buildTaskListLayout(overdue, groups, true, true),
-          ],
-
-          if (upcoming.isNotEmpty) ...[
-            if (overdue.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              const Divider(color: Colors.grey),
-              const SizedBox(height: 16),
-            ],
-            _buildTaskListLayout(
-              upcoming,
-              groups,
-              isInteractive,
-              showCompletionStatus,
-            ),
-          ],
+          ),
+          _buildTaskListLayout(overdue, groups, true, true),
         ],
-      ),
+
+        if (upcoming.isNotEmpty) ...[
+          if (overdue.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Divider(color: Colors.grey),
+            const SizedBox(height: 16),
+          ],
+          _buildTaskListLayout(
+            upcoming,
+            groups,
+            isInteractive,
+            showCompletionStatus,
+          ),
+        ],
+      ],
     );
   }
 
@@ -674,7 +670,8 @@ class _TasksPageState extends State<TasksPage> {
       );
     }
 
-    return ListView(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Print tasks belonging to groups
         ...groups.map((group) {
