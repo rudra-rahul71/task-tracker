@@ -29,6 +29,8 @@ class DailyDetailsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     final formattedDate =
         '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}-${selectedDay.day.toString().padLeft(2, '0')}';
 
@@ -42,10 +44,10 @@ class DailyDetailsWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // --- TASKS SECTION ---
-        const Text(
+        Text(
           'TODAY\'S TASKS',
           style: TextStyle(
-            color: Colors.grey,
+            color: colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
             fontSize: 11,
             letterSpacing: 1.0,
@@ -53,16 +55,23 @@ class DailyDetailsWidget extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (pendingTasks.isEmpty && completedTasks.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
             child: Row(
               children: [
-                Icon(Icons.assignment_outlined, color: Colors.grey, size: 20),
-                SizedBox(width: 8),
+                Icon(
+                  Icons.assignment_outlined,
+                  color: colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'No tasks scheduled or completed on this day.',
-                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ],
@@ -70,10 +79,10 @@ class DailyDetailsWidget extends StatelessWidget {
           )
         else ...[
           if (pendingTasks.isNotEmpty) ...[
-            const Text(
+            Text(
               'PENDING',
               style: TextStyle(
-                color: Color(0xFFD4AF37),
+                color: colorScheme.primary,
                 fontWeight: FontWeight.bold,
                 fontSize: 10,
                 letterSpacing: 0.5,
@@ -113,10 +122,10 @@ class DailyDetailsWidget extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (completedTasks.isNotEmpty) ...[
-            const Text(
+            Text(
               'COMPLETED',
               style: TextStyle(
-                color: Colors.grey,
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
                 fontSize: 10,
                 letterSpacing: 0.5,
@@ -148,13 +157,17 @@ class DailyDetailsWidget extends StatelessWidget {
           ],
         ],
 
-        const Divider(height: 32, thickness: 1, color: Colors.white10),
+        Divider(
+          height: 32,
+          thickness: 1,
+          color: colorScheme.onSurface.withValues(alpha: 0.1),
+        ),
 
         // --- HABIT TRACKERS SECTION ---
-        const Text(
+        Text(
           'SUCCESSFUL HABITS / CLEAN DAYS',
           style: TextStyle(
-            color: Colors.grey,
+            color: colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
             fontSize: 11,
             letterSpacing: 1.0,
@@ -162,30 +175,37 @@ class DailyDetailsWidget extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (completedTrackers.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12.0),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
             child: Row(
               children: [
-                Icon(Icons.info_outline_rounded, color: Colors.grey, size: 20),
-                SizedBox(width: 8),
+                Icon(
+                  Icons.info_outline_rounded,
+                  color: colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'No habits completed or clean on this day.',
-                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ],
             ),
           )
         else
-          ...completedTrackers.map((t) => _buildDetailItem(t, true)),
+          ...completedTrackers.map((t) => _buildDetailItem(context, t, true)),
 
         if (slippedTrackers.isNotEmpty) ...[
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'SLIPPED UP / BROKEN HABITS',
             style: TextStyle(
-              color: Colors.grey,
+              color: colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.bold,
               fontSize: 11,
               letterSpacing: 1.0,
@@ -193,7 +213,7 @@ class DailyDetailsWidget extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ...slippedTrackers.map(
-            (t) => _buildDetailItem(t, false, isSlip: true),
+            (t) => _buildDetailItem(context, t, false, isSlip: true),
           ),
         ],
       ],
@@ -204,11 +224,11 @@ class DailyDetailsWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: colorScheme.onSurface.withValues(alpha: 0.08),
           width: 1.5,
         ),
       ),
-      color: const Color(0xFF1E1E1E),
+      color: colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -219,15 +239,22 @@ class DailyDetailsWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+                color: colorScheme.primary,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Habits & tasks completion details',
-              style: TextStyle(color: Colors.grey, fontSize: 13),
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 13,
+              ),
             ),
-            const Divider(height: 32, thickness: 1, color: Colors.white10),
+            Divider(
+              height: 32,
+              thickness: 1,
+              color: colorScheme.onSurface.withValues(alpha: 0.1),
+            ),
 
             if (isScrollable)
               Expanded(
@@ -245,26 +272,30 @@ class DailyDetailsWidget extends StatelessWidget {
   }
 
   Widget _buildDetailItem(
+    BuildContext context,
     TrackerModel tracker,
     bool isCompleted, {
     bool isSlip = false,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     final color = tracker.type == 'quit'
-        ? const Color(0xFFEF5350)
-        : const Color(0xFF26A69A);
+        ? colorScheme.error
+        : colorScheme.tertiary;
+
+    final slipColor = colorScheme.error;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: colorScheme.onSurface.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSlip
-              ? const Color(0xFFEF5350).withValues(alpha: 0.3)
+              ? slipColor.withValues(alpha: 0.3)
               : isCompleted
               ? color.withValues(alpha: 0.3)
-              : Colors.white.withValues(alpha: 0.05),
+              : colorScheme.onSurface.withValues(alpha: 0.05),
         ),
       ),
       child: Row(
@@ -280,18 +311,18 @@ class DailyDetailsWidget extends StatelessWidget {
                       ? Icons.check_circle
                       : Icons.circle_outlined,
                   color: isSlip
-                      ? const Color(0xFFEF5350)
+                      ? slipColor
                       : isCompleted
                       ? color
-                      : Colors.grey,
+                      : colorScheme.onSurfaceVariant,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     tracker.name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -305,9 +336,7 @@ class DailyDetailsWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: tracker.type == 'quit'
-                  ? const Color(0xFFEF5350).withValues(alpha: 0.1)
-                  : const Color(0xFF26A69A).withValues(alpha: 0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(

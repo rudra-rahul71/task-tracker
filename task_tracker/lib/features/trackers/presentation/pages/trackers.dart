@@ -39,12 +39,13 @@ class _TrackersPageState extends State<TrackersPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
 
     if (userId == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF121212),
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -68,8 +69,8 @@ class _TrackersPageState extends State<TrackersPage> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.black,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -93,13 +94,11 @@ class _TrackersPageState extends State<TrackersPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'all');
                   },
-                  selectedColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'all'
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey[400],
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -109,11 +108,11 @@ class _TrackersPageState extends State<TrackersPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'maintain');
                   },
-                  selectedColor: const Color(0xFF26A69A).withValues(alpha: 0.2),
+                  selectedColor: colorScheme.tertiary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'maintain'
-                        ? const Color(0xFF26A69A)
-                        : Colors.grey[400],
+                        ? colorScheme.tertiary
+                        : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -123,11 +122,11 @@ class _TrackersPageState extends State<TrackersPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'quit');
                   },
-                  selectedColor: const Color(0xFFEF5350).withValues(alpha: 0.2),
+                  selectedColor: colorScheme.error.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'quit'
-                        ? const Color(0xFFEF5350)
-                        : Colors.grey[400],
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -147,10 +146,7 @@ class _TrackersPageState extends State<TrackersPage> {
                   return Center(
                     child: Text(
                       'Error loading trackers: ${snapshot.error}',
-                      style: const TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: colorScheme.error, fontSize: 16),
                     ),
                   );
                 }
@@ -184,7 +180,7 @@ class _TrackersPageState extends State<TrackersPage> {
                         Icon(
                           Icons.track_changes_outlined,
                           size: 64,
-                          color: Colors.grey[700],
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -193,17 +189,17 @@ class _TrackersPageState extends State<TrackersPage> {
                               : _activeFilter == 'maintain'
                               ? 'No habits to maintain yet'
                               : 'No habits to quit yet',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Tap "Add Tracker" in the top right to start tracking!',
                           style: TextStyle(
-                            color: Colors.grey[600],
+                            color: colorScheme.onSurfaceVariant,
                             fontSize: 14,
                           ),
                           textAlign: TextAlign.center,

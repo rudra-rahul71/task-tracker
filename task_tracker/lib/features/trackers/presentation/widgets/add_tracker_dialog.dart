@@ -85,9 +85,11 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
       createdAt: isEditing ? widget.trackerToEdit!.createdAt : now,
       originalStartDate: isEditing
           ? (start.isBefore(widget.trackerToEdit!.originalStartDate) ||
-                  widget.trackerToEdit!.startDate.isAtSameMomentAs(widget.trackerToEdit!.originalStartDate)
-              ? start
-              : widget.trackerToEdit!.originalStartDate)
+                    widget.trackerToEdit!.startDate.isAtSameMomentAs(
+                      widget.trackerToEdit!.originalStartDate,
+                    )
+                ? start
+                : widget.trackerToEdit!.originalStartDate)
           : start,
       completedDates: isEditing
           ? widget.trackerToEdit!.completedDates
@@ -115,12 +117,14 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Dialog(
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+          color: colorScheme.primary.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -147,12 +151,12 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: colorScheme.primary,
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.grey),
+                        icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -165,32 +169,32 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                     decoration: InputDecoration(
                       labelText: 'Habit Name',
                       hintText: 'e.g., Gym, Sleep Early, No Sweets',
-                      hintStyle: const TextStyle(color: Colors.grey),
-                      labelStyle: const TextStyle(color: Colors.grey),
+                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+                      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.grey),
+                        borderSide: BorderSide(color: colorScheme.outline),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.primary,
+                          color: colorScheme.primary,
                           width: 2,
                         ),
                       ),
                       errorBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.redAccent),
+                        borderSide: BorderSide(color: colorScheme.error),
                       ),
                       focusedErrorBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Colors.redAccent,
+                        borderSide: BorderSide(
+                          color: colorScheme.error,
                           width: 2,
                         ),
                       ),
                     ),
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: colorScheme.onSurface),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter a name for your tracker';
@@ -202,10 +206,10 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                   const SizedBox(height: 24),
 
                   // Habit Goal Type
-                  const Text(
+                  Text(
                     'What type of habit is this?',
                     style: TextStyle(
-                      color: Colors.grey,
+                      color: colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -234,21 +238,21 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                       },
                       style: SegmentedButton.styleFrom(
                         selectedBackgroundColor: _type == 'quit'
-                            ? const Color(0xFFEF5350).withValues(alpha: 0.15)
-                            : const Color(0xFF26A69A).withValues(alpha: 0.15),
+                            ? colorScheme.error.withValues(alpha: 0.15)
+                            : colorScheme.tertiary.withValues(alpha: 0.15),
                         selectedForegroundColor: _type == 'quit'
-                            ? const Color(0xFFEF5350)
-                            : const Color(0xFF26A69A),
+                            ? colorScheme.error
+                            : colorScheme.tertiary,
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
 
                   // Duration Type: Indefinite vs Set Time
-                  const Text(
+                  Text(
                     'Duration Type',
                     style: TextStyle(
-                      color: Colors.grey,
+                      color: colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
@@ -276,12 +280,8 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                         });
                       },
                       style: SegmentedButton.styleFrom(
-                        selectedBackgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.15),
-                        selectedForegroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primary,
+                        selectedBackgroundColor: colorScheme.primary.withValues(alpha: 0.15),
+                        selectedForegroundColor: colorScheme.primary,
                       ),
                     ),
                   ),
@@ -294,33 +294,33 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                       decoration: InputDecoration(
                         labelText: 'Duration Value ($_measurementUnit)',
                         hintText: 'e.g., 30',
-                        hintStyle: const TextStyle(color: Colors.grey),
-                        labelStyle: const TextStyle(color: Colors.grey),
+                        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+                        labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.grey),
+                          borderSide: BorderSide(color: colorScheme.outline),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
+                            color: colorScheme.primary,
                             width: 2,
                           ),
                         ),
                         errorBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.redAccent),
+                          borderSide: BorderSide(color: colorScheme.error),
                         ),
                         focusedErrorBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Colors.redAccent,
+                          borderSide: BorderSide(
+                            color: colorScheme.error,
                             width: 2,
                           ),
                         ),
                       ),
                       keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: colorScheme.onSurface),
                       validator: (value) {
                         if (_durationType == 'set_time') {
                           if (value == null || value.trim().isEmpty) {
@@ -341,22 +341,22 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                   // Start Date Picker Row
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text(
+                    title: Text(
                       'Start Date',
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: colorScheme.onSurfaceVariant,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     subtitle: Text(
                       '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-                      style: const TextStyle(color: Colors.white, fontSize: 15),
+                      style: TextStyle(color: colorScheme.onSurface, fontSize: 15),
                     ),
                     trailing: IconButton(
                       icon: Icon(
                         Icons.calendar_month,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: colorScheme.primary,
                       ),
                       onPressed: () async {
                         final pickedDate = await showDatePicker(
@@ -394,20 +394,18 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
                         onPressed: _isLoading
                             ? null
                             : () => Navigator.pop(context),
-                        child: const Text(
+                        child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          foregroundColor: Colors.black,
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

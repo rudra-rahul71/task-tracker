@@ -255,12 +255,13 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
 
     if (userId == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF121212),
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -280,7 +281,7 @@ class _HomePageState extends State<HomePage> {
             return Center(
               child: Text(
                 'Error loading dashboard: ${snapshot.error}',
-                style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+                style: TextStyle(color: colorScheme.error, fontSize: 16),
               ),
             );
           }
@@ -372,8 +373,8 @@ class _HomePageState extends State<HomePage> {
 
             final trackerIndicators = completedForDay.map((t) {
               return t.type == 'quit'
-                  ? const Color(0xFFEF5350)
-                  : const Color(0xFF26A69A);
+                  ? colorScheme.error
+                  : colorScheme.tertiary;
             }).toList();
 
             final tasksOnDay = tasks.where((t) {

@@ -11,27 +11,34 @@ class TrackerCard extends StatelessWidget {
   TrackerCard({super.key, required this.tracker});
 
   void _showDeleteDialog(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
+        backgroundColor: colorScheme.surface,
+        title: Text(
           'Delete Tracker',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         content: Text(
           'Are you sure you want to delete "${tracker.name}"?',
-          style: const TextStyle(color: Colors.grey),
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF5350),
-              foregroundColor: Colors.white,
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
             ),
             onPressed: () async {
               Navigator.pop(context);
@@ -59,12 +66,11 @@ class TrackerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isQuit = tracker.type == 'quit';
     final isSetTime = tracker.durationType == 'set_time';
 
-    final accentColor = isQuit
-        ? const Color(0xFFEF5350) // Premium crimson red for quitting
-        : const Color(0xFF26A69A); // Premium teal emerald for maintaining
+    final accentColor = isQuit ? colorScheme.error : colorScheme.tertiary;
 
     final formattedText = tracker.getFormattedDuration();
     final progress = tracker.getProgress();
@@ -93,7 +99,7 @@ class TrackerCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: accentColor.withValues(alpha: 0.3), width: 1.5),
       ),
-      color: const Color(0xFF1E1E1E),
+      color: colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -127,10 +133,10 @@ class TrackerCard extends StatelessWidget {
                           children: [
                             Text(
                               tracker.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: colorScheme.onSurface,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -149,8 +155,8 @@ class TrackerCard extends StatelessWidget {
                                   isSetTime
                                       ? 'Set Time (${tracker.durationValue} ${tracker.measurementUnit})'
                                       : 'Indefinite',
-                                  Colors.white.withValues(alpha: 0.06),
-                                  Colors.grey[400]!,
+                                  colorScheme.onSurface.withValues(alpha: 0.06),
+                                  colorScheme.onSurfaceVariant,
                                 ),
                               ],
                             ),
@@ -164,9 +170,9 @@ class TrackerCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.edit_outlined,
-                        color: Colors.grey,
+                        color: colorScheme.onSurfaceVariant,
                         size: 22,
                       ),
                       tooltip: 'Edit tracker',
@@ -179,9 +185,9 @@ class TrackerCard extends StatelessWidget {
                       },
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.delete_outline,
-                        color: Color(0xFFEF5350),
+                        color: colorScheme.error,
                         size: 22,
                       ),
                       tooltip: 'Delete tracker',
@@ -217,7 +223,7 @@ class TrackerCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: displayProgress,
                 minHeight: 6,
-                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                backgroundColor: colorScheme.onSurface.withValues(alpha: 0.08),
                 valueColor: AlwaysStoppedAnimation<Color>(accentColor),
               ),
             ),
@@ -231,12 +237,18 @@ class TrackerCard extends StatelessWidget {
                       : showTimeLeft
                       ? '${(displayProgress * 100).toStringAsFixed(0)}% of current $singularUnit left'
                       : '${(displayProgress * 100).toStringAsFixed(0)}% of current $singularUnit completed',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 if (isSetTime)
                   Text(
                     'Target: ${tracker.durationValue} ${tracker.measurementUnit}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),
@@ -247,17 +259,17 @@ class TrackerCard extends StatelessWidget {
                 child: isCompletedForPeriod
                     ? OutlinedButton.icon(
                         onPressed: null,
-                        icon: const Icon(Icons.check, color: Color(0xFF26A69A)),
+                        icon: Icon(Icons.check, color: colorScheme.tertiary),
                         label: Text(
                           'Completed for $periodName',
-                          style: const TextStyle(
-                            color: Color(0xFF26A69A),
+                          style: TextStyle(
+                            color: colorScheme.tertiary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: Color(0xFF26A69A),
+                          side: BorderSide(
+                            color: colorScheme.tertiary,
                             width: 1.5,
                           ),
                           shape: RoundedRectangleBorder(
@@ -283,14 +295,14 @@ class TrackerCard extends StatelessWidget {
                             }
                           }
                         },
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.check_circle_outline,
-                          color: Colors.black,
+                          color: colorScheme.onTertiary,
                         ),
                         label: Text(
                           'Mark Completed for $periodName',
-                          style: const TextStyle(
-                            color: Colors.black,
+                          style: TextStyle(
+                            color: colorScheme.onTertiary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -326,19 +338,19 @@ class TrackerCard extends StatelessWidget {
                       }
                     }
                   },
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.warning_amber_rounded,
-                    color: Colors.white,
+                    color: colorScheme.onError,
                   ),
-                  label: const Text(
+                  label: Text(
                     'Report Slip-Up (Reset Streak)',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: colorScheme.onError,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF5350),
+                    backgroundColor: colorScheme.error,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

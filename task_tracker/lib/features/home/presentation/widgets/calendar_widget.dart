@@ -57,6 +57,7 @@ class CalendarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final year = focusedMonth.year;
     final month = focusedMonth.month;
     final firstDay = DateTime(year, month, 1);
@@ -78,7 +79,7 @@ class CalendarWidget extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.chevron_left, color: Colors.grey),
+                  icon: Icon(Icons.chevron_left, color: colorScheme.onSurfaceVariant),
                   onPressed: () {
                     onMonthChanged(
                       DateTime(focusedMonth.year, focusedMonth.month - 1),
@@ -90,11 +91,11 @@ class CalendarWidget extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: colorScheme.primary,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.chevron_right, color: Colors.grey),
+                  icon: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
                   onPressed: () {
                     onMonthChanged(
                       DateTime(focusedMonth.year, focusedMonth.month + 1),
@@ -112,8 +113,8 @@ class CalendarWidget extends StatelessWidget {
                   child: Center(
                     child: Text(
                       w,
-                      style: const TextStyle(
-                        color: Colors.grey,
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
@@ -189,13 +190,11 @@ class CalendarWidget extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.15),
+              color: colorScheme.onSurface.withValues(alpha: 0.08),
               width: 1.5,
             ),
           ),
-          color: const Color(0xFF1E1E1E),
+          color: colorScheme.surface,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: isBounded ? content : SingleChildScrollView(child: content),
@@ -214,6 +213,7 @@ class CalendarWidget extends StatelessWidget {
     Map<String, CalendarDayData> eventsMap,
     Function(DateTime) onDaySelected,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
     if (index < emptySlots) {
       return const SizedBox.shrink();
     }
@@ -295,14 +295,14 @@ class CalendarWidget extends StatelessWidget {
             margin: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 2.0),
             padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: colorScheme.onSurface.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               '+$remainingCount more',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 7.5,
-                color: Colors.grey,
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
               ),
               maxLines: 1,
@@ -323,17 +323,17 @@ class CalendarWidget extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 56.0),
         decoration: BoxDecoration(
           color: isSelected
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)
+              ? colorScheme.primary.withValues(alpha: 0.25)
               : isToday
-              ? Colors.white.withValues(alpha: 0.05)
+              ? colorScheme.onSurface.withValues(alpha: 0.05)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? Theme.of(context).colorScheme.primary
+                ? colorScheme.primary
                 : isToday
-                ? Colors.grey
-                : Colors.white.withValues(alpha: 0.05),
+                ? colorScheme.outline
+                : colorScheme.onSurface.withValues(alpha: 0.05),
             width: isSelected || isToday ? 1.5 : 1,
           ),
         ),
@@ -348,8 +348,8 @@ class CalendarWidget extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isSelected
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.white,
+                      ? colorScheme.primary
+                      : colorScheme.onSurface,
                   fontWeight: isSelected || isToday
                       ? FontWeight.bold
                       : FontWeight.normal,

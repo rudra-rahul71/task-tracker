@@ -50,9 +50,11 @@ class _SplashPageState extends State<SplashPage>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor:
-          Colors.black, // Sleek black backdrop for the premium splash
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -61,10 +63,10 @@ class _SplashPageState extends State<SplashPage>
             width: 250,
             errorBuilder: (context, error, stackTrace) {
               // Fallback if logo is missing or loading fails
-              return const Icon(
+              return Icon(
                 Icons.check_circle_outline,
                 size: 120,
-                color: Colors.amber,
+                color: colorScheme.primary,
               );
             },
           ),

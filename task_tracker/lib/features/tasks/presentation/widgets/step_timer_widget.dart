@@ -213,6 +213,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isRunning = widget.step.isTimerRunning();
 
     if (_isExpired && !widget.step.isCompleted) {
@@ -220,10 +221,10 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.redAccent.withValues(alpha: 0.15),
+          color: colorScheme.error.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: Colors.redAccent.withValues(alpha: 0.4),
+            color: colorScheme.error.withValues(alpha: 0.4),
             width: 1.5,
           ),
         ),
@@ -236,16 +237,16 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.timer_off_outlined,
-                  color: Colors.redAccent,
+                  color: colorScheme.error,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Timer Done!',
                   style: TextStyle(
-                    color: Colors.redAccent[100],
+                    color: colorScheme.error,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
@@ -256,11 +257,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: Icon(
-                    Icons.replay,
-                    color: Colors.redAccent[100],
-                    size: 18,
-                  ),
+                  icon: Icon(Icons.replay, color: colorScheme.error, size: 18),
                   tooltip: 'Restart Timer',
                   onPressed: _restartTimer,
                   padding: EdgeInsets.zero,
@@ -270,7 +267,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
                 TextButton(
                   onPressed: _extendTimer,
                   style: TextButton.styleFrom(
-                    foregroundColor: Colors.orangeAccent,
+                    foregroundColor: colorScheme.secondary,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                   ),
                   child: const Text(
@@ -282,8 +279,8 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
                 ElevatedButton(
                   onPressed: _confirmComplete,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    foregroundColor: Colors.white,
+                    backgroundColor: colorScheme.error,
+                    foregroundColor: colorScheme.onError,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
@@ -313,16 +310,16 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
           isRunning
               ? Icons.hourglass_top_rounded
               : Icons.hourglass_empty_rounded,
-          color: isRunning
-              ? Theme.of(context).colorScheme.primary
-              : Colors.grey,
+          color: isRunning ? colorScheme.primary : colorScheme.onSurfaceVariant,
           size: 18,
         ),
         const SizedBox(width: 6),
         Text(
           _formatDuration(_secondsRemaining),
           style: TextStyle(
-            color: isRunning ? Colors.white : Colors.grey,
+            color: isRunning
+                ? colorScheme.onSurface
+                : colorScheme.onSurfaceVariant,
             fontWeight: FontWeight.bold,
             fontFamily: 'Courier', // Monospaced look
           ),
@@ -332,14 +329,14 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
           onTap: _toggleTimer,
           child: CircleAvatar(
             backgroundColor: isRunning
-                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                : Colors.grey.withValues(alpha: 0.15),
+                ? colorScheme.primary.withValues(alpha: 0.15)
+                : colorScheme.onSurfaceVariant.withValues(alpha: 0.15),
             radius: 14,
             child: Icon(
               isRunning ? Icons.pause : Icons.play_arrow,
               color: isRunning
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.grey,
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
               size: 16,
             ),
           ),
@@ -348,9 +345,15 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
         GestureDetector(
           onTap: _restartTimer,
           child: CircleAvatar(
-            backgroundColor: Colors.grey.withValues(alpha: 0.1),
+            backgroundColor: colorScheme.onSurfaceVariant.withValues(
+              alpha: 0.1,
+            ),
             radius: 14,
-            child: const Icon(Icons.replay, color: Colors.grey, size: 14),
+            child: Icon(
+              Icons.replay,
+              color: colorScheme.onSurfaceVariant,
+              size: 14,
+            ),
           ),
         ),
       ],

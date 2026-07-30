@@ -44,6 +44,7 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
   Widget _buildBottomIsland(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final islandWidth = width < 600 ? double.infinity : 480.0;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Center(
       heightFactor: 1.0,
@@ -55,7 +56,7 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
           bottom: 24.0,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
@@ -65,7 +66,7 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
             ),
           ],
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: colorScheme.onSurface.withValues(alpha: 0.08),
             width: 1.5,
           ),
         ),
@@ -89,9 +90,7 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.15)
+                        ? colorScheme.primary.withValues(alpha: 0.15)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -103,8 +102,8 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
                             ? destination.selectedIcon
                             : destination.icon,
                         color: isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.grey,
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
                         size: 24,
                       ),
                       if (isSelected) ...[
@@ -112,7 +111,7 @@ class _NavigatorScafoldState extends State<NavigatorScafold> {
                         Text(
                           destination.label,
                           style: TextStyle(
-                            color: Theme.of(context).colorScheme.primary,
+                            color: colorScheme.primary,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),

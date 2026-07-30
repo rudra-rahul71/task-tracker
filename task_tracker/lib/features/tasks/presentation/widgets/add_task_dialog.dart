@@ -242,6 +242,8 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     final groupOptions = _groups.map((g) {
       final hasGroupSched = g.schedule != null && g.schedule!.type != 'none';
       final schedText = hasGroupSched
@@ -251,17 +253,17 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         value: g.id,
         child: Text(
           g.name + schedText,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: colorScheme.onSurface),
         ),
       );
     }).toList();
 
     return Dialog(
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+          color: colorScheme.primary.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -284,11 +286,14 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
+                          color: colorScheme.primary,
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, color: Colors.grey),
+                        icon: Icon(
+                          Icons.close,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -307,21 +312,23 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             decoration: InputDecoration(
                               labelText: 'Task Name',
                               hintText: 'e.g. Do Laundry, Take Vitamins',
-                              labelStyle: const TextStyle(color: Colors.grey),
+                              labelStyle: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: Colors.grey,
+                                borderSide: BorderSide(
+                                  color: colorScheme.outline,
                                 ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: colorScheme.primary,
                                 ),
                               ),
                             ),
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: colorScheme.onSurface),
                             validator: (val) =>
                                 val == null || val.trim().isEmpty
                                 ? 'Enter task name'
@@ -336,21 +343,23 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             decoration: InputDecoration(
                               labelText: 'Description (Optional)',
                               hintText: 'Add details or instructions...',
-                              labelStyle: const TextStyle(color: Colors.grey),
+                              labelStyle: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: Colors.grey,
+                                borderSide: BorderSide(
+                                  color: colorScheme.outline,
                                 ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: colorScheme.primary,
                                 ),
                               ),
                             ),
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: colorScheme.onSurface),
                             maxLines: 2,
                             onSaved: (val) => _description = val?.trim() ?? '',
                           ),
@@ -367,22 +376,26 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 : null,
                             decoration: InputDecoration(
                               labelText: 'Task Group (Optional)',
-                              labelStyle: const TextStyle(color: Colors.grey),
+                              labelStyle: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: Colors.grey,
+                                borderSide: BorderSide(
+                                  color: colorScheme.outline,
                                 ),
                               ),
                             ),
-                            dropdownColor: const Color(0xFF1E1E1E),
-                            style: const TextStyle(color: Colors.white),
+                            dropdownColor: colorScheme.surface,
+                            style: TextStyle(color: colorScheme.onSurface),
                             items: [
-                              const DropdownMenuItem<String>(
+                              DropdownMenuItem<String>(
                                 value: null,
                                 child: Text(
                                   'No Group',
-                                  style: TextStyle(color: Colors.white),
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                  ),
                                 ),
                               ),
                               ...groupOptions,
@@ -410,10 +423,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                           const SizedBox(height: 16),
 
                           // Scheduling Section
-                          const Text(
+                          Text(
                             'Task Schedule',
                             style: TextStyle(
-                              color: Colors.grey,
+                              color: colorScheme.onSurfaceVariant,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
@@ -467,17 +480,17 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             const SizedBox(height: 8),
                             ListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text(
+                              title: Text(
                                 'Target Completion Date',
                                 style: TextStyle(
-                                  color: Colors.grey,
+                                  color: colorScheme.onSurfaceVariant,
                                   fontSize: 13,
                                 ),
                               ),
                               subtitle: Text(
                                 '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-${_targetDate.day.toString().padLeft(2, '0')}',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: colorScheme.onSurface,
                                   fontSize: 15,
                                 ),
                               ),
@@ -526,43 +539,53 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                               initialValue: _scheduleType,
                               decoration: InputDecoration(
                                 labelText: 'Schedule Frequency',
-                                labelStyle: const TextStyle(color: Colors.grey),
+                                labelStyle: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: Colors.grey,
+                                  borderSide: BorderSide(
+                                    color: colorScheme.outline,
                                   ),
                                 ),
                               ),
-                              dropdownColor: const Color(0xFF1E1E1E),
-                              style: const TextStyle(color: Colors.white),
-                              items: const [
+                              dropdownColor: colorScheme.surface,
+                              style: TextStyle(color: colorScheme.onSurface),
+                              items: [
                                 DropdownMenuItem(
                                   value: 'daily',
                                   child: Text(
                                     'Daily',
-                                    style: TextStyle(color: Colors.white),
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                    ),
                                   ),
                                 ),
                                 DropdownMenuItem(
                                   value: 'weekly',
                                   child: Text(
                                     'Weekly',
-                                    style: TextStyle(color: Colors.white),
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                    ),
                                   ),
                                 ),
                                 DropdownMenuItem(
                                   value: 'bi_weekly',
                                   child: Text(
                                     'Bi-Weekly',
-                                    style: TextStyle(color: Colors.white),
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                    ),
                                   ),
                                 ),
                                 DropdownMenuItem(
                                   value: 'monthly',
                                   child: Text(
                                     'Monthly',
-                                    style: TextStyle(color: Colors.white),
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -576,10 +599,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             // Weekly & Bi-Weekly Days Picker
                             if (_scheduleType == 'weekly' ||
                                 _scheduleType == 'bi_weekly') ...[
-                              const Text(
+                              Text(
                                 'Days of the Week',
                                 style: TextStyle(
-                                  color: Colors.grey,
+                                  color: colorScheme.onSurfaceVariant,
                                   fontSize: 13,
                                 ),
                               ),
@@ -603,16 +626,12 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                         }
                                       });
                                     },
-                                    selectedColor: Theme.of(context)
-                                        .colorScheme
-                                        .primary
+                                    selectedColor: colorScheme.primary
                                         .withValues(alpha: 0.2),
                                     labelStyle: TextStyle(
                                       color: isSelected
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.primary
-                                          : Colors.white,
+                                          ? colorScheme.primary
+                                          : colorScheme.onSurface,
                                       fontSize: 12,
                                     ),
                                   );
@@ -625,26 +644,24 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                               const SizedBox(height: 12),
                               ListTile(
                                 contentPadding: EdgeInsets.zero,
-                                title: const Text(
+                                title: Text(
                                   'Start Date / Anchor Week',
                                   style: TextStyle(
-                                    color: Colors.grey,
+                                    color: colorScheme.onSurfaceVariant,
                                     fontSize: 13,
                                   ),
                                 ),
                                 subtitle: Text(
                                   '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
                                     fontSize: 15,
                                   ),
                                 ),
                                 trailing: IconButton(
                                   icon: Icon(
                                     Icons.calendar_month,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                                    color: colorScheme.primary,
                                   ),
                                   onPressed: () async {
                                     final now = DateTime.now();
@@ -680,26 +697,26 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 initialValue: _dayOfMonth,
                                 decoration: InputDecoration(
                                   labelText: 'Day of Month',
-                                  labelStyle: const TextStyle(
-                                    color: Colors.grey,
+                                  labelStyle: TextStyle(
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
                                   enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
-                                    borderSide: const BorderSide(
-                                      color: Colors.grey,
+                                    borderSide: BorderSide(
+                                      color: colorScheme.outline,
                                     ),
                                   ),
                                 ),
-                                dropdownColor: const Color(0xFF1E1E1E),
-                                style: const TextStyle(color: Colors.white),
+                                dropdownColor: colorScheme.surface,
+                                style: TextStyle(color: colorScheme.onSurface),
                                 items: List.generate(31, (index) => index + 1)
                                     .map(
                                       (day) => DropdownMenuItem(
                                         value: day,
                                         child: Text(
                                           'Day $day',
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: colorScheme.onSurface,
                                           ),
                                         ),
                                       ),
@@ -711,29 +728,27 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             ],
                           ],
 
-                          const Divider(
+                          Divider(
                             height: 32,
                             thickness: 1.5,
-                            color: Colors.grey,
+                            color: colorScheme.outline,
                           ),
 
                           // Task Checklist Steps
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
+                              Text(
                                 'Checklist Steps',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: colorScheme.onSurface,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
                                 ),
                               ),
                               TextButton.icon(
                                 style: TextButton.styleFrom(
-                                  foregroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
+                                  foregroundColor: colorScheme.primary,
                                 ),
                                 onPressed: _addStepField,
                                 icon: const Icon(Icons.add, size: 18),
@@ -758,7 +773,8 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             itemBuilder: (context, index) {
                               final stepData = _stepsList[index];
                               return Card(
-                                color: const Color(0xFF262626),
+                                color: colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -776,19 +792,21 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                               decoration: InputDecoration(
                                                 hintText:
                                                     'e.g. Wash clothes, Add Detergent',
-                                                hintStyle: const TextStyle(
-                                                  color: Colors.grey,
+                                                hintStyle: TextStyle(
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
                                                 ),
                                                 border: InputBorder.none,
                                                 labelText: 'Step ${index + 1}',
-                                                labelStyle: const TextStyle(
-                                                  color: Colors.grey,
+                                                labelStyle: TextStyle(
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
                                                   fontSize: 12,
                                                 ),
                                               ),
                                               initialValue: stepData['name'],
-                                              style: const TextStyle(
-                                                color: Colors.white,
+                                              style: TextStyle(
+                                                color: colorScheme.onSurface,
                                                 fontSize: 14,
                                               ),
                                               onChanged: (val) =>
@@ -802,9 +820,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                           ),
                                           if (_stepsList.length > 1)
                                             IconButton(
-                                              icon: const Icon(
+                                              icon: Icon(
                                                 Icons.delete_outline,
-                                                color: Colors.redAccent,
+                                                color: colorScheme.error,
                                                 size: 20,
                                               ),
                                               onPressed: () =>
@@ -818,10 +836,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                         children: [
                                           Row(
                                             children: [
-                                              const Text(
+                                              Text(
                                                 'Has Timer?',
                                                 style: TextStyle(
-                                                  color: Colors.grey,
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
                                                   fontSize: 12,
                                                 ),
                                               ),
@@ -832,10 +851,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                                     stepData['hasTimer'] = val!;
                                                   });
                                                 },
-                                                activeColor: Theme.of(
-                                                  context,
-                                                ).colorScheme.primary,
-                                                checkColor: Colors.black,
+                                                activeColor:
+                                                    colorScheme.primary,
+                                                checkColor:
+                                                    colorScheme.onPrimary,
                                               ),
                                             ],
                                           ),
@@ -843,22 +862,21 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                             SizedBox(
                                               width: 140,
                                               child: TextFormField(
-                                                decoration:
-                                                    const InputDecoration(
-                                                      labelText:
-                                                          'Duration (min)',
-                                                      labelStyle: TextStyle(
-                                                        color: Colors.grey,
-                                                        fontSize: 12,
-                                                      ),
-                                                      border:
-                                                          UnderlineInputBorder(),
-                                                    ),
+                                                decoration: InputDecoration(
+                                                  labelText: 'Duration (min)',
+                                                  labelStyle: TextStyle(
+                                                    color: colorScheme
+                                                        .onSurfaceVariant,
+                                                    fontSize: 12,
+                                                  ),
+                                                  border:
+                                                      const UnderlineInputBorder(),
+                                                ),
                                                 initialValue:
                                                     stepData['minutes']
                                                         .toString(),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
+                                                style: TextStyle(
+                                                  color: colorScheme.onSurface,
                                                   fontSize: 14,
                                                 ),
                                                 keyboardType:
@@ -907,10 +925,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text(
+                        child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -918,10 +936,8 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                       const SizedBox(width: 16),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          foregroundColor: Colors.black,
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

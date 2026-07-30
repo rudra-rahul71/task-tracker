@@ -191,28 +191,35 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
   void _deleteGroup(String groupId) async {
     final userId = _userId;
     if (userId == null) return;
+    final colorScheme = Theme.of(context).colorScheme;
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
+        backgroundColor: colorScheme.surface,
+        title: Text(
           'Delete Group?',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        content: const Text(
+        content: Text(
           'Tasks inside this group will not be deleted, but they will no longer belong to this group or inherit its schedule.',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
@@ -250,17 +257,18 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final userId = _userId;
     if (userId == null) return const SizedBox.shrink();
 
     String headerTitle = 'Manage Groups';
 
     return Dialog(
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+          color: colorScheme.primary.withValues(alpha: 0.15),
           width: 1.5,
         ),
       ),
@@ -285,7 +293,10 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.grey),
+                      icon: Icon(
+                        Icons.close,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -304,6 +315,7 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
   }
 
   Widget _buildListView() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Expanded(
       child: Column(
         children: [
@@ -319,7 +331,7 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                     child: Text(
                       'No groups created yet.',
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: colorScheme.onSurfaceVariant,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -328,7 +340,7 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                 return ListView.separated(
                   itemCount: groups.length,
                   separatorBuilder: (context, index) =>
-                      const Divider(height: 1, color: Colors.grey),
+                      Divider(height: 1, color: colorScheme.outline),
                   itemBuilder: (context, index) {
                     final g = groups[index];
                     return ListTile(
@@ -338,8 +350,8 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                       ),
                       title: Text(
                         g.name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -347,22 +359,25 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                         g.schedule != null && g.schedule!.type != 'none'
                             ? 'Schedule: ${g.schedule!.type}'
                             : 'No Schedule',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.edit_outlined,
-                              color: Colors.grey,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                             onPressed: () => _openEditView(g),
                           ),
                           IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.delete_outline,
-                              color: Colors.redAccent,
+                              color: colorScheme.error,
                             ),
                             onPressed: () => _deleteGroup(g.id),
                           ),
@@ -379,8 +394,8 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.black,
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -399,14 +414,15 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
   }
 
   Widget _buildFormView() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             _currentView == 'edit' ? 'Edit Group' : 'Add New Group',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: colorScheme.onSurface,
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
@@ -421,22 +437,22 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                   children: [
                     TextFormField(
                       initialValue: _name,
+                      style: TextStyle(color: colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Group Name',
                         hintText: 'e.g. Chores, Morning Routine',
-                        labelStyle: const TextStyle(color: Colors.grey),
+                        labelStyle: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.grey),
+                          borderSide: BorderSide(color: colorScheme.outline),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                          borderSide: BorderSide(color: colorScheme.primary),
                         ),
                       ),
-                      style: const TextStyle(color: Colors.white),
                       validator: (val) => val == null || val.trim().isEmpty
                           ? 'Enter group name'
                           : null,
@@ -444,11 +460,10 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Color picker
-                    const Text(
+                    Text(
                       'Group Color',
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: colorScheme.onSurfaceVariant,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
@@ -465,9 +480,9 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                             backgroundColor: preset.color,
                             radius: 16,
                             child: isSelected
-                                ? const Icon(
+                                ? Icon(
                                     Icons.check,
-                                    color: Colors.black,
+                                    color: colorScheme.onPrimary,
                                     size: 20,
                                   )
                                 : null,
@@ -480,17 +495,20 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                     // Group Recurrence Schedule Toggle
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text(
+                      title: Text(
                         'Set Recurrence Schedule',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: colorScheme.onSurface,
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      subtitle: const Text(
+                      subtitle: Text(
                         'All tasks in this group will inherit this schedule by default',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                       ),
                       value: _hasSchedule,
                       onChanged: (val) => setState(() => _hasSchedule = val),
@@ -503,41 +521,43 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                         initialValue: _scheduleType,
                         decoration: InputDecoration(
                           labelText: 'Schedule Type',
-                          labelStyle: const TextStyle(color: Colors.grey),
+                          labelStyle: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.grey),
+                            borderSide: BorderSide(color: colorScheme.outline),
                           ),
                         ),
-                        dropdownColor: const Color(0xFF1E1E1E),
-                        style: const TextStyle(color: Colors.white),
-                        items: const [
+                        dropdownColor: colorScheme.surface,
+                        style: TextStyle(color: colorScheme.onSurface),
+                        items: [
                           DropdownMenuItem(
                             value: 'daily',
                             child: Text(
                               'Daily',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: colorScheme.onSurface),
                             ),
                           ),
                           DropdownMenuItem(
                             value: 'weekly',
                             child: Text(
                               'Weekly',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: colorScheme.onSurface),
                             ),
                           ),
                           DropdownMenuItem(
                             value: 'bi_weekly',
                             child: Text(
                               'Bi-Weekly',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: colorScheme.onSurface),
                             ),
                           ),
                           DropdownMenuItem(
                             value: 'monthly',
                             child: Text(
                               'Monthly',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: colorScheme.onSurface),
                             ),
                           ),
                         ],
@@ -551,9 +571,12 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                       // Weekly & Bi-Weekly Days Picker
                       if (_scheduleType == 'weekly' ||
                           _scheduleType == 'bi_weekly') ...[
-                        const Text(
+                        Text(
                           'Days of the Week',
-                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Wrap(
@@ -573,13 +596,13 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                                   }
                                 });
                               },
-                              selectedColor: Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.2),
+                              selectedColor: colorScheme.primary.withValues(
+                                alpha: 0.2,
+                              ),
                               labelStyle: TextStyle(
                                 color: isSelected
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Colors.white,
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurface,
                                 fontSize: 12,
                               ),
                             );
@@ -592,21 +615,24 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                         const SizedBox(height: 12),
                         ListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: const Text(
+                          title: Text(
                             'Start Date / Anchor Week',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 13,
+                            ),
                           ),
                           subtitle: Text(
                             '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: colorScheme.onSurface,
                               fontSize: 15,
                             ),
                           ),
                           trailing: IconButton(
                             icon: Icon(
                               Icons.calendar_month,
-                              color: Theme.of(context).colorScheme.primary,
+                              color: colorScheme.primary,
                             ),
                             onPressed: () async {
                               final now = DateTime.now();
@@ -639,21 +665,27 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                           initialValue: _dayOfMonth,
                           decoration: InputDecoration(
                             labelText: 'Day of Month',
-                            labelStyle: const TextStyle(color: Colors.grey),
+                            labelStyle: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.grey),
+                              borderSide: BorderSide(
+                                color: colorScheme.outline,
+                              ),
                             ),
                           ),
-                          dropdownColor: const Color(0xFF1E1E1E),
-                          style: const TextStyle(color: Colors.white),
+                          dropdownColor: colorScheme.surface,
+                          style: TextStyle(color: colorScheme.onSurface),
                           items: List.generate(31, (index) => index + 1)
                               .map(
                                 (day) => DropdownMenuItem(
                                   value: day,
                                   child: Text(
                                     'Day $day',
-                                    style: const TextStyle(color: Colors.white),
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                    ),
                                   ),
                                 ),
                               )
@@ -670,8 +702,8 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                         Expanded(
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.grey,
-                              side: const BorderSide(color: Colors.grey),
+                              foregroundColor: colorScheme.onSurfaceVariant,
+                              side: BorderSide(color: colorScheme.outline),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -693,10 +725,8 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                           flex: 2,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                              foregroundColor: Colors.black,
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),

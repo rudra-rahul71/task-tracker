@@ -150,12 +150,13 @@ class _TasksPageState extends State<TasksPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
 
     if (userId == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF121212),
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -182,10 +183,8 @@ class _TasksPageState extends State<TasksPage> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.primary,
-                      side: BorderSide(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                      foregroundColor: colorScheme.primary,
+                      side: BorderSide(color: colorScheme.primary),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -204,8 +203,8 @@ class _TasksPageState extends State<TasksPage> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.black,
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -231,13 +230,11 @@ class _TasksPageState extends State<TasksPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'due');
                   },
-                  selectedColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'due'
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey[400],
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -247,13 +244,11 @@ class _TasksPageState extends State<TasksPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'all');
                   },
-                  selectedColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'all'
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey[400],
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -263,13 +258,11 @@ class _TasksPageState extends State<TasksPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'group');
                   },
-                  selectedColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'group'
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey[400],
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -279,13 +272,11 @@ class _TasksPageState extends State<TasksPage> {
                   onSelected: (selected) {
                     if (selected) setState(() => _activeFilter = 'completed');
                   },
-                  selectedColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.2),
+                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
                     color: _activeFilter == 'completed'
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey[400],
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -297,8 +288,7 @@ class _TasksPageState extends State<TasksPage> {
             StreamBuilder<List<TaskGroupModel>>(
               stream: _groupsStream!,
               builder: (context, groupsSnapshot) {
-                if (groupsSnapshot.connectionState ==
-                    ConnectionState.waiting) {
+                if (groupsSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
@@ -316,8 +306,8 @@ class _TasksPageState extends State<TasksPage> {
                       return Center(
                         child: Text(
                           'Error loading tasks: ${tasksSnapshot.error}',
-                          style: const TextStyle(
-                            color: Colors.redAccent,
+                          style: TextStyle(
+                            color: colorScheme.error,
                             fontSize: 16,
                           ),
                         ),
@@ -469,10 +459,7 @@ class _TasksPageState extends State<TasksPage> {
                         );
                       } else {
                         // Group sorting/categorizing
-                        return _buildGroupedTasksView(
-                          allOrGroupTasks,
-                          groups,
-                        );
+                        return _buildGroupedTasksView(allOrGroupTasks, groups);
                       }
                     }
                   },
@@ -572,6 +559,7 @@ class _TasksPageState extends State<TasksPage> {
     bool isInteractive = true,
     bool showCompletionStatus = true,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     if (taskList.isEmpty) {
       return Center(
         child: Column(
@@ -580,21 +568,21 @@ class _TasksPageState extends State<TasksPage> {
             Icon(
               Icons.checklist_rtl_rounded,
               size: 64,
-              color: Colors.grey[700],
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
               emptyMessage,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey,
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Tap "Add Task" to start setting up tasks.',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
             ),
           ],
         ),
@@ -616,12 +604,12 @@ class _TasksPageState extends State<TasksPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (overdue.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.only(bottom: 16.0),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
             child: Text(
               'Overdue Tasks',
               style: TextStyle(
-                color: Colors.redAccent,
+                color: colorScheme.error,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -633,7 +621,7 @@ class _TasksPageState extends State<TasksPage> {
         if (upcoming.isNotEmpty) ...[
           if (overdue.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Divider(color: Colors.grey),
+            Divider(color: colorScheme.outline),
             const SizedBox(height: 16),
           ],
           _buildTaskListLayout(
@@ -651,6 +639,7 @@ class _TasksPageState extends State<TasksPage> {
     List<TaskModel> allTasks,
     List<TaskGroupModel> groups,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
     // 1. Group tasks by groupId
     final Map<String?, List<TaskModel>> groupedMap = {};
     for (var task in allTasks) {
@@ -662,7 +651,7 @@ class _TasksPageState extends State<TasksPage> {
         child: Text(
           'No tasks to group yet!',
           style: TextStyle(
-            color: Colors.grey[500],
+            color: colorScheme.onSurfaceVariant,
             fontSize: 16,
             fontStyle: FontStyle.italic,
           ),
@@ -711,7 +700,7 @@ class _TasksPageState extends State<TasksPage> {
                   const SizedBox(width: 8),
                   Text(
                     '(${groupTasks.length})',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
                   ),
                 ],
               ),
@@ -722,7 +711,7 @@ class _TasksPageState extends State<TasksPage> {
                     child: Text(
                       'No tasks in this group.',
                       style: TextStyle(
-                        color: Colors.grey[600],
+                        color: colorScheme.onSurfaceVariant,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -768,16 +757,16 @@ class _TasksPageState extends State<TasksPage> {
                   initiallyExpanded: true,
                   title: Row(
                     children: [
-                      const CircleAvatar(
-                        backgroundColor: Colors.grey,
+                      CircleAvatar(
+                        backgroundColor: colorScheme.onSurfaceVariant,
                         radius: 8,
                       ),
                       const SizedBox(width: 10),
-                      const Flexible(
+                      Flexible(
                         child: Text(
                           'Unassigned / General Tasks',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -787,7 +776,7 @@ class _TasksPageState extends State<TasksPage> {
                       const SizedBox(width: 8),
                       Text(
                         '(${unassignedTasks.length})',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
                       ),
                     ],
                   ),
@@ -818,16 +807,17 @@ class _TasksPageState extends State<TasksPage> {
     List<TaskModel> upcomingTasks,
     List<TaskGroupModel> groups,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (overdueTasks.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8.0),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
             child: Text(
               'Overdue Tasks',
               style: TextStyle(
-                color: Colors.redAccent,
+                color: colorScheme.error,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
@@ -848,7 +838,7 @@ class _TasksPageState extends State<TasksPage> {
         ],
         if (upcomingTasks.isNotEmpty) ...[
           if (overdueTasks.isNotEmpty) ...[
-            const Divider(color: Colors.grey),
+            Divider(color: colorScheme.outline),
             const SizedBox(height: 8),
           ],
           ...upcomingTasks.map((task) {

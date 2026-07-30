@@ -187,27 +187,38 @@ class _TaskCardState extends State<TaskCard> {
   }
 
   void _deleteTask() async {
+    final colorScheme = Theme.of(context).colorScheme;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text(
+        backgroundColor: colorScheme.surface,
+        title: Text(
           'Delete Task?',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         content: Text(
           'Are you sure you want to delete "${widget.task.name}"?',
-          style: const TextStyle(color: Colors.grey),
+          style: TextStyle(
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
@@ -234,15 +245,16 @@ class _TaskCardState extends State<TaskCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final group = _getGroup();
     final color = group != null
         ? Color(group.colorValue)
-        : Theme.of(context).colorScheme.primary;
+        : colorScheme.primary;
     final isCompleted =
         widget.showCompletionStatus && (widget.task.status == 'completed');
 
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
@@ -257,7 +269,9 @@ class _TaskCardState extends State<TaskCard> {
           decoration: BoxDecoration(
             border: Border(
               left: BorderSide(
-                color: isCompleted ? Colors.grey[700]! : color,
+                color: isCompleted
+                    ? colorScheme.outline
+                    : color,
                 width: 6,
               ),
             ),
@@ -312,7 +326,9 @@ class _TaskCardState extends State<TaskCard> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isCompleted ? Colors.grey : Colors.white,
+                          color: isCompleted
+                              ? colorScheme.onSurfaceVariant
+                              : colorScheme.onSurface,
                           decoration: isCompleted
                               ? TextDecoration.lineThrough
                               : null,
@@ -327,7 +343,7 @@ class _TaskCardState extends State<TaskCard> {
                                 widget.task.description,
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.grey[400],
+                                  color: colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             )
@@ -348,7 +364,7 @@ class _TaskCardState extends State<TaskCard> {
                                   padding: const EdgeInsets.all(6.0),
                                   child: Icon(
                                     Icons.refresh,
-                                    color: Colors.grey,
+                                    color: colorScheme.onSurfaceVariant,
                                     size: isCompleted ? 20 : 18,
                                   ),
                                 ),
@@ -367,13 +383,13 @@ class _TaskCardState extends State<TaskCard> {
                                 );
                               },
                               behavior: HitTestBehavior.opaque,
-                              child: const Tooltip(
+                              child: Tooltip(
                                 message: 'Edit Task',
                                 child: Padding(
-                                  padding: EdgeInsets.all(6.0),
+                                  padding: const EdgeInsets.all(6.0),
                                   child: Icon(
                                     Icons.edit_outlined,
-                                    color: Colors.grey,
+                                    color: colorScheme.onSurfaceVariant,
                                     size: 20,
                                   ),
                                 ),
@@ -384,13 +400,13 @@ class _TaskCardState extends State<TaskCard> {
                             GestureDetector(
                               onTap: _deleteTask,
                               behavior: HitTestBehavior.opaque,
-                              child: const Tooltip(
+                              child: Tooltip(
                                 message: 'Delete Task',
                                 child: Padding(
-                                  padding: EdgeInsets.all(6.0),
+                                  padding: const EdgeInsets.all(6.0),
                                   child: Icon(
                                     Icons.delete_outline,
-                                    color: Colors.grey,
+                                    color: colorScheme.onSurfaceVariant,
                                     size: 20,
                                   ),
                                 ),
@@ -402,7 +418,7 @@ class _TaskCardState extends State<TaskCard> {
                               _isExpanded
                                   ? Icons.keyboard_arrow_up
                                   : Icons.keyboard_arrow_down,
-                              color: Colors.grey,
+                              color: colorScheme.onSurfaceVariant,
                               size: 20,
                             ),
                           ),
@@ -475,13 +491,13 @@ class _TaskCardState extends State<TaskCard> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.grey.withValues(alpha: 0.1),
+                                color: colorScheme.onSurface.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 _getScheduleText(),
-                                style: const TextStyle(
-                                  color: Colors.grey,
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
                                   fontSize: 11,
                                 ),
                               ),
@@ -498,7 +514,7 @@ class _TaskCardState extends State<TaskCard> {
                                 child: Text(
                                   '${widget.task.steps.where((s) => s.isCompleted).length}/${widget.task.steps.length} steps completed',
                                   style: TextStyle(
-                                    color: Colors.grey[400],
+                                    color: colorScheme.onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -509,7 +525,7 @@ class _TaskCardState extends State<TaskCard> {
                               Text(
                                 '${(widget.task.progress * 100).toInt()}%',
                                 style: TextStyle(
-                                  color: isCompleted ? Colors.grey : color,
+                                  color: isCompleted ? colorScheme.onSurfaceVariant : color,
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -519,9 +535,9 @@ class _TaskCardState extends State<TaskCard> {
                           const SizedBox(height: 6),
                           LinearProgressIndicator(
                             value: widget.task.progress,
-                            backgroundColor: Colors.grey[800],
+                            backgroundColor: colorScheme.onSurface.withValues(alpha: 0.08),
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              isCompleted ? Colors.grey : color,
+                              isCompleted ? colorScheme.onSurfaceVariant : color,
                             ),
                             borderRadius: BorderRadius.circular(4),
                             minHeight: 6,
@@ -533,17 +549,17 @@ class _TaskCardState extends State<TaskCard> {
                 ],
               ),
               children: [
-                const Divider(height: 1, color: Colors.grey),
+                Divider(height: 1, color: colorScheme.outline),
                 Container(
-                  color: const Color(0xFF161616),
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Checklist Steps',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -591,7 +607,7 @@ class _TaskCardState extends State<TaskCard> {
                                       Checkbox(
                                         value: isStepCompleted,
                                         activeColor: color,
-                                        checkColor: Colors.black,
+                                        checkColor: colorScheme.onPrimary,
                                         onChanged: widget.isInteractive
                                             ? (val) => _toggleStepCompletion(
                                                 index,
@@ -620,8 +636,8 @@ class _TaskCardState extends State<TaskCard> {
                                         step.name,
                                         style: TextStyle(
                                           color: isStepCompleted
-                                              ? Colors.grey
-                                              : Colors.white,
+                                              ? colorScheme.onSurfaceVariant
+                                              : colorScheme.onSurface,
                                           decoration: isStepCompleted
                                               ? TextDecoration.lineThrough
                                               : null,
@@ -657,7 +673,7 @@ class _TaskCardState extends State<TaskCard> {
                                           Checkbox(
                                             value: isStepCompleted,
                                             activeColor: color,
-                                            checkColor: Colors.black,
+                                            checkColor: colorScheme.onPrimary,
                                             onChanged: widget.isInteractive
                                                 ? (val) =>
                                                       _toggleStepCompletion(
@@ -689,8 +705,8 @@ class _TaskCardState extends State<TaskCard> {
                                             step.name,
                                             style: TextStyle(
                                               color: isStepCompleted
-                                                  ? Colors.grey
-                                                  : Colors.white,
+                                                  ? colorScheme.onSurfaceVariant
+                                                  : colorScheme.onSurface,
                                               decoration: isStepCompleted
                                                   ? TextDecoration.lineThrough
                                                   : null,
@@ -734,10 +750,10 @@ class _TaskCardState extends State<TaskCard> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: widget.task.isAllStepsCompleted
                                     ? color
-                                    : Colors.grey[800],
+                                    : colorScheme.surfaceContainerHighest,
                                 foregroundColor: widget.task.isAllStepsCompleted
-                                    ? Colors.black
-                                    : Colors.grey[500],
+                                    ? colorScheme.onPrimary
+                                    : colorScheme.onSurfaceVariant,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
