@@ -51,6 +51,60 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
+  Widget _buildFilterChip(String label, String value, ColorScheme colorScheme) {
+    final isSelected = _activeFilter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) setState(() => _activeFilter = value);
+      },
+      selectedColor: colorScheme.primary.withValues(alpha: 0.2),
+      labelStyle: TextStyle(
+        color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+  }
+
+  TaskGroupModel? _findGroup(String? groupId, List<TaskGroupModel> groups) {
+    if (groupId == null) return null;
+    for (final g in groups) {
+      if (g.id == groupId) return g;
+    }
+    return null;
+  }
+
+  (bool, DateTime?) _getScheduleInfo(
+    TaskModel task,
+    List<TaskGroupModel> groups,
+  ) {
+    if (task.schedule != null) {
+      return (task.schedule!.type != 'none', task.schedule!.startDate);
+    }
+    final group = _findGroup(task.groupId, groups);
+    if (group?.schedule != null) {
+      return (group!.schedule!.type != 'none', group.schedule!.startDate);
+    }
+    return (false, null);
+  }
+
+  (List<TaskModel>, List<TaskModel>) _partitionTasksByOverdue(
+    List<TaskModel> tasks,
+    List<TaskGroupModel> groups,
+  ) {
+    final upcoming = <TaskModel>[];
+    final overdue = <TaskModel>[];
+    for (final t in tasks) {
+      if (_isTaskOverdueOneOff(t, groups)) {
+        overdue.add(t);
+      } else {
+        upcoming.add(t);
+      }
+    }
+    return (overdue, upcoming);
+  }
+
   bool _isTaskDueToday(TaskModel task, List<TaskGroupModel> groups) {
     final now = DateTime.now();
 
@@ -61,22 +115,11 @@ class _TasksPageState extends State<TasksPage> {
       }
     } else {
       // 2. Task inherits its group schedule
-      if (task.groupId != null) {
-        final group = groups.firstWhere(
-          (g) => g.id == task.groupId,
-          orElse: () => TaskGroupModel(
-            id: '',
-            userId: '',
-            name: '',
-            colorValue: 0,
-            createdAt: DateTime.now(),
-          ),
-        );
-        if (group.id.isNotEmpty && group.schedule != null) {
-          if (group.schedule!.type != 'none' ||
-              group.schedule!.startDate != null) {
-            return group.schedule!.isDueOnDate(now);
-          }
+      final group = _findGroup(task.groupId, groups);
+      if (group?.schedule != null) {
+        if (group!.schedule!.type != 'none' ||
+            group.schedule!.startDate != null) {
+          return group.schedule!.isDueOnDate(now);
         }
       }
     }
@@ -96,22 +139,8 @@ class _TasksPageState extends State<TasksPage> {
     if (task.schedule != null) {
       return task.schedule!.type != 'none';
     }
-    if (task.groupId != null) {
-      final group = groups.firstWhere(
-        (g) => g.id == task.groupId,
-        orElse: () => TaskGroupModel(
-          id: '',
-          userId: '',
-          name: '',
-          colorValue: 0,
-          createdAt: DateTime.now(),
-        ),
-      );
-      if (group.id.isNotEmpty && group.schedule != null) {
-        return group.schedule!.type != 'none';
-      }
-    }
-    return false;
+    final group = _findGroup(task.groupId, groups);
+    return group?.schedule?.type != null && group!.schedule!.type != 'none';
   }
 
   bool _isTaskOverdueOneOff(TaskModel task, List<TaskGroupModel> groups) {
@@ -127,22 +156,11 @@ class _TasksPageState extends State<TasksPage> {
       return false;
     }
 
-    if (task.groupId != null) {
-      final g = groups.firstWhere(
-        (g) => g.id == task.groupId,
-        orElse: () => TaskGroupModel(
-          id: '',
-          userId: '',
-          name: '',
-          colorValue: 0,
-          createdAt: DateTime.now(),
-        ),
-      );
-      if (g.id.isNotEmpty && g.schedule != null) {
-        if (g.schedule!.type == 'none' && g.schedule!.startDate != null) {
-          final sDate = g.schedule!.startDate!;
-          return DateTime(sDate.year, sDate.month, sDate.day).isBefore(today);
-        }
+    final g = _findGroup(task.groupId, groups);
+    if (g?.schedule != null) {
+      if (g!.schedule!.type == 'none' && g.schedule!.startDate != null) {
+        final sDate = g.schedule!.startDate!;
+        return DateTime(sDate.year, sDate.month, sDate.day).isBefore(today);
       }
     }
     return false;
@@ -170,7 +188,7 @@ class _TasksPageState extends State<TasksPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             PageHeader(
-              header: 'Tasks & Chores',
+              header: 'Tasks',
               sub: 'Checklists with step-level timers and schedules',
               action: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -224,62 +242,10 @@ class _TasksPageState extends State<TasksPage> {
               spacing: 12,
               runSpacing: 8,
               children: [
-                ChoiceChip(
-                  label: const Text('Due Today'),
-                  selected: _activeFilter == 'due',
-                  onSelected: (selected) {
-                    if (selected) setState(() => _activeFilter = 'due');
-                  },
-                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
-                  labelStyle: TextStyle(
-                    color: _activeFilter == 'due'
-                        ? colorScheme.primary
-                        : colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                ChoiceChip(
-                  label: const Text('All Tasks'),
-                  selected: _activeFilter == 'all',
-                  onSelected: (selected) {
-                    if (selected) setState(() => _activeFilter = 'all');
-                  },
-                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
-                  labelStyle: TextStyle(
-                    color: _activeFilter == 'all'
-                        ? colorScheme.primary
-                        : colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                ChoiceChip(
-                  label: const Text('By Group'),
-                  selected: _activeFilter == 'group',
-                  onSelected: (selected) {
-                    if (selected) setState(() => _activeFilter = 'group');
-                  },
-                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
-                  labelStyle: TextStyle(
-                    color: _activeFilter == 'group'
-                        ? colorScheme.primary
-                        : colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                ChoiceChip(
-                  label: const Text('Completed'),
-                  selected: _activeFilter == 'completed',
-                  onSelected: (selected) {
-                    if (selected) setState(() => _activeFilter = 'completed');
-                  },
-                  selectedColor: colorScheme.primary.withValues(alpha: 0.2),
-                  labelStyle: TextStyle(
-                    color: _activeFilter == 'completed'
-                        ? colorScheme.primary
-                        : colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                _buildFilterChip('Due Today', 'due', colorScheme),
+                _buildFilterChip('All Tasks', 'all', colorScheme),
+                _buildFilterChip('By Group', 'group', colorScheme),
+                _buildFilterChip('Completed', 'completed', colorScheme),
               ],
             ),
             const SizedBox(height: 24),
@@ -331,49 +297,14 @@ class _TasksPageState extends State<TasksPage> {
 
                     // Sort helper
                     int sortTasks(TaskModel a, TaskModel b) {
-                      bool aIsScheduled = false;
-                      DateTime? aStartDate;
-                      if (a.schedule != null) {
-                        aIsScheduled = a.schedule!.type != 'none';
-                        aStartDate = a.schedule!.startDate;
-                      } else if (a.groupId != null) {
-                        final g = groups.firstWhere(
-                          (g) => g.id == a.groupId,
-                          orElse: () => TaskGroupModel(
-                            id: '',
-                            userId: '',
-                            name: '',
-                            colorValue: 0,
-                            createdAt: DateTime.now(),
-                          ),
-                        );
-                        if (g.id.isNotEmpty && g.schedule != null) {
-                          aIsScheduled = g.schedule!.type != 'none';
-                          aStartDate = g.schedule!.startDate;
-                        }
-                      }
-
-                      bool bIsScheduled = false;
-                      DateTime? bStartDate;
-                      if (b.schedule != null) {
-                        bIsScheduled = b.schedule!.type != 'none';
-                        bStartDate = b.schedule!.startDate;
-                      } else if (b.groupId != null) {
-                        final g = groups.firstWhere(
-                          (g) => g.id == b.groupId,
-                          orElse: () => TaskGroupModel(
-                            id: '',
-                            userId: '',
-                            name: '',
-                            colorValue: 0,
-                            createdAt: DateTime.now(),
-                          ),
-                        );
-                        if (g.id.isNotEmpty && g.schedule != null) {
-                          bIsScheduled = g.schedule!.type != 'none';
-                          bStartDate = g.schedule!.startDate;
-                        }
-                      }
+                      final (aIsScheduled, aStartDate) = _getScheduleInfo(
+                        a,
+                        groups,
+                      );
+                      final (bIsScheduled, bStartDate) = _getScheduleInfo(
+                        b,
+                        groups,
+                      );
 
                       if (aIsScheduled && !bIsScheduled) return -1;
                       if (!aIsScheduled && bIsScheduled) return 1;
@@ -582,23 +513,17 @@ class _TasksPageState extends State<TasksPage> {
             const SizedBox(height: 8),
             Text(
               'Tap "Add Task" to start setting up tasks.',
-              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
       );
     }
 
-    final upcoming = <TaskModel>[];
-    final overdue = <TaskModel>[];
-
-    for (var t in taskList) {
-      if (_isTaskOverdueOneOff(t, groups)) {
-        overdue.add(t);
-      } else {
-        upcoming.add(t);
-      }
-    }
+    final (overdue, upcoming) = _partitionTasksByOverdue(taskList, groups);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -635,6 +560,72 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
+  Widget _buildGroupSection({
+    required String title,
+    required Color color,
+    required List<TaskModel> groupTasks,
+    required List<TaskGroupModel> groups,
+    required ColorScheme colorScheme,
+  }) {
+    final (overdueTasks, upcomingTasks) = _partitionTasksByOverdue(
+      groupTasks,
+      groups,
+    );
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        title: Row(
+          children: [
+            CircleAvatar(backgroundColor: color, radius: 8),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '(${groupTasks.length})',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        children: [
+          if (groupTasks.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 28.0, bottom: 12.0),
+              child: Text(
+                'No tasks in this group.',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: 8.0,
+                horizontal: 16.0,
+              ),
+              child: _buildGroupTaskCards(overdueTasks, upcomingTasks, groups),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildGroupedTasksView(
     List<TaskModel> allTasks,
     List<TaskGroupModel> groups,
@@ -665,139 +656,24 @@ class _TasksPageState extends State<TasksPage> {
         // Print tasks belonging to groups
         ...groups.map((group) {
           final groupTasks = groupedMap[group.id] ?? [];
-          final color = Color(group.colorValue);
-
-          final upcomingTasks = <TaskModel>[];
-          final overdueTasks = <TaskModel>[];
-
-          for (var t in groupTasks) {
-            if (_isTaskOverdueOneOff(t, groups)) {
-              overdueTasks.add(t);
-            } else {
-              upcomingTasks.add(t);
-            }
-          }
-
-          return Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              initiallyExpanded: true,
-              title: Row(
-                children: [
-                  CircleAvatar(backgroundColor: color, radius: 8),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      group.name,
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '(${groupTasks.length})',
-                    style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
-                  ),
-                ],
-              ),
-              children: [
-                if (groupTasks.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 28.0, bottom: 12.0),
-                    child: Text(
-                      'No tasks in this group.',
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8.0,
-                      horizontal: 16.0,
-                    ),
-                    child: _buildGroupTaskCards(
-                      overdueTasks,
-                      upcomingTasks,
-                      groups,
-                    ),
-                  ),
-              ],
-            ),
+          return _buildGroupSection(
+            title: group.name,
+            color: Color(group.colorValue),
+            groupTasks: groupTasks,
+            groups: groups,
+            colorScheme: colorScheme,
           );
         }),
 
         // 3. Print tasks without a group
-        if (groupedMap.containsKey(null) && groupedMap[null]!.isNotEmpty) ...[
-          Builder(
-            builder: (context) {
-              final unassignedTasks = groupedMap[null]!;
-              final upcomingTasks = <TaskModel>[];
-              final overdueTasks = <TaskModel>[];
-
-              for (var t in unassignedTasks) {
-                if (_isTaskOverdueOneOff(t, groups)) {
-                  overdueTasks.add(t);
-                } else {
-                  upcomingTasks.add(t);
-                }
-              }
-
-              return Theme(
-                data: Theme.of(
-                  context,
-                ).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  initiallyExpanded: true,
-                  title: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: colorScheme.onSurfaceVariant,
-                        radius: 8,
-                      ),
-                      const SizedBox(width: 10),
-                      Flexible(
-                        child: Text(
-                          'Unassigned / General Tasks',
-                          style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '(${unassignedTasks.length})',
-                        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8.0,
-                        horizontal: 16.0,
-                      ),
-                      child: _buildGroupTaskCards(
-                        overdueTasks,
-                        upcomingTasks,
-                        groups,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+        if (groupedMap.containsKey(null) && groupedMap[null]!.isNotEmpty)
+          _buildGroupSection(
+            title: 'Unassigned / General Tasks',
+            color: colorScheme.onSurfaceVariant,
+            groupTasks: groupedMap[null]!,
+            groups: groups,
+            colorScheme: colorScheme,
           ),
-        ],
       ],
     );
   }
@@ -823,36 +699,14 @@ class _TasksPageState extends State<TasksPage> {
               ),
             ),
           ),
-          ...overdueTasks.map((task) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: TaskCard(
-                task: task,
-                groups: groups,
-                repository: _repository,
-                isInteractive: false,
-                showCompletionStatus: false,
-              ),
-            );
-          }),
+          _buildTaskListLayout(overdueTasks, groups, false, false),
         ],
         if (upcomingTasks.isNotEmpty) ...[
           if (overdueTasks.isNotEmpty) ...[
             Divider(color: colorScheme.outline),
             const SizedBox(height: 8),
           ],
-          ...upcomingTasks.map((task) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: TaskCard(
-                task: task,
-                groups: groups,
-                repository: _repository,
-                isInteractive: false,
-                showCompletionStatus: false,
-              ),
-            );
-          }),
+          _buildTaskListLayout(upcomingTasks, groups, false, false),
         ],
       ],
     );

@@ -29,7 +29,7 @@ class TrackerModel {
     required this.originalStartDate,
   });
 
-  // Convert Firestore DocumentSnapshot to TrackerModel
+  // Convert map to TrackerModel
   factory TrackerModel.fromMap(Map<String, dynamic> map, String documentId) {
     final rawStart = parseDateTime(map['startDate']) ?? DateTime.now();
     final start = DateTime(rawStart.year, rawStart.month, rawStart.day);
@@ -69,7 +69,7 @@ class TrackerModel {
     );
   }
 
-  // Convert TrackerModel to Map for Firestore
+  // Convert TrackerModel to Map
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,

@@ -93,6 +93,26 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     }
   }
 
+  InputDecoration _buildInputDecoration(
+    ColorScheme colorScheme,
+    String label, {
+    String? hint,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.outline),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.primary),
+      ),
+    );
+  }
+
   void _loadGroups() {
     final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
     if (userId == null) return;
@@ -168,12 +188,36 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
             .where((s) => s.name == stepName)
             .firstOrNull;
         if (existingStep != null) {
-          return existingStep.copyWith(
+          if (!hasTimer) {
+            return TaskStep(
+              name: stepName,
+              isCompleted: existingStep.isCompleted,
+            );
+          }
+          final isDurationChanged =
+              existingStep.timerDuration != durationSeconds;
+          return TaskStep(
+            name: stepName,
+            isCompleted: existingStep.isCompleted,
             timerDuration: durationSeconds,
-            timerSecondsRemaining:
-                existingStep.timerSecondsRemaining ?? durationSeconds,
+            timerStartedAt:
+                isDurationChanged ? null : existingStep.timerStartedAt,
+            timerPausedAt:
+                isDurationChanged ? null : existingStep.timerPausedAt,
+            timerSecondsRemaining: isDurationChanged
+                ? durationSeconds
+                : (existingStep.timerSecondsRemaining ?? durationSeconds),
+            isTimerConfirmed:
+                isDurationChanged ? false : existingStep.isTimerConfirmed,
           );
         }
+      }
+
+      if (!hasTimer) {
+        return TaskStep(
+          name: stepName,
+          isCompleted: false,
+        );
       }
 
       return TaskStep(
@@ -309,24 +353,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                           // Task Name
                           TextFormField(
                             initialValue: _name,
-                            decoration: InputDecoration(
-                              labelText: 'Task Name',
-                              hintText: 'e.g. Do Laundry, Take Vitamins',
-                              labelStyle: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: colorScheme.outline,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: colorScheme.primary,
-                                ),
-                              ),
+                            decoration: _buildInputDecoration(
+                              colorScheme,
+                              'Task Name',
+                              hint: 'e.g. Do Laundry, Take Vitamins',
                             ),
                             style: TextStyle(color: colorScheme.onSurface),
                             validator: (val) =>
@@ -340,24 +370,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                           // Description
                           TextFormField(
                             initialValue: _description,
-                            decoration: InputDecoration(
-                              labelText: 'Description (Optional)',
-                              hintText: 'Add details or instructions...',
-                              labelStyle: TextStyle(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: colorScheme.outline,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: colorScheme.primary,
-                                ),
-                              ),
+                            decoration: _buildInputDecoration(
+                              colorScheme,
+                              'Description (Optional)',
+                              hint: 'Add details or instructions...',
                             ),
                             style: TextStyle(color: colorScheme.onSurface),
                             maxLines: 2,
@@ -551,44 +567,25 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                               ),
                               dropdownColor: colorScheme.surface,
                               style: TextStyle(color: colorScheme.onSurface),
-                              items: [
-                                DropdownMenuItem(
-                                  value: 'daily',
-                                  child: Text(
-                                    'Daily',
-                                    style: TextStyle(
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'weekly',
-                                  child: Text(
-                                    'Weekly',
-                                    style: TextStyle(
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'bi_weekly',
-                                  child: Text(
-                                    'Bi-Weekly',
-                                    style: TextStyle(
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'monthly',
-                                  child: Text(
-                                    'Monthly',
-                                    style: TextStyle(
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              items:
+                                  const [
+                                        ('daily', 'Daily'),
+                                        ('weekly', 'Weekly'),
+                                        ('bi_weekly', 'Bi-Weekly'),
+                                        ('monthly', 'Monthly'),
+                                      ]
+                                      .map(
+                                        (e) => DropdownMenuItem(
+                                          value: e.$1,
+                                          child: Text(
+                                            e.$2,
+                                            style: TextStyle(
+                                              color: colorScheme.onSurface,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
                               onChanged: (val) => setState(() {
                                 _scheduleType = val!;
                                 _selectedDays = [];

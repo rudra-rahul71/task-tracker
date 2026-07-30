@@ -531,36 +531,25 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
                         ),
                         dropdownColor: colorScheme.surface,
                         style: TextStyle(color: colorScheme.onSurface),
-                        items: [
-                          DropdownMenuItem(
-                            value: 'daily',
-                            child: Text(
-                              'Daily',
-                              style: TextStyle(color: colorScheme.onSurface),
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'weekly',
-                            child: Text(
-                              'Weekly',
-                              style: TextStyle(color: colorScheme.onSurface),
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'bi_weekly',
-                            child: Text(
-                              'Bi-Weekly',
-                              style: TextStyle(color: colorScheme.onSurface),
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'monthly',
-                            child: Text(
-                              'Monthly',
-                              style: TextStyle(color: colorScheme.onSurface),
-                            ),
-                          ),
-                        ],
+                        items:
+                            const [
+                                  ('daily', 'Daily'),
+                                  ('weekly', 'Weekly'),
+                                  ('bi_weekly', 'Bi-Weekly'),
+                                  ('monthly', 'Monthly'),
+                                ]
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e.$1,
+                                    child: Text(
+                                      e.$2,
+                                      style: TextStyle(
+                                        color: colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                         onChanged: (val) => setState(() {
                           _scheduleType = val!;
                           _selectedDays = [];

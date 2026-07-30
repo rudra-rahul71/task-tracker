@@ -40,7 +40,8 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
     if (widget.step.timerStartedAt != oldWidget.step.timerStartedAt ||
         widget.step.timerPausedAt != oldWidget.step.timerPausedAt ||
         widget.step.timerSecondsRemaining !=
-            oldWidget.step.timerSecondsRemaining) {
+            oldWidget.step.timerSecondsRemaining ||
+        widget.step.timerDuration != oldWidget.step.timerDuration) {
       _initTimerState();
     }
   }
@@ -64,135 +65,87 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
         if (_secondsRemaining <= 0) {
           _isExpired = true;
           _timer?.cancel();
-          // Update Firestore state when timer expires
-          _triggerExpirationInFirestore();
+          // Update database state when timer expires
+          _triggerTimerExpiration();
         }
       });
     });
   }
 
-  void _triggerExpirationInFirestore() async {
+  Future<void> _updateCurrentStep(
+    TaskStep Function(TaskStep step) transform,
+  ) async {
+    final updatedSteps = List<TaskStep>.from(widget.task.steps);
+    updatedSteps[widget.stepIndex] = transform(updatedSteps[widget.stepIndex]);
+    final updatedTask = widget.task.copyWith(steps: updatedSteps);
+    await widget.repository.updateTask(
+      updatedTask,
+      oldStatus: widget.task.status,
+    );
+  }
+
+  void _triggerTimerExpiration() async {
     // Avoid double updates
     if (widget.step.timerPausedAt == null &&
         widget.step.timerSecondsRemaining == 0) {
       return;
     }
-
-    final updatedSteps = List<TaskStep>.from(widget.task.steps);
-    final currentStep = updatedSteps[widget.stepIndex];
-
-    updatedSteps[widget.stepIndex] = currentStep.copyWith(
-      timerSecondsRemaining: 0,
-      clearTimerPausedAt: true,
-    );
-
-    final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(
-      updatedTask,
-      oldStatus: widget.task.status,
+    await _updateCurrentStep(
+      (step) =>
+          step.copyWith(timerSecondsRemaining: 0, clearTimerPausedAt: true),
     );
   }
 
   void _toggleTimer() async {
-    final updatedSteps = List<TaskStep>.from(widget.task.steps);
-    final currentStep = updatedSteps[widget.stepIndex];
-    final isRunning = currentStep.isTimerRunning();
+    final isRunning = widget.step.isTimerRunning();
     final now = DateTime.now();
 
-    TaskStep newStep;
-    if (isRunning) {
-      // Pause: Save current remaining seconds and clear startedAt
-      final rem = currentStep.getSecondsRemaining();
-      newStep = currentStep.copyWith(
-        timerSecondsRemaining: rem,
-        clearTimerStartedAt: true,
-        timerPausedAt: now,
-      );
-    } else {
-      // Resume/Start: Set startedAt to now, carry over previous remaining, clear pausedAt
-      final rem =
-          currentStep.timerSecondsRemaining ?? currentStep.timerDuration ?? 600;
-      newStep = currentStep.copyWith(
+    await _updateCurrentStep((step) {
+      if (isRunning) {
+        return step.copyWith(
+          timerSecondsRemaining: step.getSecondsRemaining(),
+          clearTimerStartedAt: true,
+          timerPausedAt: now,
+        );
+      }
+      final rem = step.timerSecondsRemaining ?? step.timerDuration ?? 600;
+      return step.copyWith(
         timerStartedAt: now,
         clearTimerPausedAt: true,
         timerSecondsRemaining: rem,
       );
-    }
-
-    updatedSteps[widget.stepIndex] = newStep;
-    final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(
-      updatedTask,
-      oldStatus: widget.task.status,
-    );
+    });
   }
 
   void _extendTimer() async {
-    final updatedSteps = List<TaskStep>.from(widget.task.steps);
-    final currentStep = updatedSteps[widget.stepIndex];
-
-    // Add 5 minutes (300 seconds)
     const extendSec = 300;
-    final currentRem = currentStep.getSecondsRemaining();
-    final newRem = currentRem + extendSec;
-
-    final newStep = currentStep.copyWith(
-      timerStartedAt: DateTime.now(),
-      clearTimerPausedAt: true,
-      timerSecondsRemaining: newRem,
-      timerDuration: (currentStep.timerDuration ?? 600) + extendSec,
-      isTimerConfirmed: false,
-    );
-
-    updatedSteps[widget.stepIndex] = newStep;
-    final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(
-      updatedTask,
-      oldStatus: widget.task.status,
-    );
-  }
-
-  void _confirmComplete() async {
-    final updatedSteps = List<TaskStep>.from(widget.task.steps);
-    final currentStep = updatedSteps[widget.stepIndex];
-
-    final newStep = currentStep.copyWith(
-      isCompleted: true,
-      isTimerConfirmed: true,
-      clearTimerStartedAt: true,
-      clearTimerPausedAt: true,
-    );
-
-    updatedSteps[widget.stepIndex] = newStep;
-    final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(
-      updatedTask,
-      oldStatus: widget.task.status,
-    );
+    await _updateCurrentStep((step) {
+      final currentRem = step.getSecondsRemaining();
+      return step.copyWith(
+        timerStartedAt: DateTime.now(),
+        clearTimerPausedAt: true,
+        timerSecondsRemaining: currentRem + extendSec,
+        timerDuration: (step.timerDuration ?? 600) + extendSec,
+        isTimerConfirmed: false,
+      );
+    });
   }
 
   void _restartTimer() async {
     _timer?.cancel();
-    final updatedSteps = List<TaskStep>.from(widget.task.steps);
-    final currentStep = updatedSteps[widget.stepIndex];
-
-    final newStep = currentStep.copyWith(
-      clearTimerStartedAt: true,
-      clearTimerPausedAt: true,
-      timerSecondsRemaining: currentStep.timerDuration,
-      isTimerConfirmed: false,
-    );
-
-    updatedSteps[widget.stepIndex] = newStep;
-    final updatedTask = widget.task.copyWith(steps: updatedSteps);
-    await widget.repository.updateTask(
-      updatedTask,
-      oldStatus: widget.task.status,
+    final duration = widget.step.timerDuration ?? 0;
+    await _updateCurrentStep(
+      (step) => step.copyWith(
+        clearTimerStartedAt: true,
+        clearTimerPausedAt: true,
+        timerSecondsRemaining: step.timerDuration,
+        isTimerConfirmed: false,
+      ),
     );
 
     if (mounted) {
       setState(() {
-        _secondsRemaining = currentStep.timerDuration ?? 0;
+        _secondsRemaining = duration;
         _isExpired = false;
       });
     }
@@ -219,7 +172,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
     if (_isExpired && !widget.step.isCompleted) {
       // Glow and display Extend / Confirm controls
       return Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
         decoration: BoxDecoration(
           color: colorScheme.error.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(10),
@@ -228,75 +181,36 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
             width: 1.5,
           ),
         ),
-        child: Wrap(
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.timer_off_outlined,
-                  color: colorScheme.error,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Timer Done!',
-                  style: TextStyle(
-                    color: colorScheme.error,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+            Tooltip(
+              message: 'Timer Done!',
+              child: Icon(
+                Icons.timer_off_outlined,
+                color: colorScheme.error,
+                size: 20,
+              ),
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.replay, color: colorScheme.error, size: 18),
-                  tooltip: 'Restart Timer',
-                  onPressed: _restartTimer,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: _extendTimer,
-                  style: TextButton.styleFrom(
-                    foregroundColor: colorScheme.secondary,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                  ),
-                  child: const Text(
-                    '+5 min',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                ElevatedButton(
-                  onPressed: _confirmComplete,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.error,
-                    foregroundColor: colorScheme.onError,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Confirm',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                ),
-              ],
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(Icons.replay, color: colorScheme.error, size: 18),
+              tooltip: 'Restart Timer',
+              onPressed: _restartTimer,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(
+                Icons.timer_outlined,
+                color: colorScheme.secondary,
+                size: 18,
+              ),
+              tooltip: '+5 min',
+              onPressed: _extendTimer,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ],
         ),
