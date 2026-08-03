@@ -370,7 +370,9 @@ class TrackerModel {
     }
 
     if (type == 'maintain') {
-      final hasManualCompletion = completedDates.any((d) => d.isSameDay(dayDate));
+      final hasManualCompletion = completedDates.any(
+        (d) => d.isSameDay(dayDate),
+      );
       if (hasManualCompletion) return true;
 
       final createdZero = createdAt.dateOnly;
@@ -410,4 +412,3 @@ class TrackerModel {
     }
   }
 }
-

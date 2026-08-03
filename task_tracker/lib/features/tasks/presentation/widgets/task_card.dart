@@ -1,4 +1,6 @@
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
@@ -200,6 +202,13 @@ class _TaskCardState extends State<TaskCard> {
   void _toggleStepCompletion(int index, bool isCompleted) async {
     final updatedSteps = List<TaskStep>.from(widget.task.steps);
     final currentStep = updatedSteps[index];
+
+    // Cancel pending notification for this step if checked complete
+    if (isCompleted && GetIt.I.isRegistered<NotificationService>()) {
+      final notifId = ('${widget.task.id}_$index').hashCode;
+      GetIt.I<NotificationService>().cancelNotification(notifId);
+    }
+
     // When marking complete, cancel timers
     updatedSteps[index] = currentStep.copyWith(
       isCompleted: isCompleted,

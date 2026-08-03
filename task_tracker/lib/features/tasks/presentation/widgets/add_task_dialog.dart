@@ -200,24 +200,24 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
             name: stepName,
             isCompleted: existingStep.isCompleted,
             timerDuration: durationSeconds,
-            timerStartedAt:
-                isDurationChanged ? null : existingStep.timerStartedAt,
-            timerPausedAt:
-                isDurationChanged ? null : existingStep.timerPausedAt,
+            timerStartedAt: isDurationChanged
+                ? null
+                : existingStep.timerStartedAt,
+            timerPausedAt: isDurationChanged
+                ? null
+                : existingStep.timerPausedAt,
             timerSecondsRemaining: isDurationChanged
                 ? durationSeconds
                 : (existingStep.timerSecondsRemaining ?? durationSeconds),
-            isTimerConfirmed:
-                isDurationChanged ? false : existingStep.isTimerConfirmed,
+            isTimerConfirmed: isDurationChanged
+                ? false
+                : existingStep.isTimerConfirmed,
           );
         }
       }
 
       if (!hasTimer) {
-        return TaskStep(
-          name: stepName,
-          isCompleted: false,
-        );
+        return TaskStep(name: stepName, isCompleted: false);
       }
 
       return TaskStep(

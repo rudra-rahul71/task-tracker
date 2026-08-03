@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:get_it/get_it.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
@@ -23,53 +25,25 @@ class StepTimerWidget extends StatefulWidget {
 }
 
 class _StepTimerWidgetState extends State<StepTimerWidget> {
-  Timer? _timer;
-  late int _secondsRemaining;
-  bool _isExpired = false;
+  int get _notificationId => ('${widget.task.id}_${widget.stepIndex}').hashCode;
 
-  @override
-  void initState() {
-    super.initState();
-    _initTimerState();
-  }
-
-  @override
-  void didUpdateWidget(StepTimerWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Re-initialize timer if the step properties from parent change
-    if (widget.step.timerStartedAt != oldWidget.step.timerStartedAt ||
-        widget.step.timerPausedAt != oldWidget.step.timerPausedAt ||
-        widget.step.timerSecondsRemaining !=
-            oldWidget.step.timerSecondsRemaining ||
-        widget.step.timerDuration != oldWidget.step.timerDuration) {
-      _initTimerState();
+  void _scheduleDeviceNotification(int seconds) {
+    if (seconds <= 0) return;
+    if (GetIt.I.isRegistered<NotificationService>()) {
+      GetIt.I<NotificationService>().scheduleNotification(
+        id: _notificationId,
+        title: 'Timer Complete!',
+        body:
+            'Timer for "${widget.step.name}" in task "${widget.task.name}" has finished.',
+        duration: Duration(seconds: seconds),
+      );
     }
   }
 
-  void _initTimerState() {
-    _timer?.cancel();
-    _secondsRemaining = widget.step.getSecondsRemaining();
-    _isExpired = widget.step.isTimerExpired() || _secondsRemaining <= 0;
-
-    if (widget.step.isTimerRunning() && !_isExpired) {
-      _startLocalTimer();
+  void _cancelDeviceNotification() {
+    if (GetIt.I.isRegistered<NotificationService>()) {
+      GetIt.I<NotificationService>().cancelNotification(_notificationId);
     }
-  }
-
-  void _startLocalTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-      setState(() {
-        final rem = widget.step.getSecondsRemaining();
-        _secondsRemaining = rem;
-        if (_secondsRemaining <= 0) {
-          _isExpired = true;
-          _timer?.cancel();
-          // Update database state when timer expires
-          _triggerTimerExpiration();
-        }
-      });
-    });
   }
 
   Future<void> _updateCurrentStep(
@@ -100,6 +74,14 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
     final isRunning = widget.step.isTimerRunning();
     final now = DateTime.now();
 
+    if (isRunning) {
+      _cancelDeviceNotification();
+    } else {
+      final rem =
+          widget.step.timerSecondsRemaining ?? widget.step.timerDuration ?? 600;
+      _scheduleDeviceNotification(rem);
+    }
+
     await _updateCurrentStep((step) {
       if (isRunning) {
         return step.copyWith(
@@ -119,6 +101,10 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
 
   void _extendTimer() async {
     const extendSec = 300;
+    final currentRem = widget.step.getSecondsRemaining();
+    final newRem = currentRem + extendSec;
+    _scheduleDeviceNotification(newRem);
+
     await _updateCurrentStep((step) {
       final currentRem = step.getSecondsRemaining();
       return step.copyWith(
@@ -132,8 +118,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
   }
 
   void _restartTimer() async {
-    _timer?.cancel();
-    final duration = widget.step.timerDuration ?? 0;
+    _cancelDeviceNotification();
     await _updateCurrentStep(
       (step) => step.copyWith(
         clearTimerStartedAt: true,
@@ -142,13 +127,6 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
         isTimerConfirmed: false,
       ),
     );
-
-    if (mounted) {
-      setState(() {
-        _secondsRemaining = duration;
-        _isExpired = false;
-      });
-    }
   }
 
   String _formatDuration(int totalSeconds) {
@@ -159,17 +137,63 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
   }
 
   @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isRunning = widget.step.isTimerRunning();
 
-    if (_isExpired && !widget.step.isCompleted) {
+    if (!isRunning) {
+      final secondsRemaining = widget.step.getSecondsRemaining();
+      final isExpired =
+          (widget.step.isTimerExpired() || secondsRemaining <= 0) &&
+          (widget.step.timerStartedAt != null ||
+              (widget.step.timerSecondsRemaining == 0 &&
+                  widget.step.timerDuration != null));
+      return _buildContent(
+        context,
+        secondsRemaining,
+        isRunning: false,
+        isExpired: isExpired,
+      );
+    }
+
+    return StreamBuilder<int>(
+      key: ValueKey(
+        '${widget.task.id}_${widget.stepIndex}_${widget.step.timerStartedAt}',
+      ),
+      stream: Stream.periodic(
+        const Duration(seconds: 1),
+        (_) => widget.step.getSecondsRemaining(),
+      ),
+      initialData: widget.step.getSecondsRemaining(),
+      builder: (context, snapshot) {
+        final secondsRemaining =
+            snapshot.data ?? widget.step.getSecondsRemaining();
+        final isExpired = secondsRemaining <= 0;
+
+        if (isExpired) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _triggerTimerExpiration();
+          });
+        }
+
+        return _buildContent(
+          context,
+          secondsRemaining,
+          isRunning: true,
+          isExpired: isExpired,
+        );
+      },
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    int secondsRemaining, {
+    required bool isRunning,
+    required bool isExpired,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (isExpired && !widget.step.isCompleted) {
       // Glow and display Extend / Confirm controls
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
@@ -229,7 +253,7 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
         ),
         const SizedBox(width: 6),
         Text(
-          _formatDuration(_secondsRemaining),
+          _formatDuration(secondsRemaining),
           style: TextStyle(
             color: isRunning
                 ? colorScheme.onSurface

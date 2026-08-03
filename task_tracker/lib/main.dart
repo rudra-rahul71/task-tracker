@@ -46,6 +46,9 @@ Future<void> initializeBackend(AppConfig config) async {
     defaultSupabaseUrl: AppEnvironment.defaultSupabaseUrl,
     defaultSupabaseAnonKey: AppEnvironment.defaultSupabaseAnonKey,
     dbSchema: 'task_tracker',
+    defaultNotificationChannelId: 'task_tracker',
+    defaultNotificationChannelName: 'Task Tracker Notifications',
+    defaultNotificationChannelDesc: 'Notifications for tasks and trackers',
   );
   setupLocator();
 }

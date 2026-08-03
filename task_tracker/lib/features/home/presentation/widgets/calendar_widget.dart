@@ -79,7 +79,10 @@ class CalendarWidget extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: Icon(Icons.chevron_left, color: colorScheme.onSurfaceVariant),
+                  icon: Icon(
+                    Icons.chevron_left,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                   onPressed: () {
                     onMonthChanged(
                       DateTime(focusedMonth.year, focusedMonth.month - 1),
@@ -95,7 +98,10 @@ class CalendarWidget extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+                  icon: Icon(
+                    Icons.chevron_right,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                   onPressed: () {
                     onMonthChanged(
                       DateTime(focusedMonth.year, focusedMonth.month + 1),

@@ -180,7 +180,9 @@ class _TrackersPageState extends State<TrackersPage> {
                         Icon(
                           Icons.track_changes_outlined,
                           size: 64,
-                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          color: colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.5,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
