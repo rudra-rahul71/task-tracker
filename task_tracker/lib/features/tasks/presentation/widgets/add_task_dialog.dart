@@ -448,49 +448,107 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: SegmentedButton<String>(
-                              segments: [
-                                const ButtonSegment<String>(
-                                  value: 'none',
-                                  label: Text('No Schedule'),
-                                  icon: Icon(Icons.block),
-                                ),
-                                if (_selectedGroupId != null &&
-                                    _groups.any(
-                                      (g) =>
-                                          g.id == _selectedGroupId &&
-                                          g.schedule != null &&
-                                          g.schedule!.type != 'none',
-                                    ))
-                                  const ButtonSegment<String>(
-                                    value: 'inherit',
-                                    label: Text('Inherit Group'),
-                                    icon: Icon(Icons.folder_shared_outlined),
+                          Builder(
+                            builder: (context) {
+                              final hasGroupSchedule =
+                                  _selectedGroupId != null &&
+                                  _groups.any(
+                                    (g) =>
+                                        g.id == _selectedGroupId &&
+                                        g.schedule != null &&
+                                        g.schedule!.type != 'none',
+                                  );
+
+                              return SizedBox(
+                                width: double.infinity,
+                                child: SegmentedButton<String>(
+                                  showSelectedIcon: false,
+                                  segments: [
+                                    ButtonSegment<String>(
+                                      value: 'none',
+                                      label: Text(
+                                        hasGroupSchedule ? 'None' : 'No Schedule',
+                                      ),
+                                      icon: const Icon(Icons.block, size: 18),
+                                    ),
+                                    if (hasGroupSchedule)
+                                      const ButtonSegment<String>(
+                                        value: 'inherit',
+                                        label: Text('Inherit'),
+                                        icon: Icon(
+                                          Icons.folder_shared_outlined,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    const ButtonSegment<String>(
+                                      value: 'custom',
+                                      label: Text('Custom'),
+                                      icon: Icon(
+                                        Icons.edit_calendar_outlined,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ],
+                                  selected: {_scheduleSetting},
+                                  onSelectionChanged: (newSelection) {
+                                    setState(() {
+                                      _scheduleSetting = newSelection.first;
+                                    });
+                                  },
+                                  style: SegmentedButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 8,
+                                    ),
+                                    selectedBackgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withValues(alpha: 0.15),
+                                    selectedForegroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
-                                const ButtonSegment<String>(
-                                  value: 'custom',
-                                  label: Text('Custom'),
-                                  icon: Icon(Icons.edit_calendar_outlined),
                                 ),
-                              ],
-                              selected: {_scheduleSetting},
-                              onSelectionChanged: (newSelection) {
-                                setState(() {
-                                  _scheduleSetting = newSelection.first;
-                                });
-                              },
-                              style: SegmentedButton.styleFrom(
-                                selectedBackgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.15),
-                                selectedForegroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primary,
+                              );
+                            },
+                          ),
+
+                          if (_scheduleSetting == 'inherit') ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.4),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: colorScheme.outlineVariant,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 18,
+                                    color: colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Inherits recurring schedule from group.',
+                                      style: TextStyle(
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
+                          ],
 
                           if (_scheduleSetting == 'none') ...[
                             const SizedBox(height: 8),
@@ -856,50 +914,52 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                             ],
                                           ),
                                           if (stepData['hasTimer'])
-                                            SizedBox(
-                                              width: 140,
-                                              child: TextFormField(
-                                                decoration: InputDecoration(
-                                                  labelText: 'Duration (min)',
-                                                  labelStyle: TextStyle(
-                                                    color: colorScheme
-                                                        .onSurfaceVariant,
-                                                    fontSize: 12,
+                                            Flexible(
+                                              child: SizedBox(
+                                                width: 110,
+                                                child: TextFormField(
+                                                  decoration: InputDecoration(
+                                                    labelText: 'Duration (min)',
+                                                    labelStyle: TextStyle(
+                                                      color: colorScheme
+                                                          .onSurfaceVariant,
+                                                      fontSize: 12,
+                                                    ),
+                                                    border:
+                                                        const UnderlineInputBorder(),
                                                   ),
-                                                  border:
-                                                      const UnderlineInputBorder(),
-                                                ),
-                                                initialValue:
-                                                    stepData['minutes']
-                                                        .toString(),
-                                                style: TextStyle(
-                                                  color: colorScheme.onSurface,
-                                                  fontSize: 14,
-                                                ),
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                onChanged: (val) {
-                                                  final num = int.tryParse(val);
-                                                  if (num != null) {
-                                                    stepData['minutes'] = num;
-                                                  }
-                                                },
-                                                validator: (val) {
-                                                  if (stepData['hasTimer']) {
-                                                    if (val == null ||
-                                                        val.trim().isEmpty) {
-                                                      return 'Enter minutes';
+                                                  initialValue:
+                                                      stepData['minutes']
+                                                          .toString(),
+                                                  style: TextStyle(
+                                                    color: colorScheme.onSurface,
+                                                    fontSize: 14,
+                                                  ),
+                                                  keyboardType:
+                                                      TextInputType.number,
+                                                  onChanged: (val) {
+                                                    final num = int.tryParse(val);
+                                                    if (num != null) {
+                                                      stepData['minutes'] = num;
                                                     }
-                                                    final num = int.tryParse(
-                                                      val,
-                                                    );
-                                                    if (num == null ||
-                                                        num <= 0) {
-                                                      return 'Invalid';
+                                                  },
+                                                  validator: (val) {
+                                                    if (stepData['hasTimer']) {
+                                                      if (val == null ||
+                                                          val.trim().isEmpty) {
+                                                        return 'Enter minutes';
+                                                      }
+                                                      final num = int.tryParse(
+                                                        val,
+                                                      );
+                                                      if (num == null ||
+                                                          num <= 0) {
+                                                        return 'Invalid';
+                                                      }
                                                     }
-                                                  }
-                                                  return null;
-                                                },
+                                                    return null;
+                                                  },
+                                                ),
                                               ),
                                             ),
                                         ],

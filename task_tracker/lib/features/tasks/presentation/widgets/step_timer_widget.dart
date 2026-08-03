@@ -192,105 +192,78 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
     required bool isExpired,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-
-    if (isExpired && !widget.step.isCompleted) {
-      // Glow and display Extend / Confirm controls
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-        decoration: BoxDecoration(
-          color: colorScheme.error.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: colorScheme.error.withValues(alpha: 0.4),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Tooltip(
-              message: 'Timer Done!',
-              child: Icon(
-                Icons.timer_off_outlined,
-                color: colorScheme.error,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(Icons.replay, color: colorScheme.error, size: 18),
-              tooltip: 'Restart Timer',
-              onPressed: _restartTimer,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(
-                Icons.timer_outlined,
-                color: colorScheme.secondary,
-                size: 18,
-              ),
-              tooltip: '+5 min',
-              onPressed: _extendTimer,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          ],
-        ),
-      );
-    }
+    final showExpiredState = isExpired && !widget.step.isCompleted;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          isRunning
-              ? Icons.hourglass_top_rounded
-              : Icons.hourglass_empty_rounded,
-          color: isRunning ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          showExpiredState
+              ? Icons.hourglass_bottom_rounded
+              : (isRunning
+                  ? Icons.hourglass_top_rounded
+                  : Icons.hourglass_empty_rounded),
+          color: showExpiredState
+              ? colorScheme.error
+              : (isRunning ? colorScheme.primary : colorScheme.onSurfaceVariant),
           size: 18,
         ),
         const SizedBox(width: 6),
         Text(
           _formatDuration(secondsRemaining),
           style: TextStyle(
-            color: isRunning
-                ? colorScheme.onSurface
-                : colorScheme.onSurfaceVariant,
+            color: showExpiredState
+                ? colorScheme.error
+                : (isRunning
+                    ? colorScheme.onSurface
+                    : colorScheme.onSurfaceVariant),
             fontWeight: FontWeight.bold,
             fontFamily: 'Courier', // Monospaced look
           ),
         ),
         const SizedBox(width: 8),
-        GestureDetector(
-          onTap: _toggleTimer,
-          child: CircleAvatar(
-            backgroundColor: isRunning
-                ? colorScheme.primary.withValues(alpha: 0.15)
-                : colorScheme.onSurfaceVariant.withValues(alpha: 0.15),
-            radius: 14,
-            child: Icon(
-              isRunning ? Icons.pause : Icons.play_arrow,
-              color: isRunning
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant,
-              size: 16,
+        Tooltip(
+          message: showExpiredState
+              ? '+5 min'
+              : (isRunning ? 'Pause' : 'Start'),
+          child: GestureDetector(
+            onTap: showExpiredState ? _extendTimer : _toggleTimer,
+            child: CircleAvatar(
+              backgroundColor: showExpiredState
+                  ? colorScheme.secondary.withValues(alpha: 0.15)
+                  : (isRunning
+                      ? colorScheme.primary.withValues(alpha: 0.15)
+                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.15)),
+              radius: 14,
+              child: Icon(
+                showExpiredState
+                    ? Icons.timer_outlined
+                    : (isRunning ? Icons.pause : Icons.play_arrow),
+                color: showExpiredState
+                    ? colorScheme.secondary
+                    : (isRunning
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant),
+                size: 16,
+              ),
             ),
           ),
         ),
         const SizedBox(width: 6),
-        GestureDetector(
-          onTap: _restartTimer,
-          child: CircleAvatar(
-            backgroundColor: colorScheme.onSurfaceVariant.withValues(
-              alpha: 0.1,
-            ),
-            radius: 14,
-            child: Icon(
-              Icons.replay,
-              color: colorScheme.onSurfaceVariant,
-              size: 14,
+        Tooltip(
+          message: 'Restart',
+          child: GestureDetector(
+            onTap: _restartTimer,
+            child: CircleAvatar(
+              backgroundColor: colorScheme.onSurfaceVariant.withValues(
+                alpha: 0.1,
+              ),
+              radius: 14,
+              child: Icon(
+                Icons.replay,
+                color: colorScheme.onSurfaceVariant,
+                size: 14,
+              ),
             ),
           ),
         ),

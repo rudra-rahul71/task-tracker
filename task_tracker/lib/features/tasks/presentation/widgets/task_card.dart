@@ -637,10 +637,7 @@ class _TaskCardState extends State<TaskCard> {
 
                             bool fitsOnOneLine = true;
                             if (hasTimer) {
-                              final isTimerExpired =
-                                  step.isTimerExpired() ||
-                                  step.getSecondsRemaining() <= 0;
-                              final timerWidth = isTimerExpired ? 250.0 : 134.0;
+                              const timerWidth = 134.0;
                               final checkboxWidth = widget.showCompletionStatus
                                   ? 36.0
                                   : 44.0;
