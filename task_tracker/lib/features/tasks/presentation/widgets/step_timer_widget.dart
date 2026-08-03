@@ -201,11 +201,15 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
           showExpiredState
               ? Icons.hourglass_bottom_rounded
               : (isRunning
-                  ? Icons.hourglass_top_rounded
+                  ? (secondsRemaining % 2 == 0
+                      ? Icons.hourglass_top_rounded
+                      : Icons.hourglass_bottom_rounded)
                   : Icons.hourglass_empty_rounded),
           color: showExpiredState
               ? colorScheme.error
-              : (isRunning ? colorScheme.primary : colorScheme.onSurfaceVariant),
+              : (isRunning
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant),
           size: 18,
         ),
         const SizedBox(width: 6),
@@ -215,8 +219,8 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
             color: showExpiredState
                 ? colorScheme.error
                 : (isRunning
-                    ? colorScheme.onSurface
-                    : colorScheme.onSurfaceVariant),
+                      ? colorScheme.onSurface
+                      : colorScheme.onSurfaceVariant),
             fontWeight: FontWeight.bold,
             fontFamily: 'Courier', // Monospaced look
           ),
@@ -232,8 +236,8 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
               backgroundColor: showExpiredState
                   ? colorScheme.secondary.withValues(alpha: 0.15)
                   : (isRunning
-                      ? colorScheme.primary.withValues(alpha: 0.15)
-                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.15)),
+                        ? colorScheme.primary.withValues(alpha: 0.15)
+                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.15)),
               radius: 14,
               child: Icon(
                 showExpiredState
@@ -242,8 +246,8 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
                 color: showExpiredState
                     ? colorScheme.secondary
                     : (isRunning
-                        ? colorScheme.primary
-                        : colorScheme.onSurfaceVariant),
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant),
                 size: 16,
               ),
             ),
