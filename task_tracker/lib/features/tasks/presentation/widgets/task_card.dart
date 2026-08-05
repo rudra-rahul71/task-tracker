@@ -282,7 +282,7 @@ class _TaskCardState extends State<TaskCard> {
       );
       if (mounted) {
         SnackbarService(context).showSuccessSnackbar(
-          message: '🏆 Task "${widget.task.name}" completed!',
+          message: 'Task "${widget.task.name}" completed!',
         );
       }
       setState(() {
