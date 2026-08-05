@@ -1,8 +1,5 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:get_it/get_it.dart';
-import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 
 class NavigatorScafold extends StatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -14,40 +11,6 @@ class NavigatorScafold extends StatefulWidget {
 }
 
 class _NavigatorScafoldState extends State<NavigatorScafold> {
-  StreamSubscription<RemoteMessage>? _foregroundMessageSubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _subscribeToForegroundMessages();
-  }
-
-  void _subscribeToForegroundMessages() {
-    final getIt = GetIt.instance;
-    if (getIt.isRegistered<RemoteNotificationService>()) {
-      final remoteNotificationService = getIt<RemoteNotificationService>();
-      _foregroundMessageSubscription =
-          remoteNotificationService.onForegroundMessage.listen((message) {
-        if (!mounted) return;
-        final notificationTitle =
-            message.notification?.title ?? 'Notification';
-        final notificationBody = message.notification?.body;
-        AppBannerService.showInfo(
-          context,
-          title: notificationTitle,
-          body: notificationBody,
-          data: message.data,
-        );
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _foregroundMessageSubscription?.cancel();
-    super.dispose();
-  }
-
   void _navigate(int index, BuildContext context) {
     widget.navigationShell.goBranch(
       index,

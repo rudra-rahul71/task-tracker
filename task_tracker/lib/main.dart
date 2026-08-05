@@ -133,6 +133,7 @@ class MyApp extends StatelessWidget {
 }
 
 final GoRouter _router = GoRouter(
+  navigatorKey: AppBannerService.navigatorKey,
   initialLocation: '/',
   redirect: (BuildContext context, GoRouterState state) {
     final bool hasConfig = getIt.isRegistered<AuthRepository>();
