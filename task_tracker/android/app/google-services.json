@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "775835803985",
-    "project_id": "financial-tracker-e61d2",
-    "storage_bucket": "financial-tracker-e61d2.firebasestorage.app"
+    "project_number": "507969319719",
+    "project_id": "proof-d3958",
+    "storage_bucket": "proof-d3958.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:775835803985:android:4059ab11bace53c100f370",
+        "mobilesdk_app_id": "1:507969319719:android:a400f302193b357974af02",
         "android_client_info": {
-          "package_name": "com.example.financial_tracker"
+          "package_name": "com.paribar"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBkjx2E6bW32addmZ_0Hu-Yd1VQEJ3rldU"
+          "current_key": "AIzaSyDpvOQAzUhWjHOugcUA0GCjH9BEVDH48sE"
         }
       ],
       "services": {

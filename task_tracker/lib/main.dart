@@ -14,6 +14,8 @@ import 'package:task_tracker/features/trackers/data/repositories/tracker_reposit
 import 'package:task_tracker/core/config/app_environment.dart';
 import 'features/splash/presentation/pages/splash.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 final getIt = GetIt.instance;
 final configNotifier = ValueNotifier<AppConfig?>(null);
@@ -49,12 +51,22 @@ Future<void> initializeBackend(AppConfig config) async {
     defaultNotificationChannelId: 'task_tracker',
     defaultNotificationChannelName: 'Task Tracker Notifications',
     defaultNotificationChannelDesc: 'Notifications for tasks and trackers',
+    enableRemoteNotifications: true,
+    appId: 'task_tracker',
   );
   setupLocator();
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase init error (likely missing config): $e');
+  }
 
   final configService = ConfigService();
   final savedConfig = await configService.getSavedConfig();
