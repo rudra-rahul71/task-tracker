@@ -2,7 +2,6 @@ import 'package:get_it/get_it.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
-import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
@@ -148,9 +147,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
 
     if (userId == null) {
       if (mounted) {
-        SnackbarService(
-          context,
-        ).showErrorSnackbar(message: 'Error: User not authenticated');
+        AppBannerService.showError(context, 'Error: User not authenticated');
       }
       return;
     }
@@ -248,9 +245,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
           oldStatus: widget.task!.status,
         );
         if (mounted) {
-          SnackbarService(
-            context,
-          ).showSuccessSnackbar(message: 'Task updated successfully');
+          AppBannerService.showSuccess(context, 'Task updated successfully');
         }
       } else {
         final newTask = TaskModel(
@@ -266,9 +261,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         );
         await _repository.addTask(newTask);
         if (mounted) {
-          SnackbarService(
-            context,
-          ).showSuccessSnackbar(message: 'Task created successfully');
+          AppBannerService.showSuccess(context, 'Task created successfully');
         }
       }
       navigator.pop();
@@ -277,9 +270,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
         _isLoading = false;
       });
       if (mounted) {
-        SnackbarService(
-          context,
-        ).showErrorSnackbar(message: 'Failed to save task: $e');
+        AppBannerService.showError(context, 'Failed to save task: $e');
       }
     }
   }
@@ -467,7 +458,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                     ButtonSegment<String>(
                                       value: 'none',
                                       label: Text(
-                                        hasGroupSchedule ? 'None' : 'No Schedule',
+                                        hasGroupSchedule
+                                            ? 'None'
+                                            : 'No Schedule',
                                       ),
                                       icon: const Icon(Icons.block, size: 18),
                                     ),
@@ -501,9 +494,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                       horizontal: 4,
                                       vertical: 8,
                                     ),
-                                    selectedBackgroundColor: Theme.of(
-                                      context,
-                                    ).colorScheme.primary.withValues(alpha: 0.15),
+                                    selectedBackgroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.15),
                                     selectedForegroundColor: Theme.of(
                                       context,
                                     ).colorScheme.primary,
@@ -932,13 +926,16 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                                       stepData['minutes']
                                                           .toString(),
                                                   style: TextStyle(
-                                                    color: colorScheme.onSurface,
+                                                    color:
+                                                        colorScheme.onSurface,
                                                     fontSize: 14,
                                                   ),
                                                   keyboardType:
                                                       TextInputType.number,
                                                   onChanged: (val) {
-                                                    final num = int.tryParse(val);
+                                                    final num = int.tryParse(
+                                                      val,
+                                                    );
                                                     if (num != null) {
                                                       stepData['minutes'] = num;
                                                     }

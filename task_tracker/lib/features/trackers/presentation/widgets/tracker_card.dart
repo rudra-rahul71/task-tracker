@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:task_tracker/core/utils/snackbar.dart';
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
 import 'package:task_tracker/features/trackers/presentation/widgets/add_tracker_dialog.dart';
@@ -46,15 +46,17 @@ class TrackerCard extends StatelessWidget {
               try {
                 await _repository.deleteTracker(tracker.userId, tracker.id);
                 if (context.mounted) {
-                  SnackbarService(context).showSuccessSnackbar(
-                    message: 'Tracker deleted successfully',
+                  AppBannerService.showSuccess(
+                    context,
+                    'Tracker deleted successfully',
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
-                  SnackbarService(
+                  AppBannerService.showError(
                     context,
-                  ).showErrorSnackbar(message: 'Error deleting tracker: $e');
+                    'Error deleting tracker: $e',
+                  );
                 }
               }
             },
@@ -284,14 +286,16 @@ class TrackerCard extends StatelessWidget {
                           try {
                             await _repository.markTrackerCompleted(tracker);
                             if (context.mounted) {
-                              SnackbarService(context).showSuccessSnackbar(
-                                message: 'Habit marked completed!',
+                              AppBannerService.showSuccess(
+                                context,
+                                'Habit marked completed!',
                               );
                             }
                           } catch (e) {
                             if (context.mounted) {
-                              SnackbarService(context).showErrorSnackbar(
-                                message: 'Error marking completed: $e',
+                              AppBannerService.showError(
+                                context,
+                                'Error marking completed: $e',
                               );
                             }
                           }
@@ -326,15 +330,16 @@ class TrackerCard extends StatelessWidget {
                     try {
                       await _repository.reportSlipUp(tracker);
                       if (context.mounted) {
-                        SnackbarService(context).showSuccessSnackbar(
-                          message:
-                              'Streak reset. Stay strong, you can do this!',
+                        AppBannerService.showSuccess(
+                          context,
+                          'Streak reset. Stay strong, you can do this!',
                         );
                       }
                     } catch (e) {
                       if (context.mounted) {
-                        SnackbarService(context).showErrorSnackbar(
-                          message: 'Error reporting slip-up: $e',
+                        AppBannerService.showError(
+                          context,
+                          'Error reporting slip-up: $e',
                         );
                       }
                     }
