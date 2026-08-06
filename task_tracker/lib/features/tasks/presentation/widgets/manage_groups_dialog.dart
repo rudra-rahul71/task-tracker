@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
-import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
@@ -170,10 +169,9 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
         _currentView = 'list';
       });
       if (mounted) {
-        SnackbarService(context).showSuccessSnackbar(
-          message: isEdit
-              ? 'Group updated successfully'
-              : 'Group created successfully',
+        AppBannerService.showSuccess(
+          context,
+          isEdit ? 'Group updated successfully' : 'Group created successfully',
         );
       }
     } catch (e) {
@@ -181,9 +179,7 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
         _isLoading = false;
       });
       if (mounted) {
-        SnackbarService(
-          context,
-        ).showErrorSnackbar(message: 'Failed to save group: $e');
+        AppBannerService.showError(context, 'Failed to save group: $e');
       }
     }
   }
@@ -238,18 +234,14 @@ class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
           _isLoading = false;
         });
         if (mounted) {
-          SnackbarService(
-            context,
-          ).showSuccessSnackbar(message: 'Group deleted successfully');
+          AppBannerService.showSuccess(context, 'Group deleted successfully');
         }
       } catch (e) {
         setState(() {
           _isLoading = false;
         });
         if (mounted) {
-          SnackbarService(
-            context,
-          ).showErrorSnackbar(message: 'Failed to delete group: $e');
+          AppBannerService.showError(context, 'Failed to delete group: $e');
         }
       }
     }

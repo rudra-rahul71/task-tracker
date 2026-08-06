@@ -1,7 +1,6 @@
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
@@ -254,15 +253,14 @@ class _TaskCardState extends State<TaskCard> {
         oldStatus: widget.task.status,
       );
       if (mounted) {
-        SnackbarService(context).showSuccessSnackbar(
-          message: 'Task "${widget.task.name}" checklist reset.',
+        AppBannerService.showSuccess(
+          context,
+          'Task "${widget.task.name}" checklist reset.',
         );
       }
     } catch (e) {
       if (mounted) {
-        SnackbarService(
-          context,
-        ).showErrorSnackbar(message: 'Failed to reset task: $e');
+        AppBannerService.showError(context, 'Failed to reset task: $e');
       }
     }
   }
@@ -281,18 +279,17 @@ class _TaskCardState extends State<TaskCard> {
         oldStatus: widget.task.status,
       );
       if (mounted) {
-        SnackbarService(
+        AppBannerService.showSuccess(
           context,
-        ).showSuccessSnackbar(message: 'Task "${widget.task.name}" completed!');
+          'Task "${widget.task.name}" completed!',
+        );
       }
       setState(() {
         _isExpanded = false;
       });
     } catch (e) {
       if (mounted) {
-        SnackbarService(
-          context,
-        ).showErrorSnackbar(message: 'Failed to complete task: $e');
+        AppBannerService.showError(context, 'Failed to complete task: $e');
       }
     }
   }
@@ -338,13 +335,11 @@ class _TaskCardState extends State<TaskCard> {
       try {
         await widget.repository.deleteTask(widget.task.userId, widget.task.id);
         if (mounted) {
-          SnackbarService(context).showSuccessSnackbar(message: 'Task deleted');
+          AppBannerService.showSuccess(context, 'Task deleted');
         }
       } catch (e) {
         if (mounted) {
-          SnackbarService(
-            context,
-          ).showErrorSnackbar(message: 'Failed to delete task: $e');
+          AppBannerService.showError(context, 'Failed to delete task: $e');
         }
       }
     }

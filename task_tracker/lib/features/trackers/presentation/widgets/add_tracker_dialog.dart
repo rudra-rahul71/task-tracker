@@ -2,7 +2,6 @@ import 'package:get_it/get_it.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/core/utils/date_parser.dart';
-import 'package:task_tracker/core/utils/snackbar.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
@@ -78,9 +77,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
 
     if (user == null) {
       if (mounted) {
-        SnackbarService(
-          context,
-        ).showErrorSnackbar(message: 'Error: User not authenticated');
+        AppBannerService.showError(context, 'Error: User not authenticated');
       }
       return;
     }
@@ -125,8 +122,14 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
     try {
       if (isEditing) {
         await _repository.updateTracker(tracker);
+        if (mounted) {
+          AppBannerService.showSuccess(context, 'Tracker updated successfully');
+        }
       } else {
         await _repository.addTracker(tracker);
+        if (mounted) {
+          AppBannerService.showSuccess(context, 'Tracker created successfully');
+        }
       }
       navigator.pop();
     } catch (e) {
@@ -134,8 +137,9 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
         _isLoading = false;
       });
       if (mounted) {
-        SnackbarService(context).showErrorSnackbar(
-          message: 'Failed to ${isEditing ? "update" : "create"} tracker: $e',
+        AppBannerService.showError(
+          context,
+          'Failed to ${isEditing ? "update" : "create"} tracker: $e',
         );
       }
     }
