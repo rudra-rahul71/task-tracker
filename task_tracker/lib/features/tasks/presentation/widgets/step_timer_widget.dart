@@ -201,15 +201,15 @@ class _StepTimerWidgetState extends State<StepTimerWidget> {
           showExpiredState
               ? Icons.hourglass_bottom_rounded
               : (isRunning
-                  ? (secondsRemaining % 2 == 0
-                      ? Icons.hourglass_top_rounded
-                      : Icons.hourglass_bottom_rounded)
-                  : Icons.hourglass_empty_rounded),
+                    ? (secondsRemaining % 2 == 0
+                          ? Icons.hourglass_top_rounded
+                          : Icons.hourglass_bottom_rounded)
+                    : Icons.hourglass_empty_rounded),
           color: showExpiredState
               ? colorScheme.error
               : (isRunning
-                  ? colorScheme.primary
-                  : colorScheme.onSurfaceVariant),
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant),
           size: 18,
         ),
         const SizedBox(width: 6),

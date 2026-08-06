@@ -281,9 +281,9 @@ class _TaskCardState extends State<TaskCard> {
         oldStatus: widget.task.status,
       );
       if (mounted) {
-        SnackbarService(context).showSuccessSnackbar(
-          message: 'Task "${widget.task.name}" completed!',
-        );
+        SnackbarService(
+          context,
+        ).showSuccessSnackbar(message: 'Task "${widget.task.name}" completed!');
       }
       setState(() {
         _isExpanded = false;

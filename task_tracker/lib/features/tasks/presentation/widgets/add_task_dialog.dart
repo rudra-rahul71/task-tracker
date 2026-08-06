@@ -467,7 +467,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                     ButtonSegment<String>(
                                       value: 'none',
                                       label: Text(
-                                        hasGroupSchedule ? 'None' : 'No Schedule',
+                                        hasGroupSchedule
+                                            ? 'None'
+                                            : 'No Schedule',
                                       ),
                                       icon: const Icon(Icons.block, size: 18),
                                     ),
@@ -501,9 +503,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                       horizontal: 4,
                                       vertical: 8,
                                     ),
-                                    selectedBackgroundColor: Theme.of(
-                                      context,
-                                    ).colorScheme.primary.withValues(alpha: 0.15),
+                                    selectedBackgroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withValues(alpha: 0.15),
                                     selectedForegroundColor: Theme.of(
                                       context,
                                     ).colorScheme.primary,
@@ -932,13 +935,16 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                                       stepData['minutes']
                                                           .toString(),
                                                   style: TextStyle(
-                                                    color: colorScheme.onSurface,
+                                                    color:
+                                                        colorScheme.onSurface,
                                                     fontSize: 14,
                                                   ),
                                                   keyboardType:
                                                       TextInputType.number,
                                                   onChanged: (val) {
-                                                    final num = int.tryParse(val);
+                                                    final num = int.tryParse(
+                                                      val,
+                                                    );
                                                     if (num != null) {
                                                       stepData['minutes'] = num;
                                                     }
