@@ -1,5 +1,5 @@
-import 'package:get_it/get_it.dart';
-import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
@@ -10,15 +10,15 @@ import 'package:task_tracker/features/tasks/presentation/widgets/add_task_dialog
 import 'package:task_tracker/features/tasks/presentation/widgets/manage_groups_dialog.dart';
 import 'package:task_tracker/features/tasks/presentation/widgets/task_card.dart';
 
-class TasksPage extends StatefulWidget {
+class TasksPage extends ConsumerStatefulWidget {
   const TasksPage({super.key});
 
   @override
-  State<TasksPage> createState() => _TasksPageState();
+  ConsumerState<TasksPage> createState() => _TasksPageState();
 }
 
-class _TasksPageState extends State<TasksPage> {
-  final TaskRepository _repository = getIt<TaskRepository>();
+class _TasksPageState extends ConsumerState<TasksPage> {
+  TaskRepository get _repository => ref.read(taskRepositoryProvider);
   String _activeFilter =
       'due'; // 'due' (Due Today), 'all' (All Tasks), 'group' (By Group)
   String? _currentUserId;
@@ -169,7 +169,7 @@ class _TasksPageState extends State<TasksPage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
+    final userId = ref.read(authRepositoryProvider).currentUser?.uid;
 
     if (userId == null) {
       return Scaffold(

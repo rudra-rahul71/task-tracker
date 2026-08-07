@@ -1,3 +1,10 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
+
 import 'package:task_tracker/features/account/presentation/pages/account.dart';
 import 'package:task_tracker/features/auth/presentation/pages/sign_in.dart';
 import 'package:task_tracker/features/auth/presentation/pages/hosting_wizard_page.dart';
@@ -6,45 +13,20 @@ import 'package:task_tracker/features/tasks/presentation/pages/tasks.dart';
 import 'package:task_tracker/features/trackers/presentation/pages/trackers.dart';
 import 'package:task_tracker/core/database/db_service.dart';
 import 'package:task_tracker/core/widgets/app_shell.dart';
-import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
-import 'package:go_router/go_router.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
 import 'package:task_tracker/core/config/app_environment.dart';
 import 'features/splash/presentation/pages/splash.dart';
-import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-final getIt = GetIt.instance;
-final configNotifier = ValueNotifier<AppConfig?>(null);
+final taskRepositoryProvider = Provider((ref) => TaskRepository(ref.watch(databaseRepositoryProvider)));
+final trackerRepositoryProvider = Provider((ref) => TrackerRepository(ref.watch(databaseRepositoryProvider)));
+final configServiceProvider = Provider((ref) => ConfigService());
+final appConfigProvider = StateProvider<AppConfig?>((ref) => null);
 
-void setupLocator() {
-  if (getIt.isRegistered<TaskRepository>()) {
-    getIt.unregister<TaskRepository>();
-  }
-  if (getIt.isRegistered<TrackerRepository>()) {
-    getIt.unregister<TrackerRepository>();
-  }
-  getIt.registerLazySingleton<TaskRepository>(() => TaskRepository());
-  getIt.registerLazySingleton<TrackerRepository>(() => TrackerRepository());
-}
-
-void setupAuthListener() {
-  if (getIt.isRegistered<AuthRepository>()) {
-    getIt<AuthRepository>().authStateChanges.listen((UserEntity? user) async {
-      if (user == null) {
-        await DatabaseService.instance.clearAllData();
-      }
-    });
-  }
-}
-
-Future<void> initializeBackend(AppConfig config) async {
-  await DynamicBackendBridge.initialize(
+Future<List<Override>> initializeBackend(AppConfig config) async {
+  return DynamicBackendBridge.initialize(
     config: config,
-    getIt: getIt,
     defaultSupabaseUrl: AppEnvironment.defaultSupabaseUrl,
     defaultSupabaseAnonKey: AppEnvironment.defaultSupabaseAnonKey,
     dbSchema: 'task_tracker',
@@ -54,10 +36,9 @@ Future<void> initializeBackend(AppConfig config) async {
     enableRemoteNotifications: true,
     appId: 'task_tracker',
   );
-  setupLocator();
 }
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
@@ -71,27 +52,154 @@ Future<void> main() async {
   final configService = ConfigService();
   final savedConfig = await configService.getSavedConfig();
 
-  setupLocator();
+  List<Override> initialOverrides = [
+    configServiceProvider.overrideWithValue(configService),
+  ];
 
   if (savedConfig != null) {
     try {
-      await initializeBackend(savedConfig);
-      configNotifier.value = savedConfig;
-      setupAuthListener();
+      final backendOverrides = await initializeBackend(savedConfig);
+      initialOverrides.addAll(backendOverrides);
     } catch (e) {
       debugPrint('Error initializing saved backend config: $e');
     }
   }
 
-  // Register the global notifier so pages can trigger rebuilds on backend change
-  getIt.registerSingleton<ValueNotifier<AppConfig?>>(configNotifier);
-  getIt.registerSingleton<ConfigService>(configService);
 
-  runApp(const MyApp());
+  runApp(
+    BackendScope(
+      initialOverrides: initialOverrides,
+      child: MyApp(initialConfig: savedConfig),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+final routerProvider = Provider<GoRouter>((ref) {
+  return GoRouter(
+    navigatorKey: AppBannerService.navigatorKey,
+    initialLocation: '/',
+    redirect: (BuildContext context, GoRouterState state) {
+      bool hasConfig = false;
+      try {
+        ref.read(authRepositoryProvider);
+        hasConfig = true;
+      } catch (_) {}
+
+      final String goingTo = state.fullPath ?? '/';
+
+      if (!hasConfig) {
+        if (goingTo != '/hosting-wizard') {
+          return '/hosting-wizard';
+        }
+        return null;
+      }
+
+      final auth = ref.read(authRepositoryProvider);
+      final UserEntity? user = auth.currentUser;
+      final bool loggedIn = user != null;
+
+      if (loggedIn) {
+        if (goingTo == '/auth/sign-in' || goingTo == '/hosting-wizard') {
+          return '/home';
+        }
+        return null;
+      } else {
+        if (goingTo != '/' && goingTo != '/auth/sign-in') {
+          return '/auth/sign-in';
+        }
+        return null;
+      }
+    },
+    routes: <RouteBase>[
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const SplashPage(),
+      ),
+      GoRoute(
+        path: '/hosting-wizard',
+        builder: (context, state) => HostingWizardPage(
+          configService: ref.read(configServiceProvider),
+        ),
+      ),
+      GoRoute(
+        path: '/auth/sign-in',
+        builder: (context, state) => const SignInPage(),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return NavigatorScafold(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home',
+                builder: (context, state) => const HomePage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/tasks',
+                builder: (context, state) => const TasksPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/trackers',
+                builder: (context, state) => const TrackersPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/account',
+                builder: (context, state) => const AccountPage(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+  );
+});
+
+class MyApp extends ConsumerStatefulWidget {
+  final AppConfig? initialConfig;
+  const MyApp({super.key, this.initialConfig});
+
+  @override
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialConfig != null) {
+        ref.read(appConfigProvider.notifier).state = widget.initialConfig;
+      }
+      _setupAuthListener();
+    });
+  }
+
+  void _setupAuthListener() {
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      authRepo.authStateChanges.listen((UserEntity? user) async {
+        if (user == null) {
+          await DatabaseService.instance.clearAllData();
+        }
+      });
+    } catch (_) {
+      // Backend not initialized yet
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,131 +217,63 @@ class MyApp extends StatelessWidget {
       scaffoldBackgroundColor: const Color(0xFF121212),
     );
 
-    return ValueListenableBuilder<AppConfig?>(
-      valueListenable: configNotifier,
-      builder: (context, config, child) {
-        final authStream = getIt.isRegistered<AuthRepository>()
-            ? getIt<AuthRepository>().authStateChanges
-            : Stream<UserEntity?>.value(null);
+    // Watch auth changes so the router can rebuild its redirect logic if needed
+    // The redirect logic itself checks auth syncronously.
+    try {
+      ref.watch(currentUserProvider);
+    } catch (_) {}
 
-        return StreamBuilder<UserEntity?>(
-          stream: authStream,
-          builder: (context, snapshot) {
-            return MaterialApp.router(
-              title: 'Task Tracker',
-              debugShowCheckedModeBanner: false,
-              theme: theme,
-              routerConfig: _router,
-            );
-          },
-        );
-      },
+    final router = ref.watch(routerProvider);
+
+    return MaterialApp.router(
+      title: 'Task Tracker',
+      debugShowCheckedModeBanner: false,
+      theme: theme,
+      routerConfig: router,
     );
   }
 }
 
-final GoRouter _router = GoRouter(
-  navigatorKey: AppBannerService.navigatorKey,
-  initialLocation: '/',
-  redirect: (BuildContext context, GoRouterState state) {
-    final bool hasConfig = getIt.isRegistered<AuthRepository>();
-    final String goingTo = state.fullPath ?? '/';
+class BackendScope extends StatefulWidget {
+  final Widget child;
+  final List<Override> initialOverrides;
+  const BackendScope({
+    super.key,
+    required this.child,
+    required this.initialOverrides,
+  });
 
-    // 1. If backend isn't configured, force redirect to /hosting-wizard
-    if (!hasConfig) {
-      if (goingTo != '/hosting-wizard') {
-        return '/hosting-wizard';
-      }
-      return null;
-    }
+  static BackendScopeState of(BuildContext context) {
+    return context.findAncestorStateOfType<BackendScopeState>()!;
+  }
 
-    // 2. If backend is configured, handle standard auth states
-    final auth = getIt<AuthRepository>();
-    final UserEntity? user = auth.currentUser;
-    final bool loggedIn = user != null;
+  @override
+  State<BackendScope> createState() => BackendScopeState();
+}
 
-    if (loggedIn) {
-      if (goingTo == '/auth/sign-in' || goingTo == '/hosting-wizard') {
-        return '/home';
-      }
-      return null;
-    } else {
-      if (goingTo != '/' && goingTo != '/auth/sign-in') {
-        return '/auth/sign-in';
-      }
-      return null;
-    }
-  },
-  routes: <RouteBase>[
-    GoRoute(
-      path: '/',
-      builder: (BuildContext context, GoRouterState state) {
-        return const SplashPage();
-      },
-    ),
-    GoRoute(
-      path: '/hosting-wizard',
-      builder: (BuildContext context, GoRouterState state) {
-        return HostingWizardPage(configService: getIt<ConfigService>());
-      },
-    ),
-    GoRoute(
-      path: '/auth/sign-in',
-      builder: (BuildContext context, GoRouterState state) {
-        return const SignInPage();
-      },
-    ),
-    StatefulShellRoute.indexedStack(
-      builder:
-          (
-            BuildContext context,
-            GoRouterState state,
-            StatefulNavigationShell navigationShell,
-          ) {
-            return NavigatorScafold(navigationShell: navigationShell);
-          },
-      branches: [
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/home',
-              builder: (BuildContext context, GoRouterState state) {
-                return const HomePage();
-              },
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/tasks',
-              builder: (BuildContext context, GoRouterState state) {
-                return const TasksPage();
-              },
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/trackers',
-              builder: (BuildContext context, GoRouterState state) {
-                return const TrackersPage();
-              },
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/account',
-              builder: (BuildContext context, GoRouterState state) {
-                return const AccountPage();
-              },
-            ),
-          ],
-        ),
-      ],
-    ),
-  ],
-);
+class BackendScopeState extends State<BackendScope> {
+  late List<Override> _overrides;
+  Key _scopeKey = UniqueKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _overrides = widget.initialOverrides;
+  }
+
+  void updateOverrides(List<Override> newOverrides) {
+    setState(() {
+      _overrides = newOverrides;
+      _scopeKey = UniqueKey();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ProviderScope(
+      key: _scopeKey,
+      overrides: _overrides,
+      child: widget.child,
+    );
+  }
+}

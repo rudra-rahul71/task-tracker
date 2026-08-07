@@ -1,5 +1,6 @@
-import 'package:get_it/get_it.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
@@ -9,17 +10,17 @@ import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
 
-class AddTaskDialog extends StatefulWidget {
+class AddTaskDialog extends ConsumerStatefulWidget {
   final TaskModel? task;
 
   const AddTaskDialog({super.key, this.task});
 
   @override
-  State<AddTaskDialog> createState() => _AddTaskDialogState();
+  ConsumerState<AddTaskDialog> createState() => _AddTaskDialogState();
 }
 
-class _AddTaskDialogState extends State<AddTaskDialog> {
-  final _repository = getIt<TaskRepository>();
+class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
+  TaskRepository get _repository => ref.read(taskRepositoryProvider);
   final _formKey = GlobalKey<FormState>();
 
   String _name = '';
@@ -113,7 +114,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   }
 
   void _loadGroups() {
-    final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
+    final userId = ref.read(authRepositoryProvider).currentUser?.uid;
     if (userId == null) return;
 
     _repository.getGroups(userId).first.then((groupsList) {
@@ -142,7 +143,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
+    final userId = ref.read(authRepositoryProvider).currentUser?.uid;
     final navigator = Navigator.of(context);
 
     if (userId == null) {

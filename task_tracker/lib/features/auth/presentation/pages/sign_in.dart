@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:get_it/get_it.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:task_tracker/main.dart';
 
-class SignInPage extends StatelessWidget {
+class SignInPage extends ConsumerWidget {
   const SignInPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return DynamicSignInPage(
       appName: 'TASK TRACKER',
@@ -29,16 +29,13 @@ class SignInPage extends StatelessWidget {
       },
       onResetBackend: () async {
         final router = GoRouter.of(context);
-        final configService = GetIt.instance<ConfigService>();
+        final scope = BackendScope.of(context);
+        final configService = ref.read(configServiceProvider);
         await configService.clearConfig();
-        configNotifier.value = null;
-        if (GetIt.instance.isRegistered<AuthRepository>()) {
-          await GetIt.instance.unregister<AuthRepository>();
-        }
-        if (GetIt.instance.isRegistered<DatabaseRepository>()) {
-          await GetIt.instance.unregister<DatabaseRepository>();
-        }
-        setupLocator(); // Unregister and reset repositories
+        ref.read(appConfigProvider.notifier).state = null;
+        scope.updateOverrides([
+          configServiceProvider.overrideWithValue(configService),
+        ]);
         router.go('/hosting-wizard');
       },
     );

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:get_it/get_it.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 
-class SplashPage extends StatefulWidget {
+class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
+  ConsumerState<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage>
+class _SplashPageState extends ConsumerState<SplashPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -31,7 +32,7 @@ class _SplashPageState extends State<SplashPage>
 
     _animationController.forward().then((onValue) {
       if (mounted) {
-        final authRepo = GetIt.instance<AuthRepository>();
+        final authRepo = ref.read(authRepositoryProvider);
         final UserEntity? user = authRepo.currentUser;
         if (user != null) {
           context.go('/home');

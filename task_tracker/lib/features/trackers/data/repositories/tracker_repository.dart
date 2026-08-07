@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
-import 'package:get_it/get_it.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:task_tracker/core/utils/date_parser.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker_history.dart';
 
 class TrackerRepository {
-  DatabaseRepository get _repo => GetIt.instance<DatabaseRepository>();
+  final DatabaseRepository _repo;
+  TrackerRepository(this._repo);
 
   TypedCollection<TrackerModel> get _trackerCollection =>
       TypedCollection<TrackerModel>(

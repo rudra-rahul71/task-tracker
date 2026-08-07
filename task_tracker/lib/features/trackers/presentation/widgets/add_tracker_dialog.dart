@@ -1,22 +1,24 @@
-import 'package:get_it/get_it.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/utils/date_parser.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
 
-class AddTrackerDialog extends StatefulWidget {
+class AddTrackerDialog extends ConsumerStatefulWidget {
   final TrackerModel? trackerToEdit;
   const AddTrackerDialog({super.key, this.trackerToEdit});
 
   @override
-  State<AddTrackerDialog> createState() => _AddTrackerDialogState();
+  ConsumerState<AddTrackerDialog> createState() => _AddTrackerDialogState();
 }
 
-class _AddTrackerDialogState extends State<AddTrackerDialog> {
+class _AddTrackerDialogState extends ConsumerState<AddTrackerDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _repository = TrackerRepository();
+  TrackerRepository get _repository => ref.read(trackerRepositoryProvider);
 
   String _name = '';
   String _type = 'maintain'; // 'maintain' or 'quit'
@@ -72,7 +74,7 @@ class _AddTrackerDialogState extends State<AddTrackerDialog> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    final user = GetIt.instance<AuthRepository>().currentUser;
+    final user = ref.read(authRepositoryProvider).currentUser;
     final navigator = Navigator.of(context);
 
     if (user == null) {
