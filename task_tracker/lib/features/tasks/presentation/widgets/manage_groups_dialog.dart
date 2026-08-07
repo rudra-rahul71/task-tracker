@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
@@ -22,18 +24,18 @@ enum GroupPresetColor {
   Color get color => Color(value);
 }
 
-class ManageGroupsDialog extends StatefulWidget {
+class ManageGroupsDialog extends ConsumerStatefulWidget {
   const ManageGroupsDialog({super.key});
 
   @override
-  State<ManageGroupsDialog> createState() => _ManageGroupsDialogState();
+  ConsumerState<ManageGroupsDialog> createState() => _ManageGroupsDialogState();
 }
 
-class _ManageGroupsDialogState extends State<ManageGroupsDialog> {
-  final _repository = getIt<TaskRepository>();
+class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
+  TaskRepository get _repository => ref.read(taskRepositoryProvider);
   final _formKey = GlobalKey<FormState>();
 
-  String? get _userId => getIt<AuthRepository>().currentUser?.uid;
+  String? get _userId => ref.read(authRepositoryProvider).currentUser?.uid;
 
   String _currentView = 'list'; // 'list', 'add', 'edit'
   String? _editingGroupId;

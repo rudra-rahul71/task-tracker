@@ -32,11 +32,12 @@ dependencies:
     sdk: flutter
 
   go_router: ^17.2.3
-  get_it: ^9.2.1
+  hooks_riverpod: ^2.6.1
   rxdart: ^0.28.0
   firebase_core: ^4.13.0
   dynamic_backend_bridge:
     path: ../../dynamic_backend_bridge
+  flutter_riverpod: ^2.6.1
 
 dev_dependencies:
   flutter_test:

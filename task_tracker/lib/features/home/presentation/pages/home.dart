@@ -1,5 +1,6 @@
-import 'package:get_it/get_it.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:task_tracker/main.dart';
@@ -14,16 +15,16 @@ import 'package:task_tracker/features/tasks/data/models/task_history.dart';
 import 'package:task_tracker/features/home/presentation/widgets/calendar_widget.dart';
 import 'package:task_tracker/features/home/presentation/widgets/daily_details_widget.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  final TrackerRepository _repository = getIt<TrackerRepository>();
-  final TaskRepository _taskRepository = getIt<TaskRepository>();
+class _HomePageState extends ConsumerState<HomePage> {
+  TrackerRepository get _repository => ref.read(trackerRepositoryProvider);
+  TaskRepository get _taskRepository => ref.read(taskRepositoryProvider);
   DateTime _focusedMonth = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   String? _currentUserId;
@@ -256,7 +257,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
+    final userId = ref.read(authRepositoryProvider).currentUser?.uid;
 
     if (userId == null) {
       return Scaffold(

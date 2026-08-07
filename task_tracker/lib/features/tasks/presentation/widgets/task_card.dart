@@ -1,6 +1,7 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
@@ -8,7 +9,7 @@ import 'package:task_tracker/features/tasks/data/repositories/task_repository.da
 import 'package:task_tracker/features/tasks/presentation/widgets/add_task_dialog.dart';
 import 'package:task_tracker/features/tasks/presentation/widgets/step_timer_widget.dart';
 
-class TaskCard extends StatefulWidget {
+class TaskCard extends ConsumerStatefulWidget {
   final TaskModel task;
   final List<TaskGroupModel> groups;
   final TaskRepository repository;
@@ -29,10 +30,10 @@ class TaskCard extends StatefulWidget {
   });
 
   @override
-  State<TaskCard> createState() => _TaskCardState();
+  ConsumerState<TaskCard> createState() => _TaskCardState();
 }
 
-class _TaskCardState extends State<TaskCard> {
+class _TaskCardState extends ConsumerState<TaskCard> {
   bool _isExpanded = false;
 
   final List<String> _daysOfWeekNames = const [
@@ -203,9 +204,11 @@ class _TaskCardState extends State<TaskCard> {
     final currentStep = updatedSteps[index];
 
     // Cancel pending notification for this step if checked complete
-    if (isCompleted && GetIt.I.isRegistered<NotificationService>()) {
+    if (isCompleted) {
       final notifId = ('${widget.task.id}_$index').hashCode;
-      GetIt.I<NotificationService>().cancelNotification(notifId);
+      try {
+        ref.read(notificationServiceProvider).cancelNotification(notifId);
+      } catch (_) {}
     }
 
     // When marking complete, cancel timers

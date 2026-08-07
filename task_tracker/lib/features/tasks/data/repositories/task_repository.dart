@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:get_it/get_it.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
@@ -7,7 +6,8 @@ import 'package:task_tracker/features/tasks/data/models/task_history.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 
 class TaskRepository {
-  DatabaseRepository get _repo => GetIt.instance<DatabaseRepository>();
+  final DatabaseRepository _repo;
+  TaskRepository(this._repo);
 
   TypedCollection<TaskGroupModel> get _groupCollection =>
       TypedCollection<TaskGroupModel>(

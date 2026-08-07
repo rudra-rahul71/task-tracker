@@ -1,17 +1,16 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:task_tracker/main.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
-import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
 import 'package:task_tracker/features/trackers/presentation/widgets/add_tracker_dialog.dart';
 
-class TrackerCard extends StatelessWidget {
+class TrackerCard extends ConsumerWidget {
   final TrackerModel tracker;
-  final TrackerRepository _repository = GetIt.instance<TrackerRepository>();
 
-  TrackerCard({super.key, required this.tracker});
+  const TrackerCard({super.key, required this.tracker});
 
-  void _showDeleteDialog(BuildContext context) {
+  void _showDeleteDialog(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
@@ -44,7 +43,9 @@ class TrackerCard extends StatelessWidget {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await _repository.deleteTracker(tracker.userId, tracker.id);
+                await ref
+                    .read(trackerRepositoryProvider)
+                    .deleteTracker(tracker.userId, tracker.id);
                 if (context.mounted) {
                   AppBannerService.showSuccess(
                     context,
@@ -68,7 +69,7 @@ class TrackerCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final isQuit = tracker.type == 'quit';
     final isSetTime = tracker.durationType == 'set_time';
@@ -194,7 +195,7 @@ class TrackerCard extends StatelessWidget {
                         size: 22,
                       ),
                       tooltip: 'Delete tracker',
-                      onPressed: () => _showDeleteDialog(context),
+                      onPressed: () => _showDeleteDialog(context, ref),
                     ),
                   ],
                 ),
@@ -284,7 +285,9 @@ class TrackerCard extends StatelessWidget {
                     : ElevatedButton.icon(
                         onPressed: () async {
                           try {
-                            await _repository.markTrackerCompleted(tracker);
+                            await ref
+                                .read(trackerRepositoryProvider)
+                                .markTrackerCompleted(tracker);
                             if (context.mounted) {
                               AppBannerService.showSuccess(
                                 context,
@@ -328,7 +331,9 @@ class TrackerCard extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: () async {
                     try {
-                      await _repository.reportSlipUp(tracker);
+                      await ref
+                          .read(trackerRepositoryProvider)
+                          .reportSlipUp(tracker);
                       if (context.mounted) {
                         AppBannerService.showSuccess(
                           context,

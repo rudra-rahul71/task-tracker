@@ -1,5 +1,5 @@
-import 'package:get_it/get_it.dart';
-import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
@@ -8,15 +8,15 @@ import 'package:task_tracker/features/trackers/data/repositories/tracker_reposit
 import 'package:task_tracker/features/trackers/presentation/widgets/add_tracker_dialog.dart';
 import 'package:task_tracker/features/trackers/presentation/widgets/tracker_card.dart';
 
-class TrackersPage extends StatefulWidget {
+class TrackersPage extends ConsumerStatefulWidget {
   const TrackersPage({super.key});
 
   @override
-  State<TrackersPage> createState() => _TrackersPageState();
+  ConsumerState<TrackersPage> createState() => _TrackersPageState();
 }
 
-class _TrackersPageState extends State<TrackersPage> {
-  final TrackerRepository _repository = getIt<TrackerRepository>();
+class _TrackersPageState extends ConsumerState<TrackersPage> {
+  TrackerRepository get _repository => ref.read(trackerRepositoryProvider);
   String _activeFilter = 'all'; // 'all', 'maintain', 'quit'
   String? _currentUserId;
   Stream<List<TrackerModel>>? _trackersStream;
@@ -40,7 +40,7 @@ class _TrackersPageState extends State<TrackersPage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final userId = GetIt.instance<AuthRepository>().currentUser?.uid;
+    final userId = ref.read(authRepositoryProvider).currentUser?.uid;
 
     if (userId == null) {
       return Scaffold(

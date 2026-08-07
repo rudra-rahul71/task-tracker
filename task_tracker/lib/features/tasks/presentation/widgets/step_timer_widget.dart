@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
-import 'package:get_it/get_it.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
 
-class StepTimerWidget extends StatefulWidget {
+class StepTimerWidget extends ConsumerStatefulWidget {
   final TaskModel task;
   final int stepIndex;
   final TaskStep step;
@@ -21,29 +21,31 @@ class StepTimerWidget extends StatefulWidget {
   });
 
   @override
-  State<StepTimerWidget> createState() => _StepTimerWidgetState();
+  ConsumerState<StepTimerWidget> createState() => _StepTimerWidgetState();
 }
 
-class _StepTimerWidgetState extends State<StepTimerWidget> {
+class _StepTimerWidgetState extends ConsumerState<StepTimerWidget> {
   int get _notificationId => ('${widget.task.id}_${widget.stepIndex}').hashCode;
 
   void _scheduleDeviceNotification(int seconds) {
     if (seconds <= 0) return;
-    if (GetIt.I.isRegistered<NotificationService>()) {
-      GetIt.I<NotificationService>().scheduleNotification(
-        id: _notificationId,
-        title: 'Timer Complete!',
-        body:
-            'Timer for "${widget.step.name}" in task "${widget.task.name}" has finished.',
-        duration: Duration(seconds: seconds),
-      );
-    }
+    try {
+      ref
+          .read(notificationServiceProvider)
+          .scheduleNotification(
+            id: _notificationId,
+            title: 'Timer Complete!',
+            body:
+                'Timer for "${widget.step.name}" in task "${widget.task.name}" has finished.',
+            duration: Duration(seconds: seconds),
+          );
+    } catch (_) {}
   }
 
   void _cancelDeviceNotification() {
-    if (GetIt.I.isRegistered<NotificationService>()) {
-      GetIt.I<NotificationService>().cancelNotification(_notificationId);
-    }
+    try {
+      ref.read(notificationServiceProvider).cancelNotification(_notificationId);
+    } catch (_) {}
   }
 
   Future<void> _updateCurrentStep(
