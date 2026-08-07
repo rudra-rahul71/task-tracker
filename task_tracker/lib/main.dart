@@ -19,7 +19,10 @@ import 'package:task_tracker/core/config/app_environment.dart';
 import 'features/splash/presentation/pages/splash.dart';
 import 'firebase_options.dart';
 
-final taskRepositoryProvider = Provider((ref) => TaskRepository(ref.watch(databaseRepositoryProvider)));
+final taskRepositoryProvider = Provider((ref) => TaskRepository(
+      ref.watch(databaseRepositoryProvider),
+      ref.watch(notificationServiceProvider),
+    ));
 final trackerRepositoryProvider = Provider((ref) => TrackerRepository(ref.watch(databaseRepositoryProvider)));
 final configServiceProvider = Provider((ref) => ConfigService());
 final appConfigProvider = StateProvider<AppConfig?>((ref) => null);

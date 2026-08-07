@@ -27,8 +27,13 @@ CREATE TABLE IF NOT EXISTS task_tracker.tasks (
     status TEXT NOT NULL DEFAULT 'pending',
     "lastCompletedAt" TIMESTAMPTZ,
     "lastResetAt" TIMESTAMPTZ,
-    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "notificationTime" TIMESTAMPTZ,
+    "isNotificationSent" BOOLEAN DEFAULT false
 );
+
+CREATE INDEX IF NOT EXISTS idx_tasks_pending_notifications ON task_tracker.tasks ("isNotificationSent", "notificationTime") WHERE status = 'pending' AND "notificationTime" IS NOT NULL;
+
 
 -- 3. Create TASK_HISTORY table
 CREATE TABLE IF NOT EXISTS task_tracker.task_history (

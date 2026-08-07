@@ -92,6 +92,44 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     );
   }
 
+  Widget _buildReminderBadge(DateTime notificationTime, ColorScheme colorScheme) {
+    final timeOfDay = TimeOfDay.fromDateTime(notificationTime);
+    final hour = timeOfDay.hourOfPeriod == 0 ? 12 : timeOfDay.hourOfPeriod;
+    final minute = timeOfDay.minute.toString().padLeft(2, '0');
+    final period = timeOfDay.period == DayPeriod.am ? 'AM' : 'PM';
+    final formattedTime = '$hour:$minute $period';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.notifications_active,
+            size: 13,
+            color: Color(0xFFD4AF37),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            formattedTime,
+            style: const TextStyle(
+              color: Color(0xFFD4AF37),
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStepLeading(
     int index,
     bool isStepCompleted,
@@ -548,6 +586,11 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                               colorScheme.onSurfaceVariant,
                               colorScheme.onSurface.withValues(alpha: 0.05),
                             ),
+                            if (widget.task.notificationTime != null)
+                              _buildReminderBadge(
+                                widget.task.notificationTime!,
+                                colorScheme,
+                              ),
                           ],
                         ),
                         if (widget.showCompletionStatus) ...[

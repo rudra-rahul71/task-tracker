@@ -35,6 +35,10 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
   DateTime _startDate = DateTime.now();
   DateTime _targetDate = DateTime.now();
 
+  // Reminder settings
+  bool _enableReminder = false;
+  TimeOfDay _reminderTime = const TimeOfDay(hour: 20, minute: 0);
+
   // Checklist steps
   final List<Map<String, dynamic>> _stepsList = [
     {'name': '', 'hasTimer': false, 'minutes': 10},
@@ -62,6 +66,11 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
       _name = widget.task!.name;
       _description = widget.task!.description;
       _selectedGroupId = widget.task!.groupId;
+
+      if (widget.task!.notificationTime != null) {
+        _enableReminder = true;
+        _reminderTime = TimeOfDay.fromDateTime(widget.task!.notificationTime!);
+      }
 
       if (widget.task!.schedule != null) {
         if (widget.task!.schedule!.type == 'none') {
@@ -226,6 +235,18 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
       );
     }).toList();
 
+    DateTime? notificationTime;
+    if (_enableReminder) {
+      final baseDate = (_scheduleSetting == 'none') ? _targetDate : DateTime.now();
+      notificationTime = DateTime(
+        baseDate.year,
+        baseDate.month,
+        baseDate.day,
+        _reminderTime.hour,
+        _reminderTime.minute,
+      );
+    }
+
     try {
       if (widget.task != null) {
         final updatedTask = TaskModel(
@@ -240,6 +261,11 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
           lastCompletedAt: widget.task!.lastCompletedAt,
           lastResetAt: widget.task!.lastResetAt,
           createdAt: widget.task!.createdAt,
+          notificationTime: notificationTime,
+          isNotificationSent:
+              (notificationTime != widget.task!.notificationTime)
+              ? false
+              : widget.task!.isNotificationSent,
         );
         await _repository.updateTask(
           updatedTask,
@@ -259,6 +285,8 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
           steps: taskSteps,
           status: 'pending',
           createdAt: DateTime.now(),
+          notificationTime: notificationTime,
+          isNotificationSent: false,
         );
         await _repository.addTask(newTask);
         if (mounted) {
@@ -776,6 +804,89 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
                                     setState(() => _dayOfMonth = val!),
                               ),
                             ],
+                          ],
+
+                          const SizedBox(height: 12),
+
+                          // Task Reminder Section
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.notifications_active_outlined,
+                                    size: 20,
+                                    color: colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Task Reminder',
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Switch(
+                                value: _enableReminder,
+                                activeThumbColor: colorScheme.primary,
+                                onChanged: (val) {
+                                  setState(() {
+                                    _enableReminder = val;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                          if (_enableReminder) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Text(
+                                  'Reminder Time: ',
+                                  style: TextStyle(
+                                    color: colorScheme.onSurfaceVariant,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ActionChip(
+                                  avatar: Icon(
+                                    Icons.access_time,
+                                    size: 16,
+                                    color: colorScheme.primary,
+                                  ),
+                                  label: Text(
+                                    _reminderTime.format(context),
+                                    style: TextStyle(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  backgroundColor: colorScheme.primary
+                                      .withValues(alpha: 0.15),
+                                  side: BorderSide(
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    final picked = await showTimePicker(
+                                      context: context,
+                                      initialTime: _reminderTime,
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        _reminderTime = picked;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
                           ],
 
                           Divider(

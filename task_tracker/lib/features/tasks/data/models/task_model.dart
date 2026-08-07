@@ -14,6 +14,8 @@ class TaskModel {
   final DateTime? lastCompletedAt;
   final DateTime? lastResetAt;
   final DateTime createdAt;
+  final DateTime? notificationTime;
+  final bool isNotificationSent;
 
   TaskModel({
     required this.id,
@@ -27,6 +29,8 @@ class TaskModel {
     this.lastCompletedAt,
     this.lastResetAt,
     required this.createdAt,
+    this.notificationTime,
+    this.isNotificationSent = false,
   });
 
   factory TaskModel.fromMap(Map<String, dynamic> map, String documentId) {
@@ -51,6 +55,8 @@ class TaskModel {
       lastCompletedAt: parseDateTime(map['lastCompletedAt']),
       lastResetAt: parseDateTime(map['lastResetAt']),
       createdAt: parseDateTime(map['createdAt']) ?? DateTime.now(),
+      notificationTime: parseDateTime(map['notificationTime']),
+      isNotificationSent: map['isNotificationSent'] ?? false,
     );
   }
 
@@ -66,6 +72,8 @@ class TaskModel {
       'lastCompletedAt': lastCompletedAt,
       'lastResetAt': lastResetAt,
       'createdAt': createdAt,
+      'notificationTime': notificationTime,
+      'isNotificationSent': isNotificationSent,
     };
   }
 
@@ -81,6 +89,9 @@ class TaskModel {
     DateTime? lastCompletedAt,
     DateTime? lastResetAt,
     DateTime? createdAt,
+    DateTime? notificationTime,
+    bool? isNotificationSent,
+    bool clearNotificationTime = false,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -94,6 +105,10 @@ class TaskModel {
       lastCompletedAt: lastCompletedAt ?? this.lastCompletedAt,
       lastResetAt: lastResetAt ?? this.lastResetAt,
       createdAt: createdAt ?? this.createdAt,
+      notificationTime: clearNotificationTime
+          ? null
+          : (notificationTime ?? this.notificationTime),
+      isNotificationSent: isNotificationSent ?? this.isNotificationSent,
     );
   }
 

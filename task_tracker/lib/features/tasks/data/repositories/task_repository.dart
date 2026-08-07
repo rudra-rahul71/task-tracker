@@ -7,7 +7,11 @@ import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 
 class TaskRepository {
   final DatabaseRepository _repo;
-  TaskRepository(this._repo);
+  final NotificationService? _notificationService;
+
+  TaskRepository(this._repo, [this._notificationService]);
+
+  int _getNotificationId(String taskId) => taskId.hashCode.abs() % 2147483647;
 
   TypedCollection<TaskGroupModel> get _groupCollection =>
       TypedCollection<TaskGroupModel>(
@@ -79,6 +83,8 @@ class TaskRepository {
           lastCompletedAt: task.lastCompletedAt,
           lastResetAt: task.lastResetAt,
           createdAt: task.createdAt,
+          notificationTime: task.notificationTime,
+          isNotificationSent: task.isNotificationSent,
         );
         await _taskCollection.save(updatedTask, task.id);
       }
@@ -104,6 +110,20 @@ class TaskRepository {
 
   Future<void> addTask(TaskModel task) async {
     await _taskCollection.save(task, '');
+    if (task.status == 'pending' &&
+        task.notificationTime != null &&
+        task.notificationTime!.isAfter(DateTime.now())) {
+      try {
+        await _notificationService?.scheduleNotificationAtDateTime(
+          id: _getNotificationId(task.id),
+          title: 'Task Reminder',
+          body: task.name,
+          scheduledDateTime: task.notificationTime!,
+        );
+      } catch (e) {
+        debugPrint('Error scheduling local notification on task add: $e');
+      }
+    }
   }
 
   Future<void> updateTask(TaskModel task, {String? oldStatus}) async {
@@ -122,6 +142,34 @@ class TaskRepository {
     }
 
     await _taskCollection.save(task, task.id);
+
+    // Notification handling
+    if (task.status == 'completed') {
+      try {
+        await _notificationService?.cancelNotification(_getNotificationId(task.id));
+      } catch (e) {
+        debugPrint('Error cancelling notification on completion: $e');
+      }
+    } else if (task.status == 'pending' &&
+        task.notificationTime != null &&
+        task.notificationTime!.isAfter(DateTime.now())) {
+      try {
+        await _notificationService?.scheduleNotificationAtDateTime(
+          id: _getNotificationId(task.id),
+          title: 'Task Reminder',
+          body: task.name,
+          scheduledDateTime: task.notificationTime!,
+        );
+      } catch (e) {
+        debugPrint('Error scheduling local notification on task update: $e');
+      }
+    } else {
+      try {
+        await _notificationService?.cancelNotification(_getNotificationId(task.id));
+      } catch (e) {
+        debugPrint('Error cancelling notification: $e');
+      }
+    }
 
     final today = DateTime.now();
     final todayZero = DateTime(today.year, today.month, today.day);
@@ -165,6 +213,13 @@ class TaskRepository {
   Future<void> deleteTask(String userId, String taskId) async {
     // 1. Delete task doc
     await _taskCollection.delete(taskId);
+
+    // Cancel notification
+    try {
+      await _notificationService?.cancelNotification(_getNotificationId(taskId));
+    } catch (e) {
+      debugPrint('Error cancelling notification on deletion: $e');
+    }
 
     // 2. Delete history docs
     try {
@@ -248,13 +303,40 @@ class TaskRepository {
             );
           }).toList();
 
+          DateTime? nextNotificationTime;
+          if (task.notificationTime != null) {
+            nextNotificationTime = DateTime(
+              now.year,
+              now.month,
+              now.day,
+              task.notificationTime!.hour,
+              task.notificationTime!.minute,
+            );
+          }
+
           final updatedTask = task.copyWith(
             steps: resetSteps,
             status: 'pending',
             lastResetAt: now,
+            notificationTime: nextNotificationTime,
+            isNotificationSent: false,
           );
 
           updateFutures.add(_taskCollection.save(updatedTask, task.id));
+
+          if (updatedTask.notificationTime != null &&
+              updatedTask.notificationTime!.isAfter(now)) {
+            try {
+              _notificationService?.scheduleNotificationAtDateTime(
+                id: _getNotificationId(task.id),
+                title: 'Task Reminder',
+                body: task.name,
+                scheduledDateTime: updatedTask.notificationTime!,
+              );
+            } catch (e) {
+              debugPrint('Error scheduling local notification on reset: $e');
+            }
+          }
         }
       }
     }
