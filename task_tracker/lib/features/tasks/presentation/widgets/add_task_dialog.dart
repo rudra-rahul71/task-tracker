@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
-import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
@@ -235,6 +234,13 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
       );
     }).toList();
 
+    String? deviceToken;
+    try {
+      deviceToken = await ref.read(remoteNotificationServiceProvider)?.getToken();
+    } catch (e) {
+      debugPrint('Error getting FCM token: $e');
+    }
+
     DateTime? notificationTime;
     if (_enableReminder) {
       final baseDate = (_scheduleSetting == 'none') ? _targetDate : DateTime.now();
@@ -245,6 +251,16 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
         _reminderTime.hour,
         _reminderTime.minute,
       );
+    } else {
+      notificationTime = null;
+      if (widget.task != null) {
+        try {
+          final notificationId = widget.task!.id.hashCode.abs() % 2147483647;
+          await ref.read(notificationServiceProvider).cancelNotification(notificationId);
+        } catch (e) {
+          debugPrint('Error cancelling notification in AddTaskDialog: $e');
+        }
+      }
     }
 
     try {
@@ -266,6 +282,7 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
               (notificationTime != widget.task!.notificationTime)
               ? false
               : widget.task!.isNotificationSent,
+          lastUpdatedByToken: deviceToken,
         );
         await _repository.updateTask(
           updatedTask,
@@ -287,6 +304,7 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
           createdAt: DateTime.now(),
           notificationTime: notificationTime,
           isNotificationSent: false,
+          lastUpdatedByToken: deviceToken,
         );
         await _repository.addTask(newTask);
         if (mounted) {

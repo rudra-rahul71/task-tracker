@@ -71,21 +71,7 @@ class TaskRepository {
 
       final tasksToUpdate = tasks.where((t) => t.groupId == groupId).toList();
       for (var task in tasksToUpdate) {
-        final updatedTask = TaskModel(
-          id: task.id,
-          userId: task.userId,
-          groupId: null,
-          name: task.name,
-          description: task.description,
-          schedule: task.schedule,
-          steps: task.steps,
-          status: task.status,
-          lastCompletedAt: task.lastCompletedAt,
-          lastResetAt: task.lastResetAt,
-          createdAt: task.createdAt,
-          notificationTime: task.notificationTime,
-          isNotificationSent: task.isNotificationSent,
-        );
+        final updatedTask = task.copyWith(groupId: null);
         await _taskCollection.save(updatedTask, task.id);
       }
     } catch (e) {

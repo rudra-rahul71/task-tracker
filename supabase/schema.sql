@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS task_tracker.tasks (
     "lastResetAt" TIMESTAMPTZ,
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
     "notificationTime" TIMESTAMPTZ,
-    "isNotificationSent" BOOLEAN DEFAULT false
+    "isNotificationSent" BOOLEAN DEFAULT false,
+    "lastUpdatedByToken" TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_pending_notifications ON task_tracker.tasks ("isNotificationSent", "notificationTime") WHERE status = 'pending' AND "notificationTime" IS NOT NULL;
