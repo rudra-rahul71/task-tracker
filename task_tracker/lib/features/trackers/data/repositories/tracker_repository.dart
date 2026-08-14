@@ -126,7 +126,9 @@ class TrackerRepository {
       );
 
       if (history.isNotEmpty) {
-        await _historyCollection.deleteBatch(history.map((doc) => doc.id).toList());
+        await _historyCollection.deleteBatch(
+          history.map((doc) => doc.id).toList(),
+        );
       }
     } catch (e) {
       debugPrint('Error deleting history records on tracker deletion: $e');
