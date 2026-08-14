@@ -11,7 +11,6 @@ import 'package:task_tracker/features/auth/presentation/pages/hosting_wizard_pag
 import 'package:task_tracker/features/home/presentation/pages/home.dart';
 import 'package:task_tracker/features/tasks/presentation/pages/tasks.dart';
 import 'package:task_tracker/features/trackers/presentation/pages/trackers.dart';
-import 'package:task_tracker/core/database/db_service.dart';
 import 'package:task_tracker/core/widgets/app_shell.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
@@ -193,7 +192,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       final authRepo = ref.read(authRepositoryProvider);
       authRepo.authStateChanges.listen((UserEntity? user) async {
         if (user == null) {
-          await DatabaseService.instance.clearAllData();
+          // Clear any user-specific transient state if needed on logout
         }
       });
     } catch (_) {
