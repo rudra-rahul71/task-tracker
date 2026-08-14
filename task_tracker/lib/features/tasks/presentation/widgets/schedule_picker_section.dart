@@ -120,11 +120,7 @@ class SchedulePickerSection extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 18,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.info_outline, size: 18, color: colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -160,7 +156,9 @@ class SchedulePickerSection extends StatelessWidget {
               onPressed: () async {
                 final now = DateTime.now();
                 final today = DateTime(now.year, now.month, now.day);
-                final initialDate = targetDate.isBefore(today) ? today : targetDate;
+                final initialDate = targetDate.isBefore(today)
+                    ? today
+                    : targetDate;
                 final picked = await showDatePicker(
                   context: context,
                   initialDate: initialDate,
@@ -189,15 +187,23 @@ class SchedulePickerSection extends StatelessWidget {
             ),
             dropdownColor: colorScheme.surface,
             style: TextStyle(color: colorScheme.onSurface),
-            items: const [
-              ('daily', 'Daily'),
-              ('weekly', 'Weekly'),
-              ('bi_weekly', 'Bi-Weekly'),
-              ('monthly', 'Monthly'),
-            ].map((e) => DropdownMenuItem(
-              value: e.$1,
-              child: Text(e.$2, style: TextStyle(color: colorScheme.onSurface)),
-            )).toList(),
+            items:
+                const [
+                      ('daily', 'Daily'),
+                      ('weekly', 'Weekly'),
+                      ('bi_weekly', 'Bi-Weekly'),
+                      ('monthly', 'Monthly'),
+                    ]
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e.$1,
+                        child: Text(
+                          e.$2,
+                          style: TextStyle(color: colorScheme.onSurface),
+                        ),
+                      ),
+                    )
+                    .toList(),
             onChanged: (val) {
               if (val != null) {
                 onScheduleTypeChanged(val);
@@ -266,7 +272,9 @@ class SchedulePickerSection extends StatelessWidget {
                 onPressed: () async {
                   final now = DateTime.now();
                   final today = DateTime(now.year, now.month, now.day);
-                  final initialDate = startDate.isBefore(today) ? today : startDate;
+                  final initialDate = startDate.isBefore(today)
+                      ? today
+                      : startDate;
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: initialDate,
@@ -296,10 +304,17 @@ class SchedulePickerSection extends StatelessWidget {
               ),
               dropdownColor: colorScheme.surface,
               style: TextStyle(color: colorScheme.onSurface),
-              items: List.generate(31, (index) => index + 1).map((day) => DropdownMenuItem(
-                value: day,
-                child: Text('Day $day', style: TextStyle(color: colorScheme.onSurface)),
-              )).toList(),
+              items: List.generate(31, (index) => index + 1)
+                  .map(
+                    (day) => DropdownMenuItem(
+                      value: day,
+                      child: Text(
+                        'Day $day',
+                        style: TextStyle(color: colorScheme.onSurface),
+                      ),
+                    ),
+                  )
+                  .toList(),
               onChanged: (val) {
                 if (val != null) {
                   onDayOfMonthChanged(val);

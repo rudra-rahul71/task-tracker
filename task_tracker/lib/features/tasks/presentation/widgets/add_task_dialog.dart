@@ -347,8 +347,8 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
                             style: TextStyle(color: colorScheme.onSurface),
                             validator: (val) =>
                                 val == null || val.trim().isEmpty
-                                    ? 'Enter task name'
-                                    : null,
+                                ? 'Enter task name'
+                                : null,
                             onSaved: (val) => _name = val!.trim(),
                           ),
                           const SizedBox(height: 16),
@@ -371,11 +371,11 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
                           DropdownButtonFormField<String>(
                             initialValue:
                                 (_selectedGroupId != null &&
-                                        _groups.any(
-                                          (g) => g.id == _selectedGroupId,
-                                        ))
-                                    ? _selectedGroupId
-                                    : null,
+                                    _groups.any(
+                                      (g) => g.id == _selectedGroupId,
+                                    ))
+                                ? _selectedGroupId
+                                : null,
                             decoration: InputDecoration(
                               labelText: 'Task Group (Optional)',
                               labelStyle: TextStyle(

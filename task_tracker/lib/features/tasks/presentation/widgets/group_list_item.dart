@@ -19,7 +19,8 @@ class GroupListItem extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final hasSchedule = group.schedule != null && group.schedule!.type != 'none';
+    final hasSchedule =
+        group.schedule != null && group.schedule!.type != 'none';
 
     return ListTile(
       leading: CircleAvatar(
@@ -35,10 +36,7 @@ class GroupListItem extends StatelessWidget {
       ),
       subtitle: Text(
         hasSchedule ? 'Schedule: ${group.schedule!.type}' : 'No Schedule',
-        style: TextStyle(
-          color: colorScheme.onSurfaceVariant,
-          fontSize: 12,
-        ),
+        style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -51,10 +49,7 @@ class GroupListItem extends StatelessWidget {
             onPressed: onEdit,
           ),
           IconButton(
-            icon: Icon(
-              Icons.delete_outline,
-              color: colorScheme.error,
-            ),
+            icon: Icon(Icons.delete_outline, color: colorScheme.error),
             onPressed: onDelete,
           ),
         ],

@@ -18,8 +18,12 @@ import 'package:task_tracker/core/config/app_environment.dart';
 import 'features/splash/presentation/pages/splash.dart';
 import 'firebase_options.dart';
 
-final taskRepositoryProvider = Provider((ref) => TaskRepository(ref.watch(databaseRepositoryProvider)));
-final trackerRepositoryProvider = Provider((ref) => TrackerRepository(ref.watch(databaseRepositoryProvider)));
+final taskRepositoryProvider = Provider(
+  (ref) => TaskRepository(ref.watch(databaseRepositoryProvider)),
+);
+final trackerRepositoryProvider = Provider(
+  (ref) => TrackerRepository(ref.watch(databaseRepositoryProvider)),
+);
 final configServiceProvider = Provider((ref) => ConfigService());
 final appConfigProvider = StateProvider<AppConfig?>((ref) => null);
 
@@ -63,7 +67,6 @@ void main() async {
       debugPrint('Error initializing saved backend config: $e');
     }
   }
-
 
   runApp(
     BackendScope(
@@ -110,15 +113,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
     },
     routes: <RouteBase>[
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const SplashPage(),
-      ),
+      GoRoute(path: '/', builder: (context, state) => const SplashPage()),
       GoRoute(
         path: '/hosting-wizard',
-        builder: (context, state) => HostingWizardPage(
-          configService: ref.read(configServiceProvider),
-        ),
+        builder: (context, state) =>
+            HostingWizardPage(configService: ref.read(configServiceProvider)),
       ),
       GoRoute(
         path: '/auth/sign-in',

@@ -365,17 +365,17 @@ class _TaskCardState extends ConsumerState<TaskCard> {
 
                       final Widget descriptionText =
                           widget.task.description.isNotEmpty
-                              ? Padding(
-                                  padding: const EdgeInsets.only(top: 4.0),
-                                  child: Text(
-                                    widget.task.description,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                )
-                              : const SizedBox.shrink();
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Text(
+                                widget.task.description,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink();
 
                       final Widget actionsAndChevron = Row(
                         mainAxisSize: MainAxisSize.min,

@@ -282,20 +282,25 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
                     initialName: _name,
                     onNameSaved: (val) => _name = val,
                     selectedColor: _selectedColor,
-                    onColorChanged: (val) => setState(() => _selectedColor = val),
+                    onColorChanged: (val) =>
+                        setState(() => _selectedColor = val),
                     hasSchedule: _hasSchedule,
-                    onHasScheduleChanged: (val) => setState(() => _hasSchedule = val),
+                    onHasScheduleChanged: (val) =>
+                        setState(() => _hasSchedule = val),
                     scheduleType: _scheduleType,
                     onScheduleTypeChanged: (val) => setState(() {
                       _scheduleType = val;
                       _selectedDays = [];
                     }),
                     selectedDays: _selectedDays,
-                    onSelectedDaysChanged: (val) => setState(() => _selectedDays = val),
+                    onSelectedDaysChanged: (val) =>
+                        setState(() => _selectedDays = val),
                     dayOfMonth: _dayOfMonth,
-                    onDayOfMonthChanged: (val) => setState(() => _dayOfMonth = val),
+                    onDayOfMonthChanged: (val) =>
+                        setState(() => _dayOfMonth = val),
                     startDate: _startDate,
-                    onStartDateChanged: (val) => setState(() => _startDate = val),
+                    onStartDateChanged: (val) =>
+                        setState(() => _startDate = val),
                     onCancel: () => setState(() => _currentView = 'list'),
                     onSubmit: _submitGroup,
                   ),

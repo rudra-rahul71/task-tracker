@@ -188,18 +188,25 @@ class GroupFormView extends StatelessWidget {
                         ),
                         dropdownColor: colorScheme.surface,
                         style: TextStyle(color: colorScheme.onSurface),
-                        items: const [
-                          ('daily', 'Daily'),
-                          ('weekly', 'Weekly'),
-                          ('bi_weekly', 'Bi-Weekly'),
-                          ('monthly', 'Monthly'),
-                        ].map((e) => DropdownMenuItem(
-                          value: e.$1,
-                          child: Text(
-                            e.$2,
-                            style: TextStyle(color: colorScheme.onSurface),
-                          ),
-                        )).toList(),
+                        items:
+                            const [
+                                  ('daily', 'Daily'),
+                                  ('weekly', 'Weekly'),
+                                  ('bi_weekly', 'Bi-Weekly'),
+                                  ('monthly', 'Monthly'),
+                                ]
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e.$1,
+                                    child: Text(
+                                      e.$2,
+                                      style: TextStyle(
+                                        color: colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                         onChanged: (val) {
                           if (val != null) {
                             onScheduleTypeChanged(val);
@@ -209,7 +216,8 @@ class GroupFormView extends StatelessWidget {
                       const SizedBox(height: 12),
 
                       // Weekly & Bi-Weekly Days Picker
-                      if (scheduleType == 'weekly' || scheduleType == 'bi_weekly') ...[
+                      if (scheduleType == 'weekly' ||
+                          scheduleType == 'bi_weekly') ...[
                         Text(
                           'Days of the Week',
                           style: TextStyle(
@@ -227,7 +235,9 @@ class GroupFormView extends StatelessWidget {
                               label: Text(_daysOfWeekNames[index]),
                               selected: isSelected,
                               onSelected: (selected) {
-                                final updatedDays = List<int>.from(selectedDays);
+                                final updatedDays = List<int>.from(
+                                  selectedDays,
+                                );
                                 if (selected) {
                                   updatedDays.add(dayVal);
                                 } else {
@@ -316,13 +326,19 @@ class GroupFormView extends StatelessWidget {
                           ),
                           dropdownColor: colorScheme.surface,
                           style: TextStyle(color: colorScheme.onSurface),
-                          items: List.generate(31, (index) => index + 1).map((day) => DropdownMenuItem(
-                            value: day,
-                            child: Text(
-                              'Day $day',
-                              style: TextStyle(color: colorScheme.onSurface),
-                            ),
-                          )).toList(),
+                          items: List.generate(31, (index) => index + 1)
+                              .map(
+                                (day) => DropdownMenuItem(
+                                  value: day,
+                                  child: Text(
+                                    'Day $day',
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
                           onChanged: (val) {
                             if (val != null) {
                               onDayOfMonthChanged(val);

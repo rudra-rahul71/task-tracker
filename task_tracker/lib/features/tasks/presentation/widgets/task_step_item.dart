@@ -69,16 +69,16 @@ class TaskStepItem extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final hasTimer = isInteractive &&
-            step.timerDuration != null &&
-            !isStepCompleted;
+        final hasTimer =
+            isInteractive && step.timerDuration != null && !isStepCompleted;
 
         bool fitsOnOneLine = true;
         if (hasTimer) {
           const timerWidth = 134.0;
           final checkboxWidth = showCompletionStatus ? 36.0 : 44.0;
           final textWidth = step.name.length * 8.5;
-          final totalEstimatedWidth = checkboxWidth + textWidth + timerWidth + 16.0;
+          final totalEstimatedWidth =
+              checkboxWidth + textWidth + timerWidth + 16.0;
           fitsOnOneLine = totalEstimatedWidth <= constraints.maxWidth;
         }
 
@@ -100,10 +100,7 @@ class TaskStepItem extends StatelessWidget {
                 leadingWidget,
                 const SizedBox(width: 8),
                 titleWidget,
-                if (hasTimer) ...[
-                  const SizedBox(width: 8),
-                  timerWidget,
-                ],
+                if (hasTimer) ...[const SizedBox(width: 8), timerWidget],
               ],
             ),
           );

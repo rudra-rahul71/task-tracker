@@ -35,17 +35,12 @@ class TaskStepsEditor extends StatelessWidget {
               ),
             ),
             TextButton.icon(
-              style: TextButton.styleFrom(
-                foregroundColor: colorScheme.primary,
-              ),
+              style: TextButton.styleFrom(foregroundColor: colorScheme.primary),
               onPressed: onAddStep,
               icon: const Icon(Icons.add, size: 18),
               label: const Text(
                 'Add Step',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               ),
             ),
           ],
@@ -97,8 +92,8 @@ class TaskStepsEditor extends StatelessWidget {
                             },
                             validator: (val) =>
                                 val == null || val.trim().isEmpty
-                                    ? 'Required'
-                                    : null,
+                                ? 'Required'
+                                : null,
                           ),
                         ),
                         if (stepsList.length > 1)
