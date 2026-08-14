@@ -145,7 +145,9 @@ class TaskRepository {
         );
 
         if (history.isNotEmpty) {
-          await _historyCollection.deleteBatch(history.map((doc) => doc.id).toList());
+          await _historyCollection.deleteBatch(
+            history.map((doc) => doc.id).toList(),
+          );
         }
       } catch (e) {
         debugPrint('Error deleting today history on status reset: $e');
@@ -164,7 +166,9 @@ class TaskRepository {
       );
 
       if (history.isNotEmpty) {
-        await _historyCollection.deleteBatch(history.map((doc) => doc.id).toList());
+        await _historyCollection.deleteBatch(
+          history.map((doc) => doc.id).toList(),
+        );
       }
     } catch (e) {
       debugPrint('Error clearing history on task deletion: $e');
