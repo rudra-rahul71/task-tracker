@@ -59,28 +59,19 @@ class TaskRepository {
     // Delete the group itself
     await _groupCollection.delete(groupId);
 
-    // Also clear the groupId reference for all tasks in this group
+    // Also clear the groupId reference for all tasks in this group using batch update
     try {
       final tasks = await _taskCollection.fetch(
         filters: [QueryFilter.eq('userId', userId)],
       );
 
-      final tasksToUpdate = tasks.where((t) => t.groupId == groupId).toList();
-      for (var task in tasksToUpdate) {
-        final updatedTask = TaskModel(
-          id: task.id,
-          userId: task.userId,
-          groupId: null,
-          name: task.name,
-          description: task.description,
-          schedule: task.schedule,
-          steps: task.steps,
-          status: task.status,
-          lastCompletedAt: task.lastCompletedAt,
-          lastResetAt: task.lastResetAt,
-          createdAt: task.createdAt,
-        );
-        await _taskCollection.save(updatedTask, task.id);
+      final tasksToUpdate = tasks
+          .where((t) => t.groupId == groupId)
+          .map((task) => task.copyWith(groupId: null))
+          .toList();
+
+      if (tasksToUpdate.isNotEmpty) {
+        await _taskCollection.saveBatch(tasksToUpdate);
       }
     } catch (e) {
       debugPrint('Error updating tasks on group deletion: $e');
@@ -144,17 +135,17 @@ class TaskRepository {
     } else if (task.status == 'pending' && oldStatus == 'completed') {
       // 2. Task went from completed to pending (reset/uncompleted). Delete history for today
       try {
+        final tomorrowZero = todayZero.add(const Duration(days: 1));
         final history = await _historyCollection.fetch(
-          filters: [QueryFilter.eq('taskId', task.id)],
+          filters: [
+            QueryFilter.eq('taskId', task.id),
+            QueryFilter.gte('date', todayZero),
+            QueryFilter.lt('date', tomorrowZero),
+          ],
         );
 
-        final todayHistory = history.where((h) {
-          final hDate = DateTime(h.date.year, h.date.month, h.date.day);
-          return hDate == todayZero;
-        }).toList();
-
-        for (var doc in todayHistory) {
-          await _historyCollection.delete(doc.id);
+        if (history.isNotEmpty) {
+          await _historyCollection.deleteBatch(history.map((doc) => doc.id).toList());
         }
       } catch (e) {
         debugPrint('Error deleting today history on status reset: $e');
@@ -166,21 +157,21 @@ class TaskRepository {
     // 1. Delete task doc
     await _taskCollection.delete(taskId);
 
-    // 2. Delete history docs
+    // 2. Delete history docs in batch
     try {
       final history = await _historyCollection.fetch(
         filters: [QueryFilter.eq('taskId', taskId)],
       );
 
-      for (var doc in history) {
-        await _historyCollection.delete(doc.id);
+      if (history.isNotEmpty) {
+        await _historyCollection.deleteBatch(history.map((doc) => doc.id).toList());
       }
     } catch (e) {
       debugPrint('Error clearing history on task deletion: $e');
     }
   }
 
-  // Get completions stream for a specific month
+  // Get completions stream bounded for a specific calendar month
   Stream<List<TaskHistoryModel>> getMonthlyTaskHistory(
     String userId,
     DateTime month,
@@ -193,18 +184,16 @@ class TaskRepository {
     ).subtract(const Duration(microseconds: 1));
 
     return _historyCollection
-        .watch(filters: [QueryFilter.eq('userId', userId)])
+        .watch(
+          filters: [
+            QueryFilter.eq('userId', userId),
+            QueryFilter.gte('date', start),
+            QueryFilter.lte('date', end),
+          ],
+        )
         .map((history) {
-          return history
-              .where(
-                (h) =>
-                    h.date.isAfter(
-                      start.subtract(const Duration(microseconds: 1)),
-                    ) &&
-                    h.date.isBefore(end.add(const Duration(microseconds: 1))),
-              )
-              .toList()
-            ..sort((a, b) => b.date.compareTo(a.date));
+          history.sort((a, b) => b.date.compareTo(a.date));
+          return history;
         })
         .handleError((error, stackTrace) {
           debugPrint('Error loading task history stream: $error');
@@ -220,7 +209,7 @@ class TaskRepository {
   }) async {
     final now = DateTime.now();
     final groupMap = {for (var g in groups) g.id: g};
-    final List<Future<void>> updateFutures = [];
+    final List<TaskModel> tasksToReset = [];
 
     for (var task in tasks) {
       // Determine effective schedule
@@ -248,19 +237,19 @@ class TaskRepository {
             );
           }).toList();
 
-          final updatedTask = task.copyWith(
-            steps: resetSteps,
-            status: 'pending',
-            lastResetAt: now,
+          tasksToReset.add(
+            task.copyWith(
+              steps: resetSteps,
+              status: 'pending',
+              lastResetAt: now,
+            ),
           );
-
-          updateFutures.add(_taskCollection.save(updatedTask, task.id));
         }
       }
     }
 
-    if (updateFutures.isNotEmpty) {
-      await Future.wait(updateFutures);
+    if (tasksToReset.isNotEmpty) {
+      await _taskCollection.saveBatch(tasksToReset);
     }
   }
 }

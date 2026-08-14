@@ -89,9 +89,9 @@ class TrackerRepository {
     // Save tracker first so foreign key constraint in tracker_history (trackerId -> trackers.id) is satisfied
     await _trackerCollection.save(updatedTracker, trackerId);
 
-    // Save backfilled history records after the tracker exists in the database
-    for (final historyRecord in backfilledHistory) {
-      await _historyCollection.save(historyRecord, '');
+    // Save backfilled history records in a single batch operation
+    if (backfilledHistory.isNotEmpty) {
+      await _historyCollection.saveBatch(backfilledHistory);
     }
   }
 
@@ -108,25 +108,25 @@ class TrackerRepository {
 
     await _trackerCollection.save(updatedTracker, updatedTracker.id);
 
-    // Save backfilled history records
-    for (final historyRecord in backfilledHistory) {
-      await _historyCollection.save(historyRecord, '');
+    // Save backfilled history records in batch
+    if (backfilledHistory.isNotEmpty) {
+      await _historyCollection.saveBatch(backfilledHistory);
     }
   }
 
-  // Delete an existing tracker and its associated history records
+  // Delete an existing tracker and its associated history records in a single batch
   Future<void> deleteTracker(String userId, String trackerId) async {
     // 1. Delete the tracker document itself
     await _trackerCollection.delete(trackerId);
 
-    // 2. Fetch and delete history records for this tracker
+    // 2. Fetch and batch delete history records for this tracker
     try {
       final history = await _historyCollection.fetch(
         filters: [QueryFilter.eq('trackerId', trackerId)],
       );
 
-      for (final doc in history) {
-        await _historyCollection.delete(doc.id);
+      if (history.isNotEmpty) {
+        await _historyCollection.deleteBatch(history.map((doc) => doc.id).toList());
       }
     } catch (e) {
       debugPrint('Error deleting history records on tracker deletion: $e');
@@ -203,7 +203,7 @@ class TrackerRepository {
     await _historyCollection.save(historyRecord, '');
   }
 
-  // Get completions/slip-ups stream for a specific month
+  // Get completions/slip-ups stream bounded for a specific month
   Stream<List<TrackerHistoryModel>> getMonthlyHistory(
     String userId,
     DateTime month,
@@ -216,19 +216,16 @@ class TrackerRepository {
     ).subtract(const Duration(microseconds: 1));
 
     return _historyCollection
-        .watch(filters: [QueryFilter.eq('userId', userId)])
+        .watch(
+          filters: [
+            QueryFilter.eq('userId', userId),
+            QueryFilter.gte('date', start),
+            QueryFilter.lte('date', end),
+          ],
+        )
         .map((history) {
-          // Filter date range client side for simplicity across database drivers
-          return history
-              .where(
-                (h) =>
-                    h.date.isAfter(
-                      start.subtract(const Duration(microseconds: 1)),
-                    ) &&
-                    h.date.isBefore(end.add(const Duration(microseconds: 1))),
-              )
-              .toList()
-            ..sort((a, b) => b.date.compareTo(a.date));
+          history.sort((a, b) => b.date.compareTo(a.date));
+          return history;
         });
   }
 }
