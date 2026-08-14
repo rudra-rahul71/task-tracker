@@ -1,29 +1,17 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
-import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
+import 'group_list_item.dart';
+import 'group_form_view.dart';
 
-enum GroupPresetColor {
-  gold(0xFFD4AF37),
-  coral(0xFFEF5350),
-  emerald(0xFF26A69A),
-  blue(0xFF42A5F5),
-  purple(0xFFAB47BC),
-  rose(0xFFEC407A),
-  orange(0xFFFF7043);
-
-  final int value;
-  const GroupPresetColor(this.value);
-
-  Color get color => Color(value);
-}
-
+/// Modal dialog for managing task groups (viewing, adding, editing, and deleting).
 class ManageGroupsDialog extends ConsumerStatefulWidget {
   const ManageGroupsDialog({super.key});
 
@@ -42,28 +30,18 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
   DateTime? _editingGroupCreatedAt;
 
   String _name = '';
-  int _selectedColor = GroupPresetColor.gold.value; // Default gold
+  int _selectedColor = GroupPresetColor.gold.value;
 
   // Schedule fields
   bool _hasSchedule = false;
-  String _scheduleType = 'weekly'; // 'weekly', 'bi_weekly', 'monthly'
-  List<int> _selectedDays = []; // 1-7
+  String _scheduleType = 'weekly';
+  List<int> _selectedDays = [];
   int _dayOfMonth = 1;
   DateTime _startDate = DateTime.now();
 
   bool _isLoading = false;
   List<TaskGroupModel>? _groups;
   StreamSubscription<List<TaskGroupModel>>? _groupsSubscription;
-
-  final List<String> _daysOfWeekNames = const [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
 
   @override
   void initState() {
@@ -251,11 +229,10 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final userId = _userId;
     if (userId == null) return const SizedBox.shrink();
-
-    String headerTitle = 'Manage Groups';
 
     return Dialog(
       backgroundColor: colorScheme.surface,
@@ -279,11 +256,11 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      headerTitle,
+                      'Manage Groups',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: colorScheme.primary,
                       ),
                     ),
                     IconButton(
@@ -297,9 +274,36 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                if (_currentView == 'list') _buildListView(),
+                if (_currentView == 'list') _buildListView(colorScheme),
                 if (_currentView == 'add' || _currentView == 'edit')
-                  _buildFormView(),
+                  GroupFormView(
+                    formKey: _formKey,
+                    isEdit: _currentView == 'edit',
+                    initialName: _name,
+                    onNameSaved: (val) => _name = val,
+                    selectedColor: _selectedColor,
+                    onColorChanged: (val) =>
+                        setState(() => _selectedColor = val),
+                    hasSchedule: _hasSchedule,
+                    onHasScheduleChanged: (val) =>
+                        setState(() => _hasSchedule = val),
+                    scheduleType: _scheduleType,
+                    onScheduleTypeChanged: (val) => setState(() {
+                      _scheduleType = val;
+                      _selectedDays = [];
+                    }),
+                    selectedDays: _selectedDays,
+                    onSelectedDaysChanged: (val) =>
+                        setState(() => _selectedDays = val),
+                    dayOfMonth: _dayOfMonth,
+                    onDayOfMonthChanged: (val) =>
+                        setState(() => _dayOfMonth = val),
+                    startDate: _startDate,
+                    onStartDateChanged: (val) =>
+                        setState(() => _startDate = val),
+                    onCancel: () => setState(() => _currentView = 'list'),
+                    onSubmit: _submitGroup,
+                  ),
               ],
             ),
           ),
@@ -308,8 +312,7 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
     );
   }
 
-  Widget _buildListView() {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _buildListView(ColorScheme colorScheme) {
     return Expanded(
       child: Column(
         children: [
@@ -337,46 +340,10 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
                       Divider(height: 1, color: colorScheme.outline),
                   itemBuilder: (context, index) {
                     final g = groups[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Color(g.colorValue),
-                        radius: 12,
-                      ),
-                      title: Text(
-                        g.name,
-                        style: TextStyle(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Text(
-                        g.schedule != null && g.schedule!.type != 'none'
-                            ? 'Schedule: ${g.schedule!.type}'
-                            : 'No Schedule',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.edit_outlined,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                            onPressed: () => _openEditView(g),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.delete_outline,
-                              color: colorScheme.error,
-                            ),
-                            onPressed: () => _deleteGroup(g.id),
-                          ),
-                        ],
-                      ),
+                    return GroupListItem(
+                      group: g,
+                      onEdit: () => _openEditView(g),
+                      onDelete: () => _deleteGroup(g.id),
                     );
                   },
                 );
@@ -399,338 +366,6 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
               child: const Text(
                 'Add Group',
                 style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFormView() {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _currentView == 'edit' ? 'Edit Group' : 'Add New Group',
-            style: TextStyle(
-              color: colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFormField(
-                      initialValue: _name,
-                      style: TextStyle(color: colorScheme.onSurface),
-                      decoration: InputDecoration(
-                        labelText: 'Group Name',
-                        hintText: 'e.g. Chores, Morning Routine',
-                        labelStyle: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: colorScheme.outline),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: colorScheme.primary),
-                        ),
-                      ),
-                      validator: (val) => val == null || val.trim().isEmpty
-                          ? 'Enter group name'
-                          : null,
-                      onSaved: (val) => _name = val!.trim(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    Text(
-                      'Group Color',
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: GroupPresetColor.values.map((preset) {
-                        final isSelected = _selectedColor == preset.value;
-                        return GestureDetector(
-                          onTap: () =>
-                              setState(() => _selectedColor = preset.value),
-                          child: CircleAvatar(
-                            backgroundColor: preset.color,
-                            radius: 16,
-                            child: isSelected
-                                ? Icon(
-                                    Icons.check,
-                                    color: colorScheme.onPrimary,
-                                    size: 20,
-                                  )
-                                : null,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Group Recurrence Schedule Toggle
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Set Recurrence Schedule',
-                        style: TextStyle(
-                          color: colorScheme.onSurface,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'All tasks in this group will inherit this schedule by default',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                      value: _hasSchedule,
-                      onChanged: (val) => setState(() => _hasSchedule = val),
-                      activeThumbColor: Theme.of(context).colorScheme.primary,
-                    ),
-
-                    if (_hasSchedule) ...[
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        initialValue: _scheduleType,
-                        decoration: InputDecoration(
-                          labelText: 'Schedule Type',
-                          labelStyle: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: colorScheme.outline),
-                          ),
-                        ),
-                        dropdownColor: colorScheme.surface,
-                        style: TextStyle(color: colorScheme.onSurface),
-                        items:
-                            const [
-                                  ('daily', 'Daily'),
-                                  ('weekly', 'Weekly'),
-                                  ('bi_weekly', 'Bi-Weekly'),
-                                  ('monthly', 'Monthly'),
-                                ]
-                                .map(
-                                  (e) => DropdownMenuItem(
-                                    value: e.$1,
-                                    child: Text(
-                                      e.$2,
-                                      style: TextStyle(
-                                        color: colorScheme.onSurface,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (val) => setState(() {
-                          _scheduleType = val!;
-                          _selectedDays = [];
-                        }),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Weekly & Bi-Weekly Days Picker
-                      if (_scheduleType == 'weekly' ||
-                          _scheduleType == 'bi_weekly') ...[
-                        Text(
-                          'Days of the Week',
-                          style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          children: List.generate(7, (index) {
-                            final dayVal = index + 1; // 1-7
-                            final isSelected = _selectedDays.contains(dayVal);
-                            return ChoiceChip(
-                              label: Text(_daysOfWeekNames[index]),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                setState(() {
-                                  if (selected) {
-                                    _selectedDays.add(dayVal);
-                                  } else {
-                                    _selectedDays.remove(dayVal);
-                                  }
-                                });
-                              },
-                              selectedColor: colorScheme.primary.withValues(
-                                alpha: 0.2,
-                              ),
-                              labelStyle: TextStyle(
-                                color: isSelected
-                                    ? colorScheme.primary
-                                    : colorScheme.onSurface,
-                                fontSize: 12,
-                              ),
-                            );
-                          }),
-                        ),
-                      ],
-
-                      // Bi-weekly Start Anchor date picker
-                      if (_scheduleType == 'bi_weekly') ...[
-                        const SizedBox(height: 12),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            'Start Date / Anchor Week',
-                            style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 13,
-                            ),
-                          ),
-                          subtitle: Text(
-                            '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-                            style: TextStyle(
-                              color: colorScheme.onSurface,
-                              fontSize: 15,
-                            ),
-                          ),
-                          trailing: IconButton(
-                            icon: Icon(
-                              Icons.calendar_month,
-                              color: colorScheme.primary,
-                            ),
-                            onPressed: () async {
-                              final now = DateTime.now();
-                              final today = DateTime(
-                                now.year,
-                                now.month,
-                                now.day,
-                              );
-                              final initialDate = _startDate.isBefore(today)
-                                  ? today
-                                  : _startDate;
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: initialDate,
-                                firstDate: today,
-                                lastDate: today.add(const Duration(days: 365)),
-                              );
-                              if (picked != null) {
-                                setState(() => _startDate = picked);
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-
-                      // Monthly Day of Month picker
-                      if (_scheduleType == 'monthly') ...[
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<int>(
-                          initialValue: _dayOfMonth,
-                          decoration: InputDecoration(
-                            labelText: 'Day of Month',
-                            labelStyle: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: colorScheme.outline,
-                              ),
-                            ),
-                          ),
-                          dropdownColor: colorScheme.surface,
-                          style: TextStyle(color: colorScheme.onSurface),
-                          items: List.generate(31, (index) => index + 1)
-                              .map(
-                                (day) => DropdownMenuItem(
-                                  value: day,
-                                  child: Text(
-                                    'Day $day',
-                                    style: TextStyle(
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) =>
-                              setState(() => _dayOfMonth = val!),
-                        ),
-                      ],
-                    ],
-
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: colorScheme.onSurfaceVariant,
-                              side: BorderSide(color: colorScheme.outline),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _currentView = 'list';
-                              });
-                            },
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 2,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colorScheme.primary,
-                              foregroundColor: colorScheme.onPrimary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            onPressed: _submitGroup,
-                            child: Text(
-                              _currentView == 'edit'
-                                  ? 'Edit Group'
-                                  : 'Create Group',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
               ),
             ),
           ),

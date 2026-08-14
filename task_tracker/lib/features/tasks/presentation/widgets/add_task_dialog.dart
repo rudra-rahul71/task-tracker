@@ -1,7 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
-import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
@@ -9,7 +9,10 @@ import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
+import 'schedule_picker_section.dart';
+import 'task_steps_editor.dart';
 
+/// Modal dialog for creating and editing tasks with recurrence schedules and checklist steps.
 class AddTaskDialog extends ConsumerStatefulWidget {
   final TaskModel? task;
 
@@ -29,7 +32,7 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
 
   // Schedule settings
   String _scheduleSetting = 'none'; // 'none', 'inherit', 'custom'
-  String _scheduleType = 'weekly'; // 'weekly', 'bi_weekly', 'monthly'
+  String _scheduleType = 'weekly'; // 'daily', 'weekly', 'bi_weekly', 'monthly'
   List<int> _selectedDays = [];
   int _dayOfMonth = 1;
   DateTime _startDate = DateTime.now();
@@ -42,16 +45,6 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
 
   bool _isLoading = false;
   List<TaskGroupModel> _groups = [];
-
-  final List<String> _daysOfWeekNames = const [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
 
   @override
   void initState() {
@@ -278,7 +271,8 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     final groupOptions = _groups.map((g) {
       final hasGroupSched = g.schedule != null && g.schedule!.type != 'none';
@@ -411,7 +405,6 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
                             onChanged: (val) {
                               setState(() {
                                 _selectedGroupId = val;
-                                // Automatically update schedule choices based on group selection
                                 if (_selectedGroupId != null) {
                                   final group = _groups.firstWhere(
                                     (g) => g.id == _selectedGroupId,
@@ -430,353 +423,29 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Scheduling Section
-                          Text(
-                            'Task Schedule',
-                            style: TextStyle(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          // Extracted Schedule Picker Section
+                          SchedulePickerSection(
+                            selectedGroupId: _selectedGroupId,
+                            groups: _groups,
+                            scheduleSetting: _scheduleSetting,
+                            onScheduleSettingChanged: (val) =>
+                                setState(() => _scheduleSetting = val),
+                            scheduleType: _scheduleType,
+                            onScheduleTypeChanged: (val) =>
+                                setState(() => _scheduleType = val),
+                            selectedDays: _selectedDays,
+                            onSelectedDaysChanged: (val) =>
+                                setState(() => _selectedDays = val),
+                            dayOfMonth: _dayOfMonth,
+                            onDayOfMonthChanged: (val) =>
+                                setState(() => _dayOfMonth = val),
+                            startDate: _startDate,
+                            onStartDateChanged: (val) =>
+                                setState(() => _startDate = val),
+                            targetDate: _targetDate,
+                            onTargetDateChanged: (val) =>
+                                setState(() => _targetDate = val),
                           ),
-                          const SizedBox(height: 8),
-                          Builder(
-                            builder: (context) {
-                              final hasGroupSchedule =
-                                  _selectedGroupId != null &&
-                                  _groups.any(
-                                    (g) =>
-                                        g.id == _selectedGroupId &&
-                                        g.schedule != null &&
-                                        g.schedule!.type != 'none',
-                                  );
-
-                              return SizedBox(
-                                width: double.infinity,
-                                child: SegmentedButton<String>(
-                                  showSelectedIcon: false,
-                                  segments: [
-                                    ButtonSegment<String>(
-                                      value: 'none',
-                                      label: Text(
-                                        hasGroupSchedule
-                                            ? 'None'
-                                            : 'No Schedule',
-                                      ),
-                                      icon: const Icon(Icons.block, size: 18),
-                                    ),
-                                    if (hasGroupSchedule)
-                                      const ButtonSegment<String>(
-                                        value: 'inherit',
-                                        label: Text('Inherit'),
-                                        icon: Icon(
-                                          Icons.folder_shared_outlined,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    const ButtonSegment<String>(
-                                      value: 'custom',
-                                      label: Text('Custom'),
-                                      icon: Icon(
-                                        Icons.edit_calendar_outlined,
-                                        size: 18,
-                                      ),
-                                    ),
-                                  ],
-                                  selected: {_scheduleSetting},
-                                  onSelectionChanged: (newSelection) {
-                                    setState(() {
-                                      _scheduleSetting = newSelection.first;
-                                    });
-                                  },
-                                  style: SegmentedButton.styleFrom(
-                                    visualDensity: VisualDensity.compact,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 8,
-                                    ),
-                                    selectedBackgroundColor: Theme.of(context)
-                                        .colorScheme
-                                        .primary
-                                        .withValues(alpha: 0.15),
-                                    selectedForegroundColor: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-
-                          if (_scheduleSetting == 'inherit') ...[
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.4),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: colorScheme.outlineVariant,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.info_outline,
-                                    size: 18,
-                                    color: colorScheme.primary,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Inherits recurring schedule from group.',
-                                      style: TextStyle(
-                                        color: colorScheme.onSurfaceVariant,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-
-                          if (_scheduleSetting == 'none') ...[
-                            const SizedBox(height: 8),
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(
-                                'Target Completion Date',
-                                style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${_targetDate.year}-${_targetDate.month.toString().padLeft(2, '0')}-${_targetDate.day.toString().padLeft(2, '0')}',
-                                style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.calendar_month,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                    onPressed: () async {
-                                      final now = DateTime.now();
-                                      final today = DateTime(
-                                        now.year,
-                                        now.month,
-                                        now.day,
-                                      );
-                                      final initialDate =
-                                          _targetDate.isBefore(today)
-                                          ? today
-                                          : _targetDate;
-                                      final picked = await showDatePicker(
-                                        context: context,
-                                        initialDate: initialDate,
-                                        firstDate: today,
-                                        lastDate: today.add(
-                                          const Duration(days: 365 * 5),
-                                        ),
-                                      );
-                                      if (picked != null) {
-                                        setState(() => _targetDate = picked);
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-
-                          if (_scheduleSetting == 'custom') ...[
-                            const SizedBox(height: 8),
-                            DropdownButtonFormField<String>(
-                              initialValue: _scheduleType,
-                              decoration: InputDecoration(
-                                labelText: 'Schedule Frequency',
-                                labelStyle: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: BorderSide(
-                                    color: colorScheme.outline,
-                                  ),
-                                ),
-                              ),
-                              dropdownColor: colorScheme.surface,
-                              style: TextStyle(color: colorScheme.onSurface),
-                              items:
-                                  const [
-                                        ('daily', 'Daily'),
-                                        ('weekly', 'Weekly'),
-                                        ('bi_weekly', 'Bi-Weekly'),
-                                        ('monthly', 'Monthly'),
-                                      ]
-                                      .map(
-                                        (e) => DropdownMenuItem(
-                                          value: e.$1,
-                                          child: Text(
-                                            e.$2,
-                                            style: TextStyle(
-                                              color: colorScheme.onSurface,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                              onChanged: (val) => setState(() {
-                                _scheduleType = val!;
-                                _selectedDays = [];
-                              }),
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Weekly & Bi-Weekly Days Picker
-                            if (_scheduleType == 'weekly' ||
-                                _scheduleType == 'bi_weekly') ...[
-                              Text(
-                                'Days of the Week',
-                                style: TextStyle(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                children: List.generate(7, (index) {
-                                  final dayVal = index + 1; // 1-7
-                                  final isSelected = _selectedDays.contains(
-                                    dayVal,
-                                  );
-                                  return ChoiceChip(
-                                    label: Text(_daysOfWeekNames[index]),
-                                    selected: isSelected,
-                                    onSelected: (selected) {
-                                      setState(() {
-                                        if (selected) {
-                                          _selectedDays.add(dayVal);
-                                        } else {
-                                          _selectedDays.remove(dayVal);
-                                        }
-                                      });
-                                    },
-                                    selectedColor: colorScheme.primary
-                                        .withValues(alpha: 0.2),
-                                    labelStyle: TextStyle(
-                                      color: isSelected
-                                          ? colorScheme.primary
-                                          : colorScheme.onSurface,
-                                      fontSize: 12,
-                                    ),
-                                  );
-                                }),
-                              ),
-                            ],
-
-                            // Bi-weekly Start Anchor date picker
-                            if (_scheduleType == 'bi_weekly') ...[
-                              const SizedBox(height: 12),
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(
-                                  'Start Date / Anchor Week',
-                                  style: TextStyle(
-                                    color: colorScheme.onSurfaceVariant,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}',
-                                  style: TextStyle(
-                                    color: colorScheme.onSurface,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                trailing: IconButton(
-                                  icon: Icon(
-                                    Icons.calendar_month,
-                                    color: colorScheme.primary,
-                                  ),
-                                  onPressed: () async {
-                                    final now = DateTime.now();
-                                    final today = DateTime(
-                                      now.year,
-                                      now.month,
-                                      now.day,
-                                    );
-                                    final initialDate =
-                                        _startDate.isBefore(today)
-                                        ? today
-                                        : _startDate;
-                                    final picked = await showDatePicker(
-                                      context: context,
-                                      initialDate: initialDate,
-                                      firstDate: today,
-                                      lastDate: today.add(
-                                        const Duration(days: 365),
-                                      ),
-                                    );
-                                    if (picked != null) {
-                                      setState(() => _startDate = picked);
-                                    }
-                                  },
-                                ),
-                              ),
-                            ],
-
-                            // Monthly Day of Month picker
-                            if (_scheduleType == 'monthly') ...[
-                              const SizedBox(height: 12),
-                              DropdownButtonFormField<int>(
-                                initialValue: _dayOfMonth,
-                                decoration: InputDecoration(
-                                  labelText: 'Day of Month',
-                                  labelStyle: TextStyle(
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: colorScheme.outline,
-                                    ),
-                                  ),
-                                ),
-                                dropdownColor: colorScheme.surface,
-                                style: TextStyle(color: colorScheme.onSurface),
-                                items: List.generate(31, (index) => index + 1)
-                                    .map(
-                                      (day) => DropdownMenuItem(
-                                        value: day,
-                                        child: Text(
-                                          'Day $day',
-                                          style: TextStyle(
-                                            color: colorScheme.onSurface,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) =>
-                                    setState(() => _dayOfMonth = val!),
-                              ),
-                            ],
-                          ],
 
                           Divider(
                             height: 32,
@@ -784,189 +453,12 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
                             color: colorScheme.outline,
                           ),
 
-                          // Task Checklist Steps
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Checklist Steps',
-                                style: TextStyle(
-                                  color: colorScheme.onSurface,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
-                              TextButton.icon(
-                                style: TextButton.styleFrom(
-                                  foregroundColor: colorScheme.primary,
-                                ),
-                                onPressed: _addStepField,
-                                icon: const Icon(Icons.add, size: 18),
-                                label: const Text(
-                                  'Add Step',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _stepsList.length,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final stepData = _stepsList[index];
-                              return Card(
-                                color: colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.5),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: TextFormField(
-                                              decoration: InputDecoration(
-                                                hintText:
-                                                    'e.g. Wash clothes, Add Detergent',
-                                                hintStyle: TextStyle(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant,
-                                                ),
-                                                border: InputBorder.none,
-                                                labelText: 'Step ${index + 1}',
-                                                labelStyle: TextStyle(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                              initialValue: stepData['name'],
-                                              style: TextStyle(
-                                                color: colorScheme.onSurface,
-                                                fontSize: 14,
-                                              ),
-                                              onChanged: (val) =>
-                                                  stepData['name'] = val,
-                                              validator: (val) =>
-                                                  val == null ||
-                                                      val.trim().isEmpty
-                                                  ? 'Required'
-                                                  : null,
-                                            ),
-                                          ),
-                                          if (_stepsList.length > 1)
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.delete_outline,
-                                                color: colorScheme.error,
-                                                size: 20,
-                                              ),
-                                              onPressed: () =>
-                                                  _removeStepField(index),
-                                            ),
-                                        ],
-                                      ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Text(
-                                                'Has Timer?',
-                                                style: TextStyle(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                              Checkbox(
-                                                value: stepData['hasTimer'],
-                                                onChanged: (val) {
-                                                  setState(() {
-                                                    stepData['hasTimer'] = val!;
-                                                  });
-                                                },
-                                                activeColor:
-                                                    colorScheme.primary,
-                                                checkColor:
-                                                    colorScheme.onPrimary,
-                                              ),
-                                            ],
-                                          ),
-                                          if (stepData['hasTimer'])
-                                            Flexible(
-                                              child: SizedBox(
-                                                width: 110,
-                                                child: TextFormField(
-                                                  decoration: InputDecoration(
-                                                    labelText: 'Duration (min)',
-                                                    labelStyle: TextStyle(
-                                                      color: colorScheme
-                                                          .onSurfaceVariant,
-                                                      fontSize: 12,
-                                                    ),
-                                                    border:
-                                                        const UnderlineInputBorder(),
-                                                  ),
-                                                  initialValue:
-                                                      stepData['minutes']
-                                                          .toString(),
-                                                  style: TextStyle(
-                                                    color:
-                                                        colorScheme.onSurface,
-                                                    fontSize: 14,
-                                                  ),
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  onChanged: (val) {
-                                                    final num = int.tryParse(
-                                                      val,
-                                                    );
-                                                    if (num != null) {
-                                                      stepData['minutes'] = num;
-                                                    }
-                                                  },
-                                                  validator: (val) {
-                                                    if (stepData['hasTimer']) {
-                                                      if (val == null ||
-                                                          val.trim().isEmpty) {
-                                                        return 'Enter minutes';
-                                                      }
-                                                      final num = int.tryParse(
-                                                        val,
-                                                      );
-                                                      if (num == null ||
-                                                          num <= 0) {
-                                                        return 'Invalid';
-                                                      }
-                                                    }
-                                                    return null;
-                                                  },
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                          // Extracted Task Steps Editor
+                          TaskStepsEditor(
+                            stepsList: _stepsList,
+                            onAddStep: _addStepField,
+                            onRemoveStep: _removeStepField,
+                            onStepsChanged: () => setState(() {}),
                           ),
                         ],
                       ),

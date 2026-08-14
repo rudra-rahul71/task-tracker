@@ -11,7 +11,6 @@ import 'package:task_tracker/features/auth/presentation/pages/hosting_wizard_pag
 import 'package:task_tracker/features/home/presentation/pages/home.dart';
 import 'package:task_tracker/features/tasks/presentation/pages/tasks.dart';
 import 'package:task_tracker/features/trackers/presentation/pages/trackers.dart';
-import 'package:task_tracker/core/database/db_service.dart';
 import 'package:task_tracker/core/widgets/app_shell.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
 import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
@@ -19,8 +18,12 @@ import 'package:task_tracker/core/config/app_environment.dart';
 import 'features/splash/presentation/pages/splash.dart';
 import 'firebase_options.dart';
 
-final taskRepositoryProvider = Provider((ref) => TaskRepository(ref.watch(databaseRepositoryProvider)));
-final trackerRepositoryProvider = Provider((ref) => TrackerRepository(ref.watch(databaseRepositoryProvider)));
+final taskRepositoryProvider = Provider(
+  (ref) => TaskRepository(ref.watch(databaseRepositoryProvider)),
+);
+final trackerRepositoryProvider = Provider(
+  (ref) => TrackerRepository(ref.watch(databaseRepositoryProvider)),
+);
 final configServiceProvider = Provider((ref) => ConfigService());
 final appConfigProvider = StateProvider<AppConfig?>((ref) => null);
 
@@ -64,7 +67,6 @@ void main() async {
       debugPrint('Error initializing saved backend config: $e');
     }
   }
-
 
   runApp(
     BackendScope(
@@ -111,15 +113,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
     },
     routes: <RouteBase>[
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const SplashPage(),
-      ),
+      GoRoute(path: '/', builder: (context, state) => const SplashPage()),
       GoRoute(
         path: '/hosting-wizard',
-        builder: (context, state) => HostingWizardPage(
-          configService: ref.read(configServiceProvider),
-        ),
+        builder: (context, state) =>
+            HostingWizardPage(configService: ref.read(configServiceProvider)),
       ),
       GoRoute(
         path: '/auth/sign-in',
@@ -193,7 +191,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       final authRepo = ref.read(authRepositoryProvider);
       authRepo.authStateChanges.listen((UserEntity? user) async {
         if (user == null) {
-          await DatabaseService.instance.clearAllData();
+          // Clear any user-specific transient state if needed on logout
         }
       });
     } catch (_) {

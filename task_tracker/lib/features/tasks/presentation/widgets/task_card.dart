@@ -1,14 +1,16 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
-import 'package:flutter/material.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
-import 'package:task_tracker/features/tasks/presentation/widgets/add_task_dialog.dart';
-import 'package:task_tracker/features/tasks/presentation/widgets/step_timer_widget.dart';
+import 'add_task_dialog.dart';
+import 'task_step_item.dart';
+import 'task_delete_dialog.dart';
 
+/// Card widget displaying a task with progress bar, expandable checklist, and actions.
 class TaskCard extends ConsumerStatefulWidget {
   final TaskModel task;
   final List<TaskGroupModel> groups;
@@ -36,7 +38,7 @@ class TaskCard extends ConsumerStatefulWidget {
 class _TaskCardState extends ConsumerState<TaskCard> {
   bool _isExpanded = false;
 
-  final List<String> _daysOfWeekNames = const [
+  static const List<String> _daysOfWeekNames = [
     'Mon',
     'Tue',
     'Wed',
@@ -92,49 +94,6 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     );
   }
 
-  Widget _buildStepLeading(
-    int index,
-    bool isStepCompleted,
-    Color color,
-    ColorScheme colorScheme,
-  ) {
-    if (widget.showCompletionStatus) {
-      return Checkbox(
-        value: isStepCompleted,
-        activeColor: color,
-        checkColor: colorScheme.onPrimary,
-        onChanged: widget.isInteractive
-            ? (val) => _toggleStepCompletion(index, val!)
-            : null,
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.only(left: 12.0, right: 16.0),
-      child: Icon(Icons.fiber_manual_record, size: 8, color: color),
-    );
-  }
-
-  Widget _buildStepTitle(
-    String name,
-    bool isStepCompleted,
-    ColorScheme colorScheme,
-  ) {
-    return Expanded(
-      child: Text(
-        name,
-        style: TextStyle(
-          color: isStepCompleted
-              ? colorScheme.onSurfaceVariant
-              : colorScheme.onSurface,
-          decoration: isStepCompleted ? TextDecoration.lineThrough : null,
-          fontSize: 14,
-        ),
-      ),
-    );
-  }
-
   Widget _buildFullWidthButton({
     required VoidCallback? onPressed,
     required IconData icon,
@@ -163,11 +122,9 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   }
 
   String _getScheduleText() {
-    // If task has individual schedule
     if (widget.task.schedule != null && widget.task.schedule!.type != 'none') {
       return _formatSchedule(widget.task.schedule!);
     }
-    // Else, check inherited group schedule
     final group = _getGroup();
     if (group != null &&
         group.schedule != null &&
@@ -298,40 +255,9 @@ class _TaskCardState extends ConsumerState<TaskCard> {
   }
 
   void _deleteTask() async {
-    final colorScheme = Theme.of(context).colorScheme;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colorScheme.surface,
-        title: Text(
-          'Delete Task?',
-          style: TextStyle(
-            color: colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${widget.task.name}"?',
-          style: TextStyle(color: colorScheme.onSurfaceVariant),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: colorScheme.onSurfaceVariant),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.error,
-              foregroundColor: colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await TaskDeleteDialog.show(
+      context,
+      taskName: widget.task.name,
     );
 
     if (confirm == true) {
@@ -350,7 +276,8 @@ class _TaskCardState extends ConsumerState<TaskCard> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final group = _getGroup();
     final color = group != null ? Color(group.colorValue) : colorScheme.primary;
     final isCompleted =
@@ -378,7 +305,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
             ),
           ),
           child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            data: theme.copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
               initiallyExpanded: _isExpanded,
               onExpansionChanged: (expanded) {
@@ -394,7 +321,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final double nameWidth = widget.task.name.length * 11.0;
-                      double actionsWidth = 32.0; // chevron (with padding)
+                      double actionsWidth = 32.0;
 
                       final bool hasAnyProgress =
                           isCompleted ||
@@ -403,18 +330,18 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                           widget.isInteractive && hasAnyProgress;
 
                       if (showResetAction) {
-                        actionsWidth += 32.0; // refresh button
+                        actionsWidth += 32.0;
                       }
 
                       if (widget.showEditAction &&
                           !widget.showCompletionStatus &&
                           !isCompleted) {
-                        actionsWidth += 32.0; // edit button
+                        actionsWidth += 32.0;
                       }
 
                       if (widget.showDeleteAction &&
                           (!widget.isInteractive || !isCompleted)) {
-                        actionsWidth += 32.0; // delete button
+                        actionsWidth += 32.0;
                       }
 
                       final totalEstimatedWidth =
@@ -552,7 +479,6 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                         ),
                         if (widget.showCompletionStatus) ...[
                           const SizedBox(height: 12),
-                          // Steps progress text and bar
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -620,101 +546,18 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Checklist items list
+                      // Extracted Checklist Step Items
                       ...List.generate(widget.task.steps.length, (index) {
                         final step = widget.task.steps[index];
-                        final isStepCompleted =
-                            widget.showCompletionStatus && step.isCompleted;
-
-                        return LayoutBuilder(
-                          builder: (context, constraints) {
-                            final hasTimer =
-                                widget.isInteractive &&
-                                step.timerDuration != null &&
-                                !isStepCompleted;
-
-                            bool fitsOnOneLine = true;
-                            if (hasTimer) {
-                              const timerWidth = 134.0;
-                              final checkboxWidth = widget.showCompletionStatus
-                                  ? 36.0
-                                  : 44.0;
-                              final textWidth = step.name.length * 8.5;
-                              final totalEstimatedWidth =
-                                  checkboxWidth + textWidth + timerWidth + 16.0;
-                              fitsOnOneLine =
-                                  totalEstimatedWidth <= constraints.maxWidth;
-                            }
-
-                            final leadingWidget = _buildStepLeading(
-                              index,
-                              isStepCompleted,
-                              color,
-                              colorScheme,
-                            );
-                            final titleWidget = _buildStepTitle(
-                              step.name,
-                              isStepCompleted,
-                              colorScheme,
-                            );
-                            final timerWidget = StepTimerWidget(
-                              task: widget.task,
-                              stepIndex: index,
-                              step: step,
-                              repository: widget.repository,
-                            );
-
-                            if (fitsOnOneLine) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 6.0,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    leadingWidget,
-                                    const SizedBox(width: 8),
-                                    titleWidget,
-                                    if (hasTimer) ...[
-                                      const SizedBox(width: 8),
-                                      timerWidget,
-                                    ],
-                                  ],
-                                ),
-                              );
-                            } else {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 6.0,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        leadingWidget,
-                                        const SizedBox(width: 8),
-                                        titleWidget,
-                                      ],
-                                    ),
-                                    if (hasTimer) ...[
-                                      const SizedBox(height: 6),
-                                      Padding(
-                                        padding: EdgeInsets.only(
-                                          left: widget.showCompletionStatus
-                                              ? 36.0
-                                              : 44.0,
-                                        ),
-                                        child: timerWidget,
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              );
-                            }
-                          },
+                        return TaskStepItem(
+                          task: widget.task,
+                          stepIndex: index,
+                          step: step,
+                          repository: widget.repository,
+                          color: color,
+                          isInteractive: widget.isInteractive,
+                          showCompletionStatus: widget.showCompletionStatus,
+                          onToggleStepCompletion: _toggleStepCompletion,
                         );
                       }),
 
