@@ -40,10 +40,6 @@ class TaskRepository {
         .map((groups) {
           groups.sort((a, b) => a.createdAt.compareTo(b.createdAt));
           return groups;
-        })
-        .handleError((error, stackTrace) {
-          debugPrint('Error loading task groups stream: $error');
-          return <TaskGroupModel>[];
         });
   }
 
@@ -95,10 +91,6 @@ class TaskRepository {
         .map((tasks) {
           tasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           return tasks;
-        })
-        .handleError((error, stackTrace) {
-          debugPrint('Error loading tasks stream: $error');
-          return <TaskModel>[];
         });
   }
 
@@ -205,10 +197,6 @@ class TaskRepository {
               )
               .toList()
             ..sort((a, b) => b.date.compareTo(a.date));
-        })
-        .handleError((error, stackTrace) {
-          debugPrint('Error loading task history stream: $error');
-          return <TaskHistoryModel>[];
         });
   }
 

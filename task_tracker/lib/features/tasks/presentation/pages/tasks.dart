@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
+import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:flutter/material.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
@@ -182,223 +182,289 @@ class _TasksPageState extends ConsumerState<TasksPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PageHeader(
-              header: 'Tasks',
-              sub: 'Checklists with step-level timers and schedules',
-              action: Row(
+      body: StreamBuilder<List<TaskGroupModel>>(
+        stream: _groupsStream!,
+        builder: (context, groupsSnapshot) {
+          if (groupsSnapshot.hasError) {
+            return Center(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _showManageGroupsDialog(context),
-                    icon: const Icon(Icons.folder_open_outlined, size: 20),
-                    label: const Text(
-                      'Groups',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                  Text(
+                    'Error loading task groups: ${groupsSnapshot.error}',
+                    style: TextStyle(
+                      color: colorScheme.error,
+                      fontSize: 16,
                     ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colorScheme.primary,
-                      side: BorderSide(color: colorScheme.primary),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(height: 16),
                   ElevatedButton.icon(
-                    onPressed: () => _showAddTaskDialog(context),
-                    icon: const Icon(Icons.add, size: 20),
-                    label: const Text(
-                      'Add Task',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                    ),
+                    onPressed: () {
+                      setState(() {
+                        _groupsStream = null;
+                        _tasksStream = null;
+                      });
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
+            );
+          }
 
-            // Filter Chips
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                _buildFilterChip('Due Today', 'due', colorScheme),
-                _buildFilterChip('All Tasks', 'all', colorScheme),
-                _buildFilterChip('By Group', 'group', colorScheme),
-                _buildFilterChip('Completed', 'completed', colorScheme),
-              ],
-            ),
-            const SizedBox(height: 24),
+          if (groupsSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            // Nested Streams for Tasks and Groups
-            StreamBuilder<List<TaskGroupModel>>(
-              stream: _groupsStream!,
-              builder: (context, groupsSnapshot) {
-                if (groupsSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+          final groups = groupsSnapshot.data ?? [];
+
+          return StreamBuilder<List<TaskModel>>(
+            stream: _tasksStream!,
+            builder: (context, tasksSnapshot) {
+              if (tasksSnapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Error loading tasks: ${tasksSnapshot.error}',
+                        style: TextStyle(
+                          color: colorScheme.error,
+                          fontSize: 16,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _groupsStream = null;
+                            _tasksStream = null;
+                          });
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (tasksSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final tasks = tasksSnapshot.data ?? [];
+
+              // Dynamically run the check/reset scheduler logic
+              if (tasks.isNotEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _repository.checkAndResetScheduledTasks(
+                    userId: userId,
+                    tasks: tasks,
+                    groups: groups,
+                  );
+                });
+              }
+
+              // Apply filtering and sorting
+
+              // Sort helper
+              int sortTasks(TaskModel a, TaskModel b) {
+                final (aIsScheduled, aStartDate) = _getScheduleInfo(
+                  a,
+                  groups,
+                );
+                final (bIsScheduled, bStartDate) = _getScheduleInfo(
+                  b,
+                  groups,
+                );
+
+                if (aIsScheduled && !bIsScheduled) return -1;
+                if (!aIsScheduled && bIsScheduled) return 1;
+
+                if (!aIsScheduled && !bIsScheduled) {
+                  if (aStartDate != null && bStartDate != null) {
+                    return aStartDate.compareTo(bStartDate);
+                  }
+                  if (aStartDate != null) return -1;
+                  if (bStartDate != null) return 1;
                 }
 
-                final groups = groupsSnapshot.data ?? [];
+                return a.createdAt.compareTo(b.createdAt);
+              }
 
-                return StreamBuilder<List<TaskModel>>(
-                  stream: _tasksStream!,
-                  builder: (context, tasksSnapshot) {
-                    if (tasksSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+              bool isCompletedToday(TaskModel t) {
+                if (t.status != 'completed' ||
+                    t.lastCompletedAt == null) {
+                  return false;
+                }
+                final now = DateTime.now();
+                return t.lastCompletedAt!.year == now.year &&
+                    t.lastCompletedAt!.month == now.month &&
+                    t.lastCompletedAt!.day == now.day;
+              }
 
-                    if (tasksSnapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Error loading tasks: ${tasksSnapshot.error}',
-                          style: TextStyle(
-                            color: colorScheme.error,
-                            fontSize: 16,
-                          ),
-                        ),
-                      );
-                    }
+              Widget bodySliver;
 
-                    final tasks = tasksSnapshot.data ?? [];
+              if (_activeFilter == 'due') {
+                final dueTasks = tasks.where((t) {
+                  final isDue = _isTaskDueToday(t, groups);
+                  return isDue &&
+                      (t.status == 'pending' || isCompletedToday(t));
+                }).toList();
 
-                    // Dynamically run the check/reset scheduler logic
-                    if (tasks.isNotEmpty) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _repository.checkAndResetScheduledTasks(
-                          userId: userId,
-                          tasks: tasks,
-                          groups: groups,
-                        );
-                      });
-                    }
-
-                    // Apply filtering and sorting
-
-                    // Sort helper
-                    int sortTasks(TaskModel a, TaskModel b) {
-                      final (aIsScheduled, aStartDate) = _getScheduleInfo(
-                        a,
-                        groups,
-                      );
-                      final (bIsScheduled, bStartDate) = _getScheduleInfo(
-                        b,
-                        groups,
-                      );
-
-                      if (aIsScheduled && !bIsScheduled) return -1;
-                      if (!aIsScheduled && bIsScheduled) return 1;
-
-                      if (!aIsScheduled && !bIsScheduled) {
-                        if (aStartDate != null && bStartDate != null) {
-                          return aStartDate.compareTo(bStartDate);
-                        }
-                        if (aStartDate != null) return -1;
-                        if (bStartDate != null) return 1;
-                      }
-
-                      return a.createdAt.compareTo(b.createdAt);
-                    }
-
-                    bool isCompletedToday(TaskModel t) {
-                      if (t.status != 'completed' ||
-                          t.lastCompletedAt == null) {
-                        return false;
-                      }
-                      final now = DateTime.now();
-                      return t.lastCompletedAt!.year == now.year &&
-                          t.lastCompletedAt!.month == now.month &&
-                          t.lastCompletedAt!.day == now.day;
-                    }
-
-                    if (_activeFilter == 'due') {
-                      final dueTasks = tasks.where((t) {
-                        final isDue = _isTaskDueToday(t, groups);
-                        return isDue &&
-                            (t.status == 'pending' || isCompletedToday(t));
-                      }).toList();
-
-                      return _buildTaskList(
-                        dueTasks,
-                        groups,
-                        'No tasks due today!',
-                        isInteractive: true,
-                        showCompletionStatus: true,
-                      );
-                    } else if (_activeFilter == 'completed') {
-                      final completedTasks = tasks
-                          .where(
-                            (t) =>
-                                t.status == 'completed' &&
-                                !_isTaskRecurring(t, groups),
-                          )
-                          .toList();
-
-                      completedTasks.sort((a, b) {
-                        if (a.lastCompletedAt != null &&
-                            b.lastCompletedAt != null) {
-                          return b.lastCompletedAt!.compareTo(
-                            a.lastCompletedAt!,
-                          ); // Descending
-                        }
-                        return 0;
-                      });
-
-                      return _buildTaskList(
-                        completedTasks,
-                        groups,
-                        'No completed tasks yet!',
-                        isInteractive: true,
-                        showCompletionStatus: true,
-                      );
-                    } else {
-                      // Filter out all completed one-off tasks for 'all' and 'group' views (they move to Completed tab)
-                      final allOrGroupTasks = tasks.where((t) {
-                        if (_isTaskRecurring(t, groups)) return true;
-                        return t.status == 'pending';
-                      }).toList();
-
-                      allOrGroupTasks.sort(sortTasks);
-
-                      if (_activeFilter == 'all') {
-                        return _buildTaskList(
-                          allOrGroupTasks,
-                          groups,
-                          'No tasks created yet!',
-                          isInteractive: false,
-                          showCompletionStatus: false,
-                        );
-                      } else {
-                        // Group sorting/categorizing
-                        return _buildGroupedTasksView(allOrGroupTasks, groups);
-                      }
-                    }
-                  },
+                bodySliver = _buildTaskListSliver(
+                  dueTasks,
+                  groups,
+                  'No tasks due today!',
+                  isInteractive: true,
+                  showCompletionStatus: true,
                 );
-              },
-            ),
-          ],
-        ),
+              } else if (_activeFilter == 'completed') {
+                final completedTasks = tasks
+                    .where(
+                      (t) =>
+                          t.status == 'completed' &&
+                          !_isTaskRecurring(t, groups),
+                    )
+                    .toList();
+
+                completedTasks.sort((a, b) {
+                  if (a.lastCompletedAt != null &&
+                      b.lastCompletedAt != null) {
+                    return b.lastCompletedAt!.compareTo(
+                      a.lastCompletedAt!,
+                    ); // Descending
+                  }
+                  return 0;
+                });
+
+                bodySliver = _buildTaskListSliver(
+                  completedTasks,
+                  groups,
+                  'No completed tasks yet!',
+                  isInteractive: true,
+                  showCompletionStatus: true,
+                );
+              } else {
+                // Filter out all completed one-off tasks for 'all' and 'group' views (they move to Completed tab)
+                final allOrGroupTasks = tasks.where((t) {
+                  if (_isTaskRecurring(t, groups)) return true;
+                  return t.status == 'pending';
+                }).toList();
+
+                allOrGroupTasks.sort(sortTasks);
+
+                if (_activeFilter == 'all') {
+                  bodySliver = _buildTaskListSliver(
+                    allOrGroupTasks,
+                    groups,
+                    'No tasks created yet!',
+                    isInteractive: false,
+                    showCompletionStatus: false,
+                  );
+                } else {
+                  // Group sorting/categorizing
+                  bodySliver = _buildGroupedTasksSliver(
+                    allOrGroupTasks,
+                    groups,
+                  );
+                }
+              }
+
+              return CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.all(24.0),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          PageHeader(
+                            header: 'Tasks',
+                            sub: 'Checklists with step-level timers and schedules',
+                            action: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: () =>
+                                      _showManageGroupsDialog(context),
+                                  icon: const Icon(
+                                    Icons.folder_open_outlined,
+                                    size: 20,
+                                  ),
+                                  label: const Text(
+                                    'Groups',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: colorScheme.primary,
+                                    side:
+                                        BorderSide(color: colorScheme.primary),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                ElevatedButton.icon(
+                                  onPressed: () => _showAddTaskDialog(context),
+                                  icon: const Icon(Icons.add, size: 20),
+                                  label: const Text(
+                                    'Add Task',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: colorScheme.primary,
+                                    foregroundColor: colorScheme.onPrimary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Filter Chips
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              _buildFilterChip('Due Today', 'due', colorScheme),
+                              _buildFilterChip('All Tasks', 'all', colorScheme),
+                              _buildFilterChip('By Group', 'group', colorScheme),
+                              _buildFilterChip(
+                                'Completed',
+                                'completed',
+                                colorScheme,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  bodySliver,
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -483,7 +549,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     }
   }
 
-  Widget _buildTaskList(
+  Widget _buildTaskListSliver(
     List<TaskModel> taskList,
     List<TaskGroupModel> groups,
     String emptyMessage, {
@@ -492,71 +558,83 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     if (taskList.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.checklist_rtl_rounded,
-              size: 64,
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 24.0),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.checklist_rtl_rounded,
+                  size: 64,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  emptyMessage,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tap "Add Task" to start setting up tasks.',
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              emptyMessage,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap "Add Task" to start setting up tasks.',
-              style: TextStyle(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 14,
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
 
     final (overdue, upcoming) = _partitionTasksByOverdue(taskList, groups);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (overdue.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: Text(
-              'Overdue Tasks',
-              style: TextStyle(
-                color: colorScheme.error,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(24.0, 0, 24.0, 24.0),
+      sliver: SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (overdue.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  'Overdue Tasks',
+                  style: TextStyle(
+                    color: colorScheme.error,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
-          ),
-          _buildTaskListLayout(overdue, groups, true, true),
-        ],
-
-        if (upcoming.isNotEmpty) ...[
-          if (overdue.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Divider(color: colorScheme.outline),
-            const SizedBox(height: 16),
+              _buildTaskListLayout(overdue, groups, true, true),
+            ],
+            if (upcoming.isNotEmpty) ...[
+              if (overdue.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Divider(color: colorScheme.outline),
+                const SizedBox(height: 16),
+              ],
+              _buildTaskListLayout(
+                upcoming,
+                groups,
+                isInteractive,
+                showCompletionStatus,
+              ),
+            ],
           ],
-          _buildTaskListLayout(
-            upcoming,
-            groups,
-            isInteractive,
-            showCompletionStatus,
-          ),
-        ],
-      ],
+        ),
+      ),
     );
   }
 
@@ -626,55 +704,86 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     );
   }
 
-  Widget _buildGroupedTasksView(
+  Widget _buildGroupedTasksSliver(
     List<TaskModel> allTasks,
     List<TaskGroupModel> groups,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
-    // 1. Group tasks by groupId
-    final Map<String?, List<TaskModel>> groupedMap = {};
-    for (var task in allTasks) {
-      groupedMap.putIfAbsent(task.groupId, () => []).add(task);
-    }
-
     if (allTasks.isEmpty) {
-      return Center(
-        child: Text(
-          'No tasks to group yet!',
-          style: TextStyle(
-            color: colorScheme.onSurfaceVariant,
-            fontSize: 16,
-            fontStyle: FontStyle.italic,
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 24.0),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.checklist_rtl_rounded,
+                  size: 64,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No tasks created yet!',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tap "Add Task" to start setting up tasks.',
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Print tasks belonging to groups
-        ...groups.map((group) {
-          final groupTasks = groupedMap[group.id] ?? [];
-          return _buildGroupSection(
-            title: group.name,
-            color: Color(group.colorValue),
-            groupTasks: groupTasks,
-            groups: groups,
-            colorScheme: colorScheme,
-          );
-        }),
+    final Map<String?, List<TaskModel>> groupedMap = {};
+    for (var task in allTasks) {
+      groupedMap.putIfAbsent(task.groupId, () => []).add(task);
+    }
 
-        // 3. Print tasks without a group
-        if (groupedMap.containsKey(null) && groupedMap[null]!.isNotEmpty)
-          _buildGroupSection(
-            title: 'Unassigned / General Tasks',
-            color: colorScheme.onSurfaceVariant,
-            groupTasks: groupedMap[null]!,
-            groups: groups,
-            colorScheme: colorScheme,
-          ),
-      ],
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(24.0, 0, 24.0, 24.0),
+      sliver: SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Print tasks belonging to groups
+            ...groups.map((group) {
+              final groupTasks = groupedMap[group.id] ?? [];
+              return _buildGroupSection(
+                title: group.name,
+                color: Color(group.colorValue),
+                groupTasks: groupTasks,
+                groups: groups,
+                colorScheme: colorScheme,
+              );
+            }),
+
+            // 3. Print tasks without a group
+            if (groupedMap.containsKey(null) && groupedMap[null]!.isNotEmpty)
+              _buildGroupSection(
+                title: 'Unassigned / General Tasks',
+                color: colorScheme.onSurfaceVariant,
+                groupTasks: groupedMap[null]!,
+                groups: groups,
+                colorScheme: colorScheme,
+              ),
+          ],
+        ),
+      ),
     );
   }
 

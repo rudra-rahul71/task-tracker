@@ -3,7 +3,6 @@ import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:task_tracker/main.dart';
-import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 
 class HostingWizardPage extends ConsumerWidget {
   final ConfigService configService;

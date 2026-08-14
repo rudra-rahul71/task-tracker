@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
-import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:task_tracker/main.dart';
@@ -280,9 +279,33 @@ class _HomePageState extends ConsumerState<HomePage> {
 
           if (snapshot.hasError) {
             return Center(
-              child: Text(
-                'Error loading dashboard: ${snapshot.error}',
-                style: TextStyle(color: colorScheme.error, fontSize: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Error loading dashboard: ${snapshot.error}',
+                    style: TextStyle(color: colorScheme.error, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _combinedStream = null;
+                        _trackersStream = null;
+                        _tasksStream = null;
+                        _groupsStream = null;
+                        _historyStream = null;
+                        _taskHistoryStream = null;
+                        _currentUserId = null;
+                        _historyStreamUserId = null;
+                        _cachedFocusedMonth = null;
+                      });
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
+                ],
               ),
             );
           }
