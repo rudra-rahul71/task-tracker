@@ -33,6 +33,7 @@ class TrackerHistoryModel {
 
   Map<String, dynamic> toMap() {
     return {
+      if (id.isNotEmpty) 'id': id,
       'userId': userId,
       'trackerId': trackerId,
       'trackerName': trackerName,

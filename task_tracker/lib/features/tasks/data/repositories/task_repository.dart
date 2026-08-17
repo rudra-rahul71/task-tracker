@@ -15,6 +15,7 @@ class TaskRepository {
         collectionName: 'task_groups',
         toMap: (group) => group.toMap(),
         fromMap: (map, id) => TaskGroupModel.fromMap(map, id),
+        getId: (group) => group.id,
       );
 
   TypedCollection<TaskModel> get _taskCollection => TypedCollection<TaskModel>(
@@ -22,6 +23,7 @@ class TaskRepository {
     collectionName: 'tasks',
     toMap: (task) => task.toMap(),
     fromMap: (map, id) => TaskModel.fromMap(map, id),
+    getId: (task) => task.id,
   );
 
   TypedCollection<TaskHistoryModel> get _historyCollection =>
@@ -30,6 +32,7 @@ class TaskRepository {
         collectionName: 'task_history',
         toMap: (history) => history.toMap(),
         fromMap: (map, id) => TaskHistoryModel.fromMap(map, id),
+        getId: (history) => history.id,
       );
 
   // --- GROUPS ---
@@ -205,55 +208,67 @@ class TaskRepository {
         });
   }
 
+  bool _isResettingScheduledTasks = false;
+
   // Scan and reset tasks if they have crossed into a new scheduling cycle
   Future<void> checkAndResetScheduledTasks({
     required String userId,
     required List<TaskModel> tasks,
     required List<TaskGroupModel> groups,
   }) async {
-    final now = DateTime.now();
-    final groupMap = {for (var g in groups) g.id: g};
-    final List<TaskModel> tasksToReset = [];
+    if (_isResettingScheduledTasks) return;
+    _isResettingScheduledTasks = true;
 
-    for (var task in tasks) {
-      // Determine effective schedule
-      TaskSchedule? effectiveSchedule;
-      if (task.schedule != null && task.schedule!.type != 'none') {
-        effectiveSchedule = task.schedule;
-      } else if (task.groupId != null) {
-        final group = groupMap[task.groupId];
-        if (group != null &&
-            group.schedule != null &&
-            group.schedule!.type != 'none') {
-          effectiveSchedule = group.schedule;
+    try {
+      final now = DateTime.now();
+      final groupMap = {for (var g in groups) g.id: g};
+      final List<TaskModel> tasksToReset = [];
+
+      for (var task in tasks) {
+        if (task.id.isEmpty) continue;
+        // Determine effective schedule
+        TaskSchedule? effectiveSchedule;
+        if (task.schedule != null && task.schedule!.type != 'none') {
+          effectiveSchedule = task.schedule;
+        } else if (task.groupId != null) {
+          final group = groupMap[task.groupId];
+          if (group != null &&
+              group.schedule != null &&
+              group.schedule!.type != 'none') {
+            effectiveSchedule = group.schedule;
+          }
         }
-      }
-      if (effectiveSchedule != null) {
-        if (effectiveSchedule.needsReset(now, task.lastResetAt)) {
-          // Task needs a reset for the new cycle!
-          final resetSteps = task.steps.map((step) {
-            return step.copyWith(
-              isCompleted: false,
-              clearTimerStartedAt: true,
-              clearTimerPausedAt: true,
-              timerSecondsRemaining: step.timerDuration,
-              isTimerConfirmed: false,
+        if (effectiveSchedule != null) {
+          if (effectiveSchedule.needsReset(now, task.lastResetAt)) {
+            // Task needs a reset for the new cycle!
+            final resetSteps = task.steps.map((step) {
+              return step.copyWith(
+                isCompleted: false,
+                clearTimerStartedAt: true,
+                clearTimerPausedAt: true,
+                timerSecondsRemaining: step.timerDuration,
+                isTimerConfirmed: false,
+              );
+            }).toList();
+
+            tasksToReset.add(
+              task.copyWith(
+                steps: resetSteps,
+                status: 'pending',
+                lastResetAt: now,
+              ),
             );
-          }).toList();
-
-          tasksToReset.add(
-            task.copyWith(
-              steps: resetSteps,
-              status: 'pending',
-              lastResetAt: now,
-            ),
-          );
+          }
         }
       }
-    }
 
-    if (tasksToReset.isNotEmpty) {
-      await _taskCollection.saveBatch(tasksToReset);
+      if (tasksToReset.isNotEmpty) {
+        await _taskCollection.saveBatch(tasksToReset);
+      }
+    } catch (e) {
+      debugPrint('Error in checkAndResetScheduledTasks: $e');
+    } finally {
+      _isResettingScheduledTasks = false;
     }
   }
 }

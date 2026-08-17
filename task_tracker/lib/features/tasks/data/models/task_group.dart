@@ -33,6 +33,7 @@ class TaskGroupModel {
 
   Map<String, dynamic> toMap() {
     return {
+      if (id.isNotEmpty) 'id': id,
       'userId': userId,
       'name': name,
       'colorValue': colorValue,

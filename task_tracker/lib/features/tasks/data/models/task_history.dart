@@ -36,6 +36,7 @@ class TaskHistoryModel {
 
   Map<String, dynamic> toMap() {
     return {
+      if (id.isNotEmpty) 'id': id,
       'userId': userId,
       'taskId': taskId,
       'taskName': taskName,

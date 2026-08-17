@@ -14,6 +14,7 @@ class TrackerRepository {
         collectionName: 'trackers',
         toMap: (tracker) => tracker.toMap(),
         fromMap: (map, id) => TrackerModel.fromMap(map, id),
+        getId: (tracker) => tracker.id,
       );
 
   TypedCollection<TrackerHistoryModel> get _historyCollection =>
@@ -22,6 +23,7 @@ class TrackerRepository {
         collectionName: 'tracker_history',
         toMap: (history) => history.toMap(),
         fromMap: (map, id) => TrackerHistoryModel.fromMap(map, id),
+        getId: (history) => history.id,
       );
 
   // Helper method to backfill completion entries for maintain habits started in the past

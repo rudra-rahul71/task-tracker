@@ -235,6 +235,7 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
           schedule: taskSchedule,
           steps: taskSteps,
           status: 'pending',
+          lastResetAt: DateTime.now(),
           createdAt: DateTime.now(),
         );
         await _repository.addTask(newTask);

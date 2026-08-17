@@ -56,6 +56,7 @@ class TaskModel {
 
   Map<String, dynamic> toMap() {
     return {
+      if (id.isNotEmpty) 'id': id,
       'userId': userId,
       'groupId': groupId,
       'name': name,
