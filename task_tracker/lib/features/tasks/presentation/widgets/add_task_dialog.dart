@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
-import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
-import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
+import 'package:task_tracker/features/tasks/presentation/providers/task_providers.dart';
 import 'schedule_picker_section.dart';
 import 'task_steps_editor.dart';
 
@@ -44,12 +43,10 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
   ];
 
   bool _isLoading = false;
-  List<TaskGroupModel> _groups = [];
 
   @override
   void initState() {
     super.initState();
-    _loadGroups();
 
     if (widget.task != null) {
       _name = widget.task!.name;
@@ -106,19 +103,6 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
     );
   }
 
-  void _loadGroups() {
-    final userId = ref.read(authRepositoryProvider).currentUser?.uid;
-    if (userId == null) return;
-
-    _repository.getGroups(userId).first.then((groupsList) {
-      if (mounted) {
-        setState(() {
-          _groups = groupsList;
-        });
-      }
-    });
-  }
-
   void _addStepField() {
     setState(() {
       _stepsList.add({'name': '', 'hasTimer': false, 'minutes': 10});
@@ -136,7 +120,7 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    final userId = ref.read(authRepositoryProvider).currentUser?.uid;
+    final userId = ref.read(userIdProvider);
     final navigator = Navigator.of(context);
 
     if (userId == null) {
@@ -273,8 +257,9 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final groups = ref.watch(taskGroupsProvider).value ?? [];
 
-    final groupOptions = _groups.map((g) {
+    final groupOptions = groups.map((g) {
       final hasGroupSched = g.schedule != null && g.schedule!.type != 'none';
       final schedText = hasGroupSched
           ? ' (${g.schedule!.type})'
@@ -371,7 +356,7 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
                           DropdownButtonFormField<String>(
                             initialValue:
                                 (_selectedGroupId != null &&
-                                    _groups.any(
+                                    groups.any(
                                       (g) => g.id == _selectedGroupId,
                                     ))
                                 ? _selectedGroupId
@@ -406,7 +391,7 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
                               setState(() {
                                 _selectedGroupId = val;
                                 if (_selectedGroupId != null) {
-                                  final group = _groups.firstWhere(
+                                  final group = groups.firstWhere(
                                     (g) => g.id == _selectedGroupId,
                                   );
                                   if (group.schedule != null &&
@@ -426,7 +411,7 @@ class _AddTaskDialogState extends ConsumerState<AddTaskDialog> {
                           // Extracted Schedule Picker Section
                           SchedulePickerSection(
                             selectedGroupId: _selectedGroupId,
-                            groups: _groups,
+                            groups: groups,
                             scheduleSetting: _scheduleSetting,
                             onScheduleSettingChanged: (val) =>
                                 setState(() => _scheduleSetting = val),

@@ -1,40 +1,16 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
-import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
+import 'package:task_tracker/features/tasks/presentation/providers/task_providers.dart';
 import 'package:task_tracker/features/tasks/presentation/widgets/add_task_dialog.dart';
 import 'package:task_tracker/features/tasks/presentation/widgets/manage_groups_dialog.dart';
 import 'package:task_tracker/features/tasks/presentation/widgets/task_card.dart';
 
-class TasksPage extends ConsumerStatefulWidget {
+class TasksPage extends ConsumerWidget {
   const TasksPage({super.key});
-
-  @override
-  ConsumerState<TasksPage> createState() => _TasksPageState();
-}
-
-class _TasksPageState extends ConsumerState<TasksPage> {
-  TaskRepository get _repository => ref.read(taskRepositoryProvider);
-  String _activeFilter =
-      'due'; // 'due' (Due Today), 'all' (All Tasks), 'group' (By Group)
-  String? _currentUserId;
-  Stream<List<TaskGroupModel>>? _groupsStream;
-  Stream<List<TaskModel>>? _tasksStream;
-
-  void _initStreamsForUser(String userId) {
-    if (_currentUserId == userId &&
-        _groupsStream != null &&
-        _tasksStream != null) {
-      return;
-    }
-    _currentUserId = userId;
-    _groupsStream = _repository.getGroups(userId);
-    _tasksStream = _repository.getTasks(userId);
-  }
 
   void _showAddTaskDialog(BuildContext context) {
     showDialog(
@@ -51,13 +27,22 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     );
   }
 
-  Widget _buildFilterChip(String label, String value, ColorScheme colorScheme) {
-    final isSelected = _activeFilter == value;
+  Widget _buildFilterChip(
+    BuildContext context,
+    WidgetRef ref,
+    String label,
+    String value,
+    String activeFilter,
+    ColorScheme colorScheme,
+  ) {
+    final isSelected = activeFilter == value;
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (selected) {
-        if (selected) setState(() => _activeFilter = value);
+        if (selected) {
+          ref.read(taskFilterProvider.notifier).state = value;
+        }
       },
       selectedColor: colorScheme.primary.withValues(alpha: 0.2),
       labelStyle: TextStyle(
@@ -67,109 +52,27 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     );
   }
 
-  TaskGroupModel? _findGroup(String? groupId, List<TaskGroupModel> groups) {
-    if (groupId == null) return null;
-    for (final g in groups) {
-      if (g.id == groupId) return g;
-    }
-    return null;
-  }
-
-  (bool, DateTime?) _getScheduleInfo(
-    TaskModel task,
-    List<TaskGroupModel> groups,
-  ) {
-    if (task.schedule != null) {
-      return (task.schedule!.type != 'none', task.schedule!.startDate);
-    }
-    final group = _findGroup(task.groupId, groups);
-    if (group?.schedule != null) {
-      return (group!.schedule!.type != 'none', group.schedule!.startDate);
-    }
-    return (false, null);
-  }
-
-  (List<TaskModel>, List<TaskModel>) _partitionTasksByOverdue(
-    List<TaskModel> tasks,
-    List<TaskGroupModel> groups,
-  ) {
-    final upcoming = <TaskModel>[];
-    final overdue = <TaskModel>[];
-    for (final t in tasks) {
-      if (_isTaskOverdueOneOff(t, groups)) {
-        overdue.add(t);
-      } else {
-        upcoming.add(t);
-      }
-    }
-    return (overdue, upcoming);
-  }
-
-  bool _isTaskDueToday(TaskModel task, List<TaskGroupModel> groups) {
-    final now = DateTime.now();
-
-    // 1. Task has its own schedule
-    if (task.schedule != null) {
-      if (task.schedule!.type != 'none' || task.schedule!.startDate != null) {
-        return task.schedule!.isDueOnDate(now);
-      }
-    } else {
-      // 2. Task inherits its group schedule
-      final group = _findGroup(task.groupId, groups);
-      if (group?.schedule != null) {
-        if (group!.schedule!.type != 'none' ||
-            group.schedule!.startDate != null) {
-          return group.schedule!.isDueOnDate(now);
-        }
-      }
-    }
-
-    // 3. Unscheduled tasks: show under "Due Today" if they are pending (so they don't get lost)
-    // or if they were completed today.
-    final completedToday =
-        task.status == 'completed' &&
-        task.lastCompletedAt != null &&
-        task.lastCompletedAt!.year == now.year &&
-        task.lastCompletedAt!.month == now.month &&
-        task.lastCompletedAt!.day == now.day;
-    return task.status == 'pending' || completedToday;
-  }
-
-  bool _isTaskRecurring(TaskModel task, List<TaskGroupModel> groups) {
-    if (task.schedule != null) {
-      return task.schedule!.type != 'none';
-    }
-    final group = _findGroup(task.groupId, groups);
-    return group?.schedule?.type != null && group!.schedule!.type != 'none';
-  }
-
-  bool _isTaskOverdueOneOff(TaskModel task, List<TaskGroupModel> groups) {
-    if (task.status != 'pending') return false;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    if (task.schedule != null) {
-      if (task.schedule!.type == 'none' && task.schedule!.startDate != null) {
-        final sDate = task.schedule!.startDate!;
-        return DateTime(sDate.year, sDate.month, sDate.day).isBefore(today);
-      }
-      return false;
-    }
-
-    final g = _findGroup(task.groupId, groups);
-    if (g?.schedule != null) {
-      if (g!.schedule!.type == 'none' && g.schedule!.startDate != null) {
-        final sDate = g.schedule!.startDate!;
-        return DateTime(sDate.year, sDate.month, sDate.day).isBefore(today);
-      }
-    }
-    return false;
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final userId = ref.read(authRepositoryProvider).currentUser?.uid;
+    final userId = ref.watch(userIdProvider);
+    final activeFilter = ref.watch(taskFilterProvider);
+    final filteredTasksAsync = ref.watch(filteredTasksProvider);
+    final groupsAsync = ref.watch(taskGroupsProvider);
+
+    // Auto-schedule check side-effect via reactive listener
+    ref.listen<AsyncValue<List<TaskModel>>>(tasksStreamProvider, (prev, next) {
+      next.whenData((tasks) {
+        final groups = groupsAsync.value ?? [];
+        if (userId != null && tasks.isNotEmpty) {
+          ref.read(taskRepositoryProvider).checkAndResetScheduledTasks(
+            userId: userId,
+            tasks: tasks,
+            groups: groups,
+          );
+        }
+      });
+    });
 
     if (userId == null) {
       return Scaffold(
@@ -178,7 +81,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       );
     }
 
-    _initStreamsForUser(userId);
+    final groups = groupsAsync.value ?? [];
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -242,159 +145,83 @@ class _TasksPageState extends ConsumerState<TasksPage> {
               spacing: 12,
               runSpacing: 8,
               children: [
-                _buildFilterChip('Due Today', 'due', colorScheme),
-                _buildFilterChip('All Tasks', 'all', colorScheme),
-                _buildFilterChip('By Group', 'group', colorScheme),
-                _buildFilterChip('Completed', 'completed', colorScheme),
+                _buildFilterChip(
+                  context,
+                  ref,
+                  'Due Today',
+                  'due',
+                  activeFilter,
+                  colorScheme,
+                ),
+                _buildFilterChip(
+                  context,
+                  ref,
+                  'All Tasks',
+                  'all',
+                  activeFilter,
+                  colorScheme,
+                ),
+                _buildFilterChip(
+                  context,
+                  ref,
+                  'By Group',
+                  'group',
+                  activeFilter,
+                  colorScheme,
+                ),
+                _buildFilterChip(
+                  context,
+                  ref,
+                  'Completed',
+                  'completed',
+                  activeFilter,
+                  colorScheme,
+                ),
               ],
             ),
             const SizedBox(height: 24),
 
-            // Nested Streams for Tasks and Groups
-            StreamBuilder<List<TaskGroupModel>>(
-              stream: _groupsStream!,
-              builder: (context, groupsSnapshot) {
-                if (groupsSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+            // Filtered tasks content via AsyncValue
+            filteredTasksAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Text(
+                  'Error loading tasks: $error',
+                  style: TextStyle(color: colorScheme.error, fontSize: 16),
+                ),
+              ),
+              data: (tasks) {
+                if (activeFilter == 'due') {
+                  return _buildTaskList(
+                    context,
+                    tasks,
+                    groups,
+                    'No tasks due today!',
+                    isInteractive: true,
+                    showCompletionStatus: true,
+                  );
+                } else if (activeFilter == 'completed') {
+                  return _buildTaskList(
+                    context,
+                    tasks,
+                    groups,
+                    'No completed tasks yet!',
+                    isInteractive: true,
+                    showCompletionStatus: true,
+                  );
+                } else if (activeFilter == 'all') {
+                  return _buildTaskList(
+                    context,
+                    tasks,
+                    groups,
+                    'No tasks created yet!',
+                    isInteractive: false,
+                    showCompletionStatus: false,
+                  );
+                } else {
+                  // 'group'
+                  return _buildGroupedTasksView(context, tasks, groups);
                 }
-
-                final groups = groupsSnapshot.data ?? [];
-
-                return StreamBuilder<List<TaskModel>>(
-                  stream: _tasksStream!,
-                  builder: (context, tasksSnapshot) {
-                    if (tasksSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (tasksSnapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Error loading tasks: ${tasksSnapshot.error}',
-                          style: TextStyle(
-                            color: colorScheme.error,
-                            fontSize: 16,
-                          ),
-                        ),
-                      );
-                    }
-
-                    final tasks = tasksSnapshot.data ?? [];
-
-                    // Dynamically run the check/reset scheduler logic
-                    if (tasks.isNotEmpty) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _repository.checkAndResetScheduledTasks(
-                          userId: userId,
-                          tasks: tasks,
-                          groups: groups,
-                        );
-                      });
-                    }
-
-                    // Apply filtering and sorting
-
-                    // Sort helper
-                    int sortTasks(TaskModel a, TaskModel b) {
-                      final (aIsScheduled, aStartDate) = _getScheduleInfo(
-                        a,
-                        groups,
-                      );
-                      final (bIsScheduled, bStartDate) = _getScheduleInfo(
-                        b,
-                        groups,
-                      );
-
-                      if (aIsScheduled && !bIsScheduled) return -1;
-                      if (!aIsScheduled && bIsScheduled) return 1;
-
-                      if (!aIsScheduled && !bIsScheduled) {
-                        if (aStartDate != null && bStartDate != null) {
-                          return aStartDate.compareTo(bStartDate);
-                        }
-                        if (aStartDate != null) return -1;
-                        if (bStartDate != null) return 1;
-                      }
-
-                      return a.createdAt.compareTo(b.createdAt);
-                    }
-
-                    bool isCompletedToday(TaskModel t) {
-                      if (t.status != 'completed' ||
-                          t.lastCompletedAt == null) {
-                        return false;
-                      }
-                      final now = DateTime.now();
-                      return t.lastCompletedAt!.year == now.year &&
-                          t.lastCompletedAt!.month == now.month &&
-                          t.lastCompletedAt!.day == now.day;
-                    }
-
-                    if (_activeFilter == 'due') {
-                      final dueTasks = tasks.where((t) {
-                        final isDue = _isTaskDueToday(t, groups);
-                        return isDue &&
-                            (t.status == 'pending' || isCompletedToday(t));
-                      }).toList();
-
-                      return _buildTaskList(
-                        dueTasks,
-                        groups,
-                        'No tasks due today!',
-                        isInteractive: true,
-                        showCompletionStatus: true,
-                      );
-                    } else if (_activeFilter == 'completed') {
-                      final completedTasks = tasks
-                          .where(
-                            (t) =>
-                                t.status == 'completed' &&
-                                !_isTaskRecurring(t, groups),
-                          )
-                          .toList();
-
-                      completedTasks.sort((a, b) {
-                        if (a.lastCompletedAt != null &&
-                            b.lastCompletedAt != null) {
-                          return b.lastCompletedAt!.compareTo(
-                            a.lastCompletedAt!,
-                          ); // Descending
-                        }
-                        return 0;
-                      });
-
-                      return _buildTaskList(
-                        completedTasks,
-                        groups,
-                        'No completed tasks yet!',
-                        isInteractive: true,
-                        showCompletionStatus: true,
-                      );
-                    } else {
-                      // Filter out all completed one-off tasks for 'all' and 'group' views (they move to Completed tab)
-                      final allOrGroupTasks = tasks.where((t) {
-                        if (_isTaskRecurring(t, groups)) return true;
-                        return t.status == 'pending';
-                      }).toList();
-
-                      allOrGroupTasks.sort(sortTasks);
-
-                      if (_activeFilter == 'all') {
-                        return _buildTaskList(
-                          allOrGroupTasks,
-                          groups,
-                          'No tasks created yet!',
-                          isInteractive: false,
-                          showCompletionStatus: false,
-                        );
-                      } else {
-                        // Group sorting/categorizing
-                        return _buildGroupedTasksView(allOrGroupTasks, groups);
-                      }
-                    }
-                  },
-                );
               },
             ),
           ],
@@ -404,6 +231,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   }
 
   Widget _buildTaskListLayout(
+    BuildContext context,
     List<TaskModel> tasks,
     List<TaskGroupModel> groups,
     bool isInteractive,
@@ -433,7 +261,6 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                       child: TaskCard(
                         task: task,
                         groups: groups,
-                        repository: _repository,
                         isInteractive: isInteractive,
                         showCompletionStatus: showCompletionStatus,
                       ),
@@ -452,7 +279,6 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                       child: TaskCard(
                         task: task,
                         groups: groups,
-                        repository: _repository,
                         isInteractive: isInteractive,
                         showCompletionStatus: showCompletionStatus,
                       ),
@@ -472,7 +298,6 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 child: TaskCard(
                   task: task,
                   groups: groups,
-                  repository: _repository,
                   isInteractive: isInteractive,
                   showCompletionStatus: showCompletionStatus,
                 ),
@@ -484,6 +309,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   }
 
   Widget _buildTaskList(
+    BuildContext context,
     List<TaskModel> taskList,
     List<TaskGroupModel> groups,
     String emptyMessage, {
@@ -523,7 +349,10 @@ class _TasksPageState extends ConsumerState<TasksPage> {
       );
     }
 
-    final (overdue, upcoming) = _partitionTasksByOverdue(taskList, groups);
+    final (overdue, upcoming) = TaskEvaluationUtils.partitionTasksByOverdue(
+      taskList,
+      groups,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,7 +369,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
               ),
             ),
           ),
-          _buildTaskListLayout(overdue, groups, true, true),
+          _buildTaskListLayout(context, overdue, groups, true, true),
         ],
 
         if (upcoming.isNotEmpty) ...[
@@ -550,6 +379,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
             const SizedBox(height: 16),
           ],
           _buildTaskListLayout(
+            context,
             upcoming,
             groups,
             isInteractive,
@@ -560,17 +390,16 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     );
   }
 
-  Widget _buildGroupSection({
+  Widget _buildGroupSection(
+    BuildContext context, {
     required String title,
     required Color color,
     required List<TaskModel> groupTasks,
     required List<TaskGroupModel> groups,
     required ColorScheme colorScheme,
   }) {
-    final (overdueTasks, upcomingTasks) = _partitionTasksByOverdue(
-      groupTasks,
-      groups,
-    );
+    final (overdueTasks, upcomingTasks) =
+        TaskEvaluationUtils.partitionTasksByOverdue(groupTasks, groups);
 
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -619,7 +448,12 @@ class _TasksPageState extends ConsumerState<TasksPage> {
                 vertical: 8.0,
                 horizontal: 16.0,
               ),
-              child: _buildGroupTaskCards(overdueTasks, upcomingTasks, groups),
+              child: _buildGroupTaskCards(
+                context,
+                overdueTasks,
+                upcomingTasks,
+                groups,
+              ),
             ),
         ],
       ),
@@ -627,11 +461,11 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   }
 
   Widget _buildGroupedTasksView(
+    BuildContext context,
     List<TaskModel> allTasks,
     List<TaskGroupModel> groups,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
-    // 1. Group tasks by groupId
     final Map<String?, List<TaskModel>> groupedMap = {};
     for (var task in allTasks) {
       groupedMap.putIfAbsent(task.groupId, () => []).add(task);
@@ -653,10 +487,10 @@ class _TasksPageState extends ConsumerState<TasksPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Print tasks belonging to groups
         ...groups.map((group) {
           final groupTasks = groupedMap[group.id] ?? [];
           return _buildGroupSection(
+            context,
             title: group.name,
             color: Color(group.colorValue),
             groupTasks: groupTasks,
@@ -664,10 +498,9 @@ class _TasksPageState extends ConsumerState<TasksPage> {
             colorScheme: colorScheme,
           );
         }),
-
-        // 3. Print tasks without a group
         if (groupedMap.containsKey(null) && groupedMap[null]!.isNotEmpty)
           _buildGroupSection(
+            context,
             title: 'Unassigned / General Tasks',
             color: colorScheme.onSurfaceVariant,
             groupTasks: groupedMap[null]!,
@@ -679,6 +512,7 @@ class _TasksPageState extends ConsumerState<TasksPage> {
   }
 
   Widget _buildGroupTaskCards(
+    BuildContext context,
     List<TaskModel> overdueTasks,
     List<TaskModel> upcomingTasks,
     List<TaskGroupModel> groups,
@@ -699,14 +533,14 @@ class _TasksPageState extends ConsumerState<TasksPage> {
               ),
             ),
           ),
-          _buildTaskListLayout(overdueTasks, groups, false, false),
+          _buildTaskListLayout(context, overdueTasks, groups, false, false),
         ],
         if (upcomingTasks.isNotEmpty) ...[
           if (overdueTasks.isNotEmpty) ...[
             Divider(color: colorScheme.outline),
             const SizedBox(height: 8),
           ],
-          _buildTaskListLayout(upcomingTasks, groups, false, false),
+          _buildTaskListLayout(context, upcomingTasks, groups, false, false),
         ],
       ],
     );

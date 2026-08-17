@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
-import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
+import 'package:task_tracker/main.dart';
+import 'package:task_tracker/features/tasks/presentation/providers/task_providers.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_step.dart';
@@ -13,8 +14,8 @@ import 'task_delete_dialog.dart';
 /// Card widget displaying a task with progress bar, expandable checklist, and actions.
 class TaskCard extends ConsumerStatefulWidget {
   final TaskModel task;
-  final List<TaskGroupModel> groups;
-  final TaskRepository repository;
+  final List<TaskGroupModel>? groups;
+  final TaskRepository? repository;
   final bool isInteractive;
   final bool showCompletionStatus;
   final bool showEditAction;
@@ -23,8 +24,8 @@ class TaskCard extends ConsumerStatefulWidget {
   const TaskCard({
     super.key,
     required this.task,
-    required this.groups,
-    required this.repository,
+    this.groups,
+    this.repository,
     this.isInteractive = true,
     this.showCompletionStatus = true,
     this.showEditAction = true,
@@ -38,6 +39,11 @@ class TaskCard extends ConsumerStatefulWidget {
 class _TaskCardState extends ConsumerState<TaskCard> {
   bool _isExpanded = false;
 
+  TaskRepository get _effectiveRepo =>
+      widget.repository ?? ref.read(taskRepositoryProvider);
+  List<TaskGroupModel> get _effectiveGroups =>
+      widget.groups ?? ref.watch(taskGroupsProvider).value ?? [];
+
   static const List<String> _daysOfWeekNames = [
     'Mon',
     'Tue',
@@ -50,7 +56,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
 
   TaskGroupModel? _getGroup() {
     if (widget.task.groupId == null) return null;
-    for (final g in widget.groups) {
+    for (final g in _effectiveGroups) {
       if (g.id == widget.task.groupId) return g;
     }
     return null;
@@ -185,7 +191,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
       steps: updatedSteps,
       status: newStatus,
     );
-    await widget.repository.updateTask(
+    await _effectiveRepo.updateTask(
       updatedTask,
       oldStatus: widget.task.status,
     );
@@ -208,7 +214,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     );
 
     try {
-      await widget.repository.updateTask(
+      await _effectiveRepo.updateTask(
         updatedTask,
         oldStatus: widget.task.status,
       );
@@ -234,7 +240,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
     );
 
     try {
-      await widget.repository.updateTask(
+      await _effectiveRepo.updateTask(
         updatedTask,
         oldStatus: widget.task.status,
       );
@@ -262,7 +268,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
 
     if (confirm == true) {
       try {
-        await widget.repository.deleteTask(widget.task.userId, widget.task.id);
+        await _effectiveRepo.deleteTask(widget.task.userId, widget.task.id);
         if (mounted) {
           AppBannerService.showSuccess(context, 'Task deleted');
         }
@@ -553,7 +559,7 @@ class _TaskCardState extends ConsumerState<TaskCard> {
                           task: widget.task,
                           stepIndex: index,
                           step: step,
-                          repository: widget.repository,
+                          repository: _effectiveRepo,
                           color: color,
                           isInteractive: widget.isInteractive,
                           showCompletionStatus: widget.showCompletionStatus,

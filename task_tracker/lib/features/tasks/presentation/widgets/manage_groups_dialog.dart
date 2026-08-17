@@ -1,13 +1,12 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_backend_bridge/dynamic_backend_bridge.dart';
-import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/loading_overlay.dart';
 import 'package:task_tracker/features/tasks/data/models/task_group.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 import 'package:task_tracker/features/tasks/data/repositories/task_repository.dart';
+import 'package:task_tracker/features/tasks/presentation/providers/task_providers.dart';
 import 'group_list_item.dart';
 import 'group_form_view.dart';
 
@@ -23,7 +22,7 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
   TaskRepository get _repository => ref.read(taskRepositoryProvider);
   final _formKey = GlobalKey<FormState>();
 
-  String? get _userId => ref.read(authRepositoryProvider).currentUser?.uid;
+  String? get _userId => ref.read(userIdProvider);
 
   String _currentView = 'list'; // 'list', 'add', 'edit'
   String? _editingGroupId;
@@ -40,29 +39,6 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
   DateTime _startDate = DateTime.now();
 
   bool _isLoading = false;
-  List<TaskGroupModel>? _groups;
-  StreamSubscription<List<TaskGroupModel>>? _groupsSubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    final userId = _userId;
-    if (userId != null) {
-      _groupsSubscription = _repository.getGroups(userId).listen((groups) {
-        if (mounted) {
-          setState(() {
-            _groups = groups;
-          });
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _groupsSubscription?.cancel();
-    super.dispose();
-  }
 
   void _openAddView() {
     setState(() {
@@ -313,16 +289,21 @@ class _ManageGroupsDialogState extends ConsumerState<ManageGroupsDialog> {
   }
 
   Widget _buildListView(ColorScheme colorScheme) {
+    final groupsAsync = ref.watch(taskGroupsProvider);
+
     return Expanded(
       child: Column(
         children: [
           Expanded(
-            child: Builder(
-              builder: (context) {
-                if (_groups == null) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final groups = _groups!;
+            child: groupsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Text(
+                  'Error: $error',
+                  style: TextStyle(color: colorScheme.error),
+                ),
+              ),
+              data: (groups) {
                 if (groups.isEmpty) {
                   return Center(
                     child: Text(

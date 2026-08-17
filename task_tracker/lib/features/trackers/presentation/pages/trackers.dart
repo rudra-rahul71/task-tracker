@@ -1,33 +1,15 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dynamic_backend_bridge/src/providers/core_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/core/widgets/page_header.dart';
+import 'package:task_tracker/features/tasks/presentation/providers/task_providers.dart';
 import 'package:task_tracker/features/trackers/data/models/tracker.dart';
-import 'package:task_tracker/features/trackers/data/repositories/tracker_repository.dart';
+import 'package:task_tracker/features/trackers/presentation/providers/tracker_providers.dart';
 import 'package:task_tracker/features/trackers/presentation/widgets/add_tracker_dialog.dart';
 import 'package:task_tracker/features/trackers/presentation/widgets/tracker_card.dart';
 
-class TrackersPage extends ConsumerStatefulWidget {
+class TrackersPage extends ConsumerWidget {
   const TrackersPage({super.key});
-
-  @override
-  ConsumerState<TrackersPage> createState() => _TrackersPageState();
-}
-
-class _TrackersPageState extends ConsumerState<TrackersPage> {
-  TrackerRepository get _repository => ref.read(trackerRepositoryProvider);
-  String _activeFilter = 'all'; // 'all', 'maintain', 'quit'
-  String? _currentUserId;
-  Stream<List<TrackerModel>>? _trackersStream;
-
-  void _initStreamsForUser(String userId) {
-    if (_currentUserId == userId && _trackersStream != null) {
-      return;
-    }
-    _currentUserId = userId;
-    _trackersStream = _repository.getTrackers(userId);
-  }
 
   void _showAddTrackerDialog(BuildContext context) {
     showDialog(
@@ -38,9 +20,31 @@ class _TrackersPageState extends ConsumerState<TrackersPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final userId = ref.read(authRepositoryProvider).currentUser?.uid;
+    final userId = ref.watch(userIdProvider);
+    final activeFilter = ref.watch(trackerFilterProvider);
+    final filteredTrackersAsync = ref.watch(filteredTrackersProvider);
+
+    // Auto-reset check side-effect for maintain trackers via reactive listener
+    ref.listen<AsyncValue<List<TrackerModel>>>(trackersStreamProvider, (
+      prev,
+      next,
+    ) {
+      next.whenData((trackers) {
+        if (trackers.isNotEmpty) {
+          final now = DateTime.now();
+          for (final tracker in trackers) {
+            final newStart = tracker.getNewStartDateIfResetNeeded(now);
+            if (newStart != null) {
+              ref
+                  .read(trackerRepositoryProvider)
+                  .autoResetTracker(tracker, newStart);
+            }
+          }
+        }
+      });
+    });
 
     if (userId == null) {
       return Scaffold(
@@ -48,8 +52,6 @@ class _TrackersPageState extends ConsumerState<TrackersPage> {
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-
-    _initStreamsForUser(userId);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -90,13 +92,15 @@ class _TrackersPageState extends ConsumerState<TrackersPage> {
               children: [
                 ChoiceChip(
                   label: const Text('All Trackers'),
-                  selected: _activeFilter == 'all',
+                  selected: activeFilter == 'all',
                   onSelected: (selected) {
-                    if (selected) setState(() => _activeFilter = 'all');
+                    if (selected) {
+                      ref.read(trackerFilterProvider.notifier).state = 'all';
+                    }
                   },
                   selectedColor: colorScheme.primary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
-                    color: _activeFilter == 'all'
+                    color: activeFilter == 'all'
                         ? colorScheme.primary
                         : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
@@ -104,13 +108,16 @@ class _TrackersPageState extends ConsumerState<TrackersPage> {
                 ),
                 ChoiceChip(
                   label: const Text('Maintaining'),
-                  selected: _activeFilter == 'maintain',
+                  selected: activeFilter == 'maintain',
                   onSelected: (selected) {
-                    if (selected) setState(() => _activeFilter = 'maintain');
+                    if (selected) {
+                      ref.read(trackerFilterProvider.notifier).state =
+                          'maintain';
+                    }
                   },
                   selectedColor: colorScheme.tertiary.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
-                    color: _activeFilter == 'maintain'
+                    color: activeFilter == 'maintain'
                         ? colorScheme.tertiary
                         : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
@@ -118,13 +125,15 @@ class _TrackersPageState extends ConsumerState<TrackersPage> {
                 ),
                 ChoiceChip(
                   label: const Text('Quitting'),
-                  selected: _activeFilter == 'quit',
+                  selected: activeFilter == 'quit',
                   onSelected: (selected) {
-                    if (selected) setState(() => _activeFilter = 'quit');
+                    if (selected) {
+                      ref.read(trackerFilterProvider.notifier).state = 'quit';
+                    }
                   },
                   selectedColor: colorScheme.error.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
-                    color: _activeFilter == 'quit'
+                    color: activeFilter == 'quit'
                         ? colorScheme.error
                         : colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
@@ -134,44 +143,16 @@ class _TrackersPageState extends ConsumerState<TrackersPage> {
             ),
             const SizedBox(height: 24),
 
-            // Trackers StreamBuilder
-            StreamBuilder<List<TrackerModel>>(
-              stream: _trackersStream!,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error loading trackers: ${snapshot.error}',
-                      style: TextStyle(color: colorScheme.error, fontSize: 16),
-                    ),
-                  );
-                }
-
-                final trackers = snapshot.data ?? [];
-
-                // Check if any maintain trackers missed their period and require an auto-reset
-                if (trackers.isNotEmpty) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    final now = DateTime.now();
-                    for (final tracker in trackers) {
-                      final newStart = tracker.getNewStartDateIfResetNeeded(
-                        now,
-                      );
-                      if (newStart != null) {
-                        _repository.autoResetTracker(tracker, newStart);
-                      }
-                    }
-                  });
-                }
-                final filteredTrackers = trackers.where((t) {
-                  if (_activeFilter == 'all') return true;
-                  return t.type == _activeFilter;
-                }).toList();
-
+            // Trackers Content via AsyncValue
+            filteredTrackersAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Text(
+                  'Error loading trackers: $error',
+                  style: TextStyle(color: colorScheme.error, fontSize: 16),
+                ),
+              ),
+              data: (filteredTrackers) {
                 if (filteredTrackers.isEmpty) {
                   return Center(
                     child: Column(
@@ -186,9 +167,9 @@ class _TrackersPageState extends ConsumerState<TrackersPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _activeFilter == 'all'
+                          activeFilter == 'all'
                               ? 'No habit trackers created yet'
-                              : _activeFilter == 'maintain'
+                              : activeFilter == 'maintain'
                               ? 'No habits to maintain yet'
                               : 'No habits to quit yet',
                           style: TextStyle(
@@ -211,7 +192,7 @@ class _TrackersPageState extends ConsumerState<TrackersPage> {
                   );
                 }
 
-                // Responsive design layout
+                // Responsive layout
                 final width = MediaQuery.of(context).size.width;
                 if (width >= 850) {
                   return GridView.builder(
