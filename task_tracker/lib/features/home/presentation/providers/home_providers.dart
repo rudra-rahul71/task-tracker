@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:task_tracker/main.dart';
 import 'package:task_tracker/features/tasks/presentation/providers/task_providers.dart';
@@ -218,9 +217,6 @@ class CalendarCalculationUtils {
     required List<TaskModel> tasks,
     required List<TaskHistoryModel> taskHistory,
     required List<TaskGroupModel> groups,
-    required Color errorColor,
-    required Color tertiaryColor,
-    required Color defaultTaskColor,
   }) {
     final Map<String, Set<String>> trackerHistoryMap = {};
     for (var h in trackerHistory) {
@@ -261,7 +257,9 @@ class CalendarCalculationUtils {
           .toList();
 
       final trackerIndicators = completedForDay.map((t) {
-        return t.type == 'quit' ? errorColor : tertiaryColor;
+        return t.type == 'quit'
+            ? TrackerIndicatorType.slipUp
+            : TrackerIndicatorType.completion;
       }).toList();
 
       final tasksOnDay = tasks.where((t) {
@@ -276,12 +274,11 @@ class CalendarCalculationUtils {
           dayDateKey,
         );
         final group = t.groupId != null ? groupMap[t.groupId] : null;
-        final color = group != null && group.id.isNotEmpty
-            ? Color(group.colorValue)
-            : defaultTaskColor;
+        final groupColorValue =
+            group != null && group.id.isNotEmpty ? group.colorValue : null;
         return CalendarTaskData(
           name: t.name,
-          color: color,
+          groupColorValue: groupColorValue,
           isCompleted: isCompleted,
         );
       }).toList();
@@ -335,10 +332,6 @@ final calendarEventsProvider =
       final taskHistory = taskHistoryAsync.value ?? [];
       final groups = groupsAsync.value ?? [];
 
-      const errorColor = Color(0xFFEF5350);
-      const tertiaryColor = Color(0xFF26A69A);
-      const primaryColor = Color(0xFFD4AF37);
-
       final events = CalendarCalculationUtils.calculateCalendarEvents(
         month: month,
         trackers: trackers,
@@ -346,9 +339,6 @@ final calendarEventsProvider =
         tasks: tasks,
         taskHistory: taskHistory,
         groups: groups,
-        errorColor: errorColor,
-        tertiaryColor: tertiaryColor,
-        defaultTaskColor: primaryColor,
       );
 
       return AsyncValue.data(events);

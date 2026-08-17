@@ -1,19 +1,31 @@
 import 'package:flutter/material.dart';
 
+enum TrackerIndicatorType {
+  completion,
+  slipUp,
+}
+
 class CalendarTaskData {
   final String name;
-  final Color color;
+  final int? groupColorValue;
   final bool isCompleted;
 
   const CalendarTaskData({
     required this.name,
-    required this.color,
+    this.groupColorValue,
     required this.isCompleted,
   });
+
+  Color resolveColor(ColorScheme colorScheme) {
+    if (groupColorValue != null) {
+      return Color(groupColorValue!);
+    }
+    return colorScheme.primary;
+  }
 }
 
 class CalendarDayData {
-  final List<Color> trackerIndicators;
+  final List<TrackerIndicatorType> trackerIndicators;
   final List<CalendarTaskData> tasks;
 
   const CalendarDayData({
@@ -254,7 +266,7 @@ class CalendarWidget extends StatelessWidget {
       for (int i = 0; i < count; i++) {
         final t = tasksOnDay[i];
         final isCompleted = t.isCompleted;
-        final color = t.color;
+        final color = t.resolveColor(colorScheme);
 
         final isLightColor =
             ThemeData.estimateBrightnessForColor(color) == Brightness.light;
@@ -354,7 +366,7 @@ class CalendarWidget extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isSelected
-                      ? colorScheme.primary
+                       ? colorScheme.primary
                       : colorScheme.onSurface,
                   fontWeight: isSelected || isToday
                       ? FontWeight.bold
@@ -377,13 +389,17 @@ class CalendarWidget extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: allIndicators.take(4).map((color) {
+                      children: allIndicators.take(4).map((indicator) {
+                        final indicatorColor =
+                            indicator == TrackerIndicatorType.slipUp
+                                ? colorScheme.error
+                                : colorScheme.tertiary;
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 1.0),
                           width: 4,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: color,
+                            color: indicatorColor,
                             shape: BoxShape.circle,
                           ),
                         );

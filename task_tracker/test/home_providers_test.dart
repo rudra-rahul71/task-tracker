@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:task_tracker/features/home/presentation/providers/home_providers.dart';
+import 'package:task_tracker/features/home/presentation/widgets/calendar_widget.dart';
 import 'package:task_tracker/features/tasks/data/models/task_model.dart';
 import 'package:task_tracker/features/tasks/data/models/task_schedule.dart';
 import 'package:task_tracker/features/tasks/data/models/task_history.dart';
@@ -103,9 +103,6 @@ void main() {
           ),
         ],
         groups: [],
-        errorColor: Colors.red,
-        tertiaryColor: Colors.teal,
-        defaultTaskColor: Colors.amber,
       );
 
       expect(events.containsKey('2026-8-10'), isTrue);
@@ -113,6 +110,7 @@ void main() {
       expect(day10.tasks.isNotEmpty, isTrue);
       expect(day10.tasks.first.name, 'Morning Workout');
       expect(day10.tasks.first.isCompleted, isTrue);
+      expect(day10.trackerIndicators, contains(TrackerIndicatorType.completion));
     });
   });
 }
